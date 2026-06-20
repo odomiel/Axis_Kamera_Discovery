@@ -86,6 +86,11 @@ Bedienung:
   Kamera) im Browser.
 - **Exportieren…** – speichert die Ergebnisse als CSV oder Texttabelle
   (Format folgt der gewählten Dateiendung).
+- **Einstellungen** (Menü-Button rechts neben „Exportieren") mit den Einträgen:
+  - **Info** – Programmname und Version
+  - **Hilfe** – zeigt diese README in einem Fenster
+  - **Lizenzen** – zeigt `THIRD_PARTY_LICENSES.md` (Lizenzen der gebündelten
+    Komponenten) in einem Fenster
 
 ---
 
@@ -168,6 +173,7 @@ axis_IP_Utility/
 ├── build_appimage.sh            # Build (Tcl/Tk 9 + Python 3.13 aus Quellcode)
 ├── appimage/AxisDiscovery/
 │   └── AxisDiscovery.png        # Icon für das AppImage
+├── THIRD_PARTY_LICENSES.md      # Lizenzen der gebündelten Komponenten
 └── README.md
 ```
 

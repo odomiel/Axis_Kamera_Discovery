@@ -217,7 +217,11 @@ class AxisDiscoveryGUI(tk.Tk):
         frame = ttk.Frame(popup, relief="solid", borderwidth=1)
         frame.pack(fill=tk.BOTH, expand=True)
 
-        for label, command in (("Info", self._show_info), ("Hilfe", self._show_help)):
+        for label, command in (
+            ("Info", self._show_info),
+            ("Hilfe", self._show_help),
+            ("Lizenzen", self._show_licenses),
+        ):
             ttk.Button(
                 frame,
                 text=label,
@@ -266,15 +270,21 @@ class AxisDiscoveryGUI(tk.Tk):
         )
 
     def _show_help(self):
-        readme = os.path.join(os.path.dirname(os.path.abspath(__file__)), "README.md")
-        if not os.path.exists(readme):
-            messagebox.showerror("Hilfe", "README.md wurde nicht gefunden.")
+        self._show_text_window("README.md", "Hilfe - README")
+
+    def _show_licenses(self):
+        self._show_text_window("THIRD_PARTY_LICENSES.md", "Lizenzen")
+
+    def _show_text_window(self, filename, title):
+        path = os.path.join(os.path.dirname(os.path.abspath(__file__)), filename)
+        if not os.path.exists(path):
+            messagebox.showerror(title, f"{filename} wurde nicht gefunden.")
             return
-        with open(readme, encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             content = f.read()
 
         win = tk.Toplevel(self)
-        win.title("Hilfe - README")
+        win.title(title)
         win.geometry("850x650")
         text = scrolledtext.ScrolledText(win, wrap=tk.WORD, padx=8, pady=8)
         text.insert("1.0", content)
