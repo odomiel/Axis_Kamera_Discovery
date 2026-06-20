@@ -8,3 +8,4 @@ base.AppImage
 .tk9build/
 appimagetool*.AppImage
 .tk9build_log.txt
+CLAUDE.md
