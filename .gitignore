@@ -1,0 +1,7 @@
+# Build-Umgebung und Artefakte
+.buildenv/
+__pycache__/
+*.pyc
+squashfs-root/
+base.AppImage
+*.AppImage

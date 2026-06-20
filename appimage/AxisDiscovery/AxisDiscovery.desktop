@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=AxisDiscovery
+GenericName=Axis Kamera Discovery
+Comment=Findet Axis-Kameras im lokalen Netzwerk per Zeroconf
+Exec=AppRun %u
+Icon=AxisDiscovery
+Categories=Network;Utility;
+Terminal=false
