@@ -11,7 +11,8 @@ __version__ = "26.06.20b1"
 
 FIELD_NAMES = [
     "Name",
-    "IP Adresse: Zeroconfig/Konfiguriert",
+    "IP Adresse: Zeroconfig",
+    "IP Adresse: Konfiguriert",
     "Port",
     "Hostname",
     "MAC-Adresse/Seriennummer",
@@ -40,12 +41,14 @@ class AxisDiscovery:
             # Konvertieren Sie Byte-Objekte in Strings für die MAC-Adresse/Seriennummer
             mac_address = info.properties.get(b'macaddress', b'').decode('utf-8')
 
-            # Konvertieren Sie Listen von IP-Adressen in Strings
-            ip_addresses = ', '.join(addresses)
+            # Adressen trennen: Zeroconf/Link-Local (169.254.x.x) vs. konfiguriert
+            zeroconf_ips = [a for a in addresses if a.startswith("169.254.")]
+            configured_ips = [a for a in addresses if not a.startswith("169.254.")]
 
             service_info = {
                 "Name": name,
-                "IP Adresse: Zeroconfig/Konfiguriert": ip_addresses,
+                "IP Adresse: Zeroconfig": ', '.join(zeroconf_ips),
+                "IP Adresse: Konfiguriert": ', '.join(configured_ips),
                 "Port": info.port,
                 "Hostname": info.server,
                 "MAC-Adresse/Seriennummer": mac_address  # Hier haben wir den String-Wert
@@ -123,9 +126,12 @@ def export_results(axis_cameras, output_file, fmt=None):
         export_to_text_file(axis_cameras, output_file)
 
 def get_first_ip(camera):
-    """Liefert die erste IP-Adresse einer gefundenen Kamera (oder "")."""
-    ip_field = camera.get("IP Adresse: Zeroconfig/Konfiguriert", "")
-    return ip_field.split(",")[0].strip()
+    """Erste erreichbare IP einer Kamera: bevorzugt konfiguriert, sonst Zeroconf."""
+    for field in ("IP Adresse: Konfiguriert", "IP Adresse: Zeroconfig"):
+        ip = camera.get(field, "").split(",")[0].strip()
+        if ip:
+            return ip
+    return ""
 
 def open_cameras(cameras, already_opened=None):
     """Oeffnet die Weboberflaeche jeder Kamera im Browser (je IP nur einmal)."""
