@@ -37,6 +37,7 @@ class AxisDiscoveryGUI(tk.Tk):
         self._result_queue = queue.Queue()
         self._searching = False
         self._refresh_after_id = None
+        self._settings_popup = None
 
         self._build_toolbar()
         self._build_table()
@@ -72,18 +73,16 @@ class AxisDiscoveryGUI(tk.Tk):
             side=tk.LEFT
         )
 
+        # Menue-Button "Einstellungen" rechts neben "Exportieren"
+        self.settings_btn = ttk.Button(
+            bar, text="Einstellungen", command=self._toggle_settings_menu
+        )
+        self.settings_btn.pack(side=tk.RIGHT)
+
         self.export_btn = ttk.Button(
             bar, text="Exportieren...", command=self.export, state=tk.DISABLED
         )
-        self.export_btn.pack(side=tk.RIGHT)
-
-        # Menue-Button "Einstellungen" direkt neben "Exportieren"
-        settings_btn = ttk.Menubutton(bar, text="Einstellungen")
-        self.settings_menu = tk.Menu(settings_btn, tearoff=0)
-        self.settings_menu.add_command(label="Info", command=self._show_info)
-        self.settings_menu.add_command(label="Hilfe", command=self._show_help)
-        settings_btn["menu"] = self.settings_menu
-        settings_btn.pack(side=tk.RIGHT, padx=(0, 8))
+        self.export_btn.pack(side=tk.RIGHT, padx=(0, 8))
 
         self.progress = ttk.Progressbar(bar, mode="indeterminate", length=160)
         self.progress.pack(side=tk.RIGHT, padx=8)
@@ -199,9 +198,48 @@ class AxisDiscoveryGUI(tk.Tk):
 
     def _on_close(self):
         self._cancel_refresh()
+        self._close_settings_menu()
         self.destroy()
 
     # --------------------------------------------------- Menue: Einstellungen
+    def _toggle_settings_menu(self):
+        # offenes Dropdown wieder schliessen
+        if self._settings_popup is not None and self._settings_popup.winfo_exists():
+            self._close_settings_menu()
+            return
+
+        btn = self.settings_btn
+        popup = tk.Toplevel(self)
+        popup.overrideredirect(True)        # randloses Fenster (wie ein Menue)
+        popup.transient(self)
+        frame = ttk.Frame(popup, relief="solid", borderwidth=1)
+        frame.pack(fill=tk.BOTH, expand=True)
+
+        for label, command in (("Info", self._show_info), ("Hilfe", self._show_help)):
+            ttk.Button(
+                frame,
+                text=label,
+                command=lambda c=command: (self._close_settings_menu(), c()),
+            ).pack(fill=tk.X)  # fuellt die volle Breite des Dropdowns
+
+        self._settings_popup = popup
+
+        # Position unter dem Button, Breite exakt wie der Einstellungen-Button
+        popup.update_idletasks()
+        width = btn.winfo_width()
+        height = frame.winfo_reqheight()
+        x = btn.winfo_rootx()
+        y = btn.winfo_rooty() + btn.winfo_height()
+        popup.geometry(f"{width}x{height}+{x}+{y}")
+
+        popup.bind("<FocusOut>", lambda _e: self._close_settings_menu())
+        popup.focus_set()
+
+    def _close_settings_menu(self):
+        if self._settings_popup is not None and self._settings_popup.winfo_exists():
+            self._settings_popup.destroy()
+        self._settings_popup = None
+
     def _show_info(self):
         messagebox.showinfo(
             "Info",
