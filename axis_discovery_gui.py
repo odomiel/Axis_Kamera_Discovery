@@ -31,6 +31,7 @@ import webbrowser
 from importlib import metadata
 
 import tkinter as tk
+import tkinter.font as tkfont
 from tkinter import filedialog, messagebox, scrolledtext, ttk
 
 from axis_discovery_cli import (
@@ -57,6 +58,13 @@ class AxisDiscoveryGUI(tk.Tk):
         self._refresh_after_id = None
         self._settings_popup = None
         self._sort_state = {}  # Spalte -> zuletzt absteigend? (fuer Klick-Toggle)
+
+        # Fonts fuer die automatische Spaltenbreiten-Messung
+        self._cell_font = tkfont.nametofont("TkDefaultFont")
+        try:
+            self._heading_font = tkfont.nametofont("TkHeadingFont")
+        except tk.TclError:
+            self._heading_font = self._cell_font
 
         self._build_toolbar()
         self._build_table()
@@ -116,7 +124,8 @@ class AxisDiscoveryGUI(tk.Tk):
         for col in COLUMNS:
             # Klick auf die Ueberschrift sortiert nach dieser Spalte
             self.tree.heading(col, text=col, command=lambda c=col: self._sort_by(c))
-            self.tree.column(col, width=180, anchor=tk.W)
+            # stretch=NO: die per _autosize_columns gemessenen Breiten bleiben verbindlich
+            self.tree.column(col, width=180, anchor=tk.W, stretch=tk.NO)
 
         vsb = ttk.Scrollbar(frame, orient="vertical", command=self.tree.yview)
         hsb = ttk.Scrollbar(frame, orient="horizontal", command=self.tree.xview)
@@ -129,6 +138,18 @@ class AxisDiscoveryGUI(tk.Tk):
         frame.columnconfigure(0, weight=1)
 
         self.tree.bind("<Double-1>", self._open_in_browser)
+        self._autosize_columns()  # initiale Breite an die Ueberschriften anpassen
+
+    def _autosize_columns(self):
+        """Passt jede Spaltenbreite an den breitesten Inhalt (inkl. Ueberschrift) an."""
+        for col in COLUMNS:
+            header = self.tree.heading(col, "text")
+            width = self._heading_font.measure(header)
+            for iid in self.tree.get_children(""):
+                cell = self.tree.set(iid, col)
+                width = max(width, self._cell_font.measure(cell))
+            # Polster + sinnvolle Unter-/Obergrenze
+            self.tree.column(col, width=min(max(width + 24, 60), 600))
 
     def _build_statusbar(self):
         self.status_var = tk.StringVar(value="Bereit.")
@@ -211,6 +232,7 @@ class AxisDiscoveryGUI(tk.Tk):
         self.cameras = payload
         for cam in self.cameras:
             self.tree.insert("", tk.END, values=[cam.get(c, "") for c in COLUMNS])
+        self._autosize_columns()  # Breiten an die neuen Inhalte anpassen
 
         if self.cameras:
             self.export_btn.config(state=tk.NORMAL)

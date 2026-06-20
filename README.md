@@ -82,6 +82,8 @@ Bedienung:
 - **Dauer (s)** – Suchdauer (1–60 s, Standard 10).
 - **Auto-Refresh** + **alle (s)** – wiederholt die Suche automatisch im
   eingestellten Intervall (5–3600 s).
+- **Spaltenbreiten** passen sich nach jeder Suche automatisch an den breitesten
+  Inhalt (inkl. Überschrift) an.
 - **Klick auf eine Spaltenüberschrift** – sortiert die Tabelle nach dieser
   Spalte; erneuter Klick kehrt die Richtung um (auf-/absteigend, Pfeil ▲/▼).
   Port wird numerisch, IP-Adressen werden nach Oktetten sortiert.
