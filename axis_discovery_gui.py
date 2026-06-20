@@ -7,12 +7,13 @@ Hintergrund-Thread, damit das Fenster waehrend der ~10 Sekunden nicht
 einfriert.
 """
 
+import os
 import queue
 import threading
 import webbrowser
 
 import tkinter as tk
-from tkinter import filedialog, messagebox, ttk
+from tkinter import filedialog, messagebox, scrolledtext, ttk
 
 from axis_discovery_cli import (
     AxisDiscovery,
@@ -37,6 +38,7 @@ class AxisDiscoveryGUI(tk.Tk):
         self._searching = False
         self._refresh_after_id = None
 
+        self._build_menu()
         self._build_toolbar()
         self._build_table()
         self._build_statusbar()
@@ -44,6 +46,14 @@ class AxisDiscoveryGUI(tk.Tk):
         self.protocol("WM_DELETE_WINDOW", self._on_close)
 
     # ---------------------------------------------------------------- UI
+    def _build_menu(self):
+        menubar = tk.Menu(self)
+        settings = tk.Menu(menubar, tearoff=0)
+        settings.add_command(label="Info", command=self._show_info)
+        settings.add_command(label="Hilfe", command=self._show_help)
+        menubar.add_cascade(label="Einstellungen", menu=settings)
+        self.config(menu=menubar)
+
     def _build_toolbar(self):
         bar = ttk.Frame(self, padding=8)
         bar.pack(side=tk.TOP, fill=tk.X)
@@ -191,6 +201,31 @@ class AxisDiscoveryGUI(tk.Tk):
     def _on_close(self):
         self._cancel_refresh()
         self.destroy()
+
+    # --------------------------------------------------- Menue: Einstellungen
+    def _show_info(self):
+        messagebox.showinfo(
+            "Info",
+            "Axis IP Utility\n"
+            f"Version {__version__}\n\n"
+            "Findet Axis-Kameras im lokalen Netzwerk per Zeroconf/mDNS.",
+        )
+
+    def _show_help(self):
+        readme = os.path.join(os.path.dirname(os.path.abspath(__file__)), "README.md")
+        if not os.path.exists(readme):
+            messagebox.showerror("Hilfe", "README.md wurde nicht gefunden.")
+            return
+        with open(readme, encoding="utf-8") as f:
+            content = f.read()
+
+        win = tk.Toplevel(self)
+        win.title("Hilfe - README")
+        win.geometry("850x650")
+        text = scrolledtext.ScrolledText(win, wrap=tk.WORD, padx=8, pady=8)
+        text.insert("1.0", content)
+        text.config(state=tk.DISABLED)  # schreibgeschuetzt
+        text.pack(fill=tk.BOTH, expand=True)
 
     # ----------------------------------------------------------- Aktionen
     def _open_in_browser(self, _event):

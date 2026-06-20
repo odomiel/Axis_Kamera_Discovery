@@ -42,7 +42,7 @@ echo ">> Baue AppImage $VERSION (Python $PYVER)..."
 python-appimage build app \
     -p "$PYVER" \
     "$ROOT/appimage/AxisDiscovery" \
-    -x "$ROOT/axis_discovery_gui.py" "$ROOT/axis_discovery_cli.py"
+    -x "$ROOT/axis_discovery_gui.py" "$ROOT/axis_discovery_cli.py" "$ROOT/README.md"
 
 # 4. Versioniertes Ergebnis bereitstellen (+ unversionierter Symlink)
 ARCH="$(uname -m)"
