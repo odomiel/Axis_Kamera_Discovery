@@ -24,9 +24,11 @@ einfriert.
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import os
+import platform
 import queue
 import threading
 import webbrowser
+from importlib import metadata
 
 import tkinter as tk
 from tkinter import filedialog, messagebox, scrolledtext, ttk
@@ -283,9 +285,25 @@ class AxisDiscoveryGUI(tk.Tk):
             "Axis IP Utility\n"
             f"Version {__version__}\n\n"
             "Findet Axis-Kameras im lokalen Netzwerk per Zeroconf/mDNS.\n\n"
+            "Komponenten:\n"
+            f"{self._component_versions()}\n\n"
             "Lizenz: GPL-3.0-or-later\n"
-            "Copyright (C) 2026 Mirik",
+            "Copyright (C) 2026 Mirik\n"
+            "Co-Autor: Claude Opus 4.8 (Anthropic) - KI-gestuetzte Entwicklung",
         )
+
+    def _component_versions(self):
+        """Laufzeit-Versionen der wichtigsten Programmteile als Text."""
+        items = [
+            ("Python", platform.python_version()),
+            ("Tcl/Tk", self.tk.call("info", "patchlevel")),
+        ]
+        for pkg in ("zeroconf", "ifaddr", "prettytable", "wcwidth"):
+            try:
+                items.append((pkg, metadata.version(pkg)))
+            except metadata.PackageNotFoundError:
+                items.append((pkg, "?"))
+        return "\n".join(f"  {name:<12}{ver}" for name, ver in items)
 
     def _show_help(self):
         self._show_text_window("README.md", "Hilfe - README")

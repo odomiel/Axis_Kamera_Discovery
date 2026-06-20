@@ -194,3 +194,6 @@ Copyright (C) 2026 Mirik
 Die im AppImage gebündelten Drittanbieter-Komponenten behalten ihre jeweils
 eigenen Lizenzen, dokumentiert in
 [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).
+
+> **Hinweis:** Dieses Programm wurde mit Hilfe von KI (Claude Opus 4.8,
+> Anthropic) entwickelt.
