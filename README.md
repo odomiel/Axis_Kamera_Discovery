@@ -1,8 +1,16 @@
 # Axis IP Utility
 
 Findet **Axis-Netzwerkkameras** im lokalen Netz per Zeroconf/mDNS
-(`_axis-video._tcp.local.`) und zeigt Name, IP-Adresse(n), Port, Hostname und
-MAC-Adresse/Seriennummer an.
+(`_axis-video._tcp.local.`) und zeigt sie mit folgenden Spalten an:
+
+| Spalte | Inhalt |
+|---|---|
+| Name | Gerätename |
+| IP Adresse: Zeroconfig | Link-Local-/Zeroconf-Adresse (`169.254.x.x`) |
+| IP Adresse: Konfiguriert | konfigurierte (reguläre) IP-Adresse |
+| Port | HTTP-Port |
+| Hostname | mDNS-Hostname |
+| MAC-Adresse/Seriennummer | MAC bzw. Seriennummer |
 
 Das Projekt enthält zwei Oberflächen mit **identischem Funktionsumfang**:
 
