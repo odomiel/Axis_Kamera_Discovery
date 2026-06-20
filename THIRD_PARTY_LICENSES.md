@@ -2,7 +2,8 @@
 
 Das ausgelieferte AppImage von **Axis IP Utility** bündelt die unten
 aufgeführten Komponenten. Der eigene Programmcode (`axis_discovery_cli.py`,
-`axis_discovery_gui.py`, `bump_version.py`, `build_appimage.sh`) ist davon nicht
+`axis_discovery_gui.py`, `bump_version.py`, `build_appimage.sh`) steht unter der
+**GPL-3.0-or-later** (siehe `LICENSE`) und ist von den folgenden Lizenzen nicht
 betroffen.
 
 ## Übersicht

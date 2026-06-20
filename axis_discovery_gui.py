@@ -7,6 +7,22 @@ Hintergrund-Thread, damit das Fenster waehrend der ~10 Sekunden nicht
 einfriert.
 """
 
+# Axis IP Utility - findet Axis-Netzwerkkameras per Zeroconf/mDNS.
+# Copyright (C) 2026 Mirik
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 import os
 import queue
 import threading
@@ -266,7 +282,9 @@ class AxisDiscoveryGUI(tk.Tk):
             "Info",
             "Axis IP Utility\n"
             f"Version {__version__}\n\n"
-            "Findet Axis-Kameras im lokalen Netzwerk per Zeroconf/mDNS.",
+            "Findet Axis-Kameras im lokalen Netzwerk per Zeroconf/mDNS.\n\n"
+            "Lizenz: GPL-3.0-or-later\n"
+            "Copyright (C) 2026 Mirik",
         )
 
     def _show_help(self):

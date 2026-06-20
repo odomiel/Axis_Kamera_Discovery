@@ -174,9 +174,23 @@ axis_IP_Utility/
 ├── appimage/AxisDiscovery/
 │   └── AxisDiscovery.png        # Icon für das AppImage
 ├── THIRD_PARTY_LICENSES.md      # Lizenzen der gebündelten Komponenten
+├── LICENSE                      # GPL-3.0 Lizenztext
 └── README.md
 ```
 
 > Hinweis: `.tk9build/`, `*.AppImage` und `__pycache__/` sind per `.gitignore`
 > vom Repository ausgeschlossen. Der Build erzeugt `AppRun` und den
 > `.desktop`-Eintrag selbst.
+
+---
+
+## Lizenz
+
+Dieses Programm steht unter der **GNU General Public License v3.0 oder später
+(GPL-3.0-or-later)** – siehe [LICENSE](LICENSE).
+
+Copyright (C) 2026 Mirik
+
+Die im AppImage gebündelten Drittanbieter-Komponenten behalten ihre jeweils
+eigenen Lizenzen, dokumentiert in
+[THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).
