@@ -10,10 +10,10 @@ betroffen.
 
 | Komponente | Version | Lizenz |
 |---|---|---|
-| CPython | 3.13.1 | PSF License Agreement |
-| Tcl | 9.0.1 | Tcl/Tk License (BSD-artig) |
-| Tk | 9.0.1 | Tcl/Tk License (BSD-artig) |
-| libffi | 3.4.6 | libffi License (MIT-artig) |
+| CPython | 3.13.14 | PSF License Agreement |
+| Tcl | 9.0.3 | Tcl/Tk License (BSD-artig) |
+| Tk | 9.0.3 | Tcl/Tk License (BSD-artig) |
+| libffi | 3.6.0 | libffi License (MIT-artig) |
 | zeroconf | 0.149.16 | **LGPL-2.1-or-later** |
 | ifaddr | 0.2.0 | MIT |
 | prettytable | 3.17.0 | BSD-3-Clause |
@@ -29,7 +29,7 @@ betroffen.
 
 ---
 
-## CPython 3.13.1
+## CPython 3.13.14
 
 Copyright © 2001-2024 Python Software Foundation. Alle Rechte vorbehalten.
 
@@ -39,7 +39,7 @@ Vollständiger Text: https://docs.python.org/3/license.html
 
 ---
 
-## Tcl 9.0.1 und Tk 9.0.1
+## Tcl 9.0.3 und Tk 9.0.3
 
 This software is copyrighted by the Regents of the University of
 California, Sun Microsystems, Inc., Scriptics Corporation, ActiveState
@@ -72,7 +72,7 @@ MODIFICATIONS.
 
 ---
 
-## libffi 3.4.6
+## libffi 3.6.0
 
 libffi - Copyright (c) 1996-2024  Anthony Green, Red Hat, Inc and others.
 See source files for details.

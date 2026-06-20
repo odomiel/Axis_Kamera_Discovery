@@ -17,11 +17,11 @@ APPDIR="$BUILD/AppDir"
 PREFIX="$APPDIR/usr"
 JOBS="$(nproc)"
 
-TCL_VER=9.0.1
-TK_VER=9.0.1
-PY_VER=3.13.1
+TCL_VER=9.0.3
+TK_VER=9.0.3
+PY_VER=3.13.14
 PY_XY=3.13
-FFI_VER=3.4.6
+FFI_VER=3.6.0
 
 mkdir -p "$SRC"
 rm -rf "$APPDIR"
