@@ -14,7 +14,13 @@ import webbrowser
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
-from axis_discovery_cli import AxisDiscovery, export_results, FIELD_NAMES, __version__
+from axis_discovery_cli import (
+    AxisDiscovery,
+    export_results,
+    get_first_ip,
+    FIELD_NAMES,
+    __version__,
+)
 
 COLUMNS = FIELD_NAMES
 
@@ -192,8 +198,8 @@ class AxisDiscoveryGUI(tk.Tk):
         if not selection:
             return
         values = self.tree.item(selection[0], "values")
-        ip_field = values[1]  # "IP Adresse..."
-        first_ip = ip_field.split(",")[0].strip()
+        # gleiche Logik wie das CLI: erste IP aus dem Adressfeld
+        first_ip = get_first_ip(dict(zip(COLUMNS, values)))
         if first_ip:
             webbrowser.open(f"http://{first_ip}")
 

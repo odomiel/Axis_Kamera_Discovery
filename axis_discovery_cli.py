@@ -1,6 +1,7 @@
 from zeroconf import ServiceBrowser, Zeroconf
 import time
 import csv
+import webbrowser
 from prettytable import PrettyTable
 import argparse
 
@@ -121,6 +122,22 @@ def export_results(axis_cameras, output_file, fmt=None):
     else:
         export_to_text_file(axis_cameras, output_file)
 
+def get_first_ip(camera):
+    """Liefert die erste IP-Adresse einer gefundenen Kamera (oder "")."""
+    ip_field = camera.get("IP Adresse: Zeroconfig/Konfiguriert", "")
+    return ip_field.split(",")[0].strip()
+
+def open_cameras(cameras, already_opened=None):
+    """Oeffnet die Weboberflaeche jeder Kamera im Browser (je IP nur einmal)."""
+    if already_opened is None:
+        already_opened = set()
+    for camera in cameras:
+        ip = get_first_ip(camera)
+        if ip and ip not in already_opened:
+            webbrowser.open(f"http://{ip}")
+            already_opened.add(ip)
+    return already_opened
+
 def print_version():
     print(f"Axis Discovery CLI Version {__version__}")
 
@@ -129,6 +146,12 @@ def main():
     parser.add_argument('--output', '-o', type=str, default=None, help='Output file (export)')
     parser.add_argument('--format', '-f', choices=['txt', 'csv'], default=None,
                         help='Export format (default: from file extension, else txt)')
+    parser.add_argument('--timeout', '-t', type=int, default=10,
+                        help='Search duration in seconds (default: 10)')
+    parser.add_argument('--watch', '-w', type=int, default=None, metavar='SECONDS',
+                        help='Repeat the search every SECONDS (like the GUI auto-refresh); Ctrl+C to stop')
+    parser.add_argument('--open', action='store_true',
+                        help='Open each found camera web interface in the browser')
     parser.add_argument('--show', '-s', action='store_true', help='Show results in console')
     parser.add_argument('--version', '-v', action='store_true', help='Show version information')
 
@@ -139,10 +162,25 @@ def main():
         return
 
     show_in_console = not args.output or args.show
-    axis_cameras = discover_axis_cameras(show_in_console)
 
-    if args.output:
-        export_results(axis_cameras, args.output, args.format)
+    def run_once(already_opened):
+        cameras = discover_axis_cameras(show_in_console, timeout=args.timeout)
+        if args.output:
+            export_results(cameras, args.output, args.format)
+        if args.open:
+            open_cameras(cameras, already_opened)
+        return cameras
+
+    if args.watch is not None:
+        already_opened = set()
+        try:
+            while True:
+                run_once(already_opened)
+                time.sleep(args.watch)
+        except KeyboardInterrupt:
+            print("\nBeendet.")
+    else:
+        run_once(set())
 
 if __name__ == "__main__":
     main()
