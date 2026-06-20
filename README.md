@@ -10,15 +10,8 @@ Das Projekt enthält zwei Oberflächen mit **identischem Funktionsumfang**:
 - **CLI** (`axis_discovery_cli.py`) – Kommandozeilen-Werkzeug
 
 Beide lassen sich als **eigenständiges AppImage** bündeln, das ein komplettes
-Python inklusive Tkinter/Tcl-Tk sowie alle Abhängigkeiten mitbringt und damit
+Python 3.13 inklusive **Tcl/Tk 9** sowie alle Abhängigkeiten mitbringt und damit
 **unabhängig von der System-Installation** läuft.
-
-Es gibt zwei Build-Varianten:
-
-- **`build_tk9_appimage.sh`** – baut **Tcl/Tk 9** + Python 3.13 aus dem
-  Quellcode (modernste Tk-Version).
-- **`build_appimage.sh`** – leichtgewichtig über `python-appimage`
-  (Python 3.12, Tcl/Tk 8.6); schneller und breiter kompatibel.
 
 ---
 
@@ -42,9 +35,7 @@ Es gibt zwei Build-Varianten:
 - **Nutzung des AppImage:** keine – nur Linux x86_64 (FUSE2 empfohlen).
 - **Direkt aus dem Quellcode:** Python 3 mit den Paketen `zeroconf` und
   `prettytable` sowie Tkinter (`python3-tk`).
-- **AppImage (8.6) selbst bauen:** Python 3 mit `venv`/`ensurepip` und
-  Internetzugang (lädt das eigenständige Python und `python-appimage`).
-- **AppImage (Tcl/Tk 9) selbst bauen:** C-Compiler (`gcc`/`make`), X11- und
+- **AppImage selbst bauen:** C-Compiler (`gcc`/`make`), X11- und
   Xft-/fontconfig-/freetype-Dev-Header sowie Internetzugang. Tcl 9, Tk 9 und
   Python 3.13 werden aus dem Quellcode kompiliert (dauert einige Minuten).
 
@@ -53,19 +44,17 @@ Es gibt zwei Build-Varianten:
 ## Schnellstart (AppImage)
 
 ```bash
-# Variante Tcl/Tk 9 (Python 3.13, aus Quellcode gebaut)
-./build_tk9_appimage.sh
-./AxisDiscovery-tk9-x86_64.AppImage
-
-# Variante Tcl/Tk 8.6 (python-appimage, schneller)
+# Bauen (Tcl/Tk 9 + Python 3.13 aus Quellcode)
 ./build_appimage.sh
+
+# GUI starten (oder im Dateimanager doppelklicken)
 ./AxisDiscovery-x86_64.AppImage
 ```
 
 Beim Build entstehen:
 
-- `AxisDiscovery[-tk9]-<version>-x86_64.AppImage` – versioniertes Artefakt
-- `AxisDiscovery[-tk9]-x86_64.AppImage` – Symlink auf die aktuelle Version
+- `AxisDiscovery-<version>-x86_64.AppImage` – versioniertes Artefakt
+- `AxisDiscovery-x86_64.AppImage` – Symlink auf die aktuelle Version
 
 ---
 
@@ -168,14 +157,12 @@ axis_IP_Utility/
 ├── axis_discovery_cli.py        # Discovery-Kernlogik + CLI
 ├── axis_discovery_gui.py        # Tkinter-GUI (nutzt die Kernlogik)
 ├── bump_version.py              # Versionsverwaltung (JJ.MM.TT + bN)
-├── build_appimage.sh            # Build-Skript für das AppImage
-├── appimage/AxisDiscovery/      # AppImage-Rezept
-│   ├── AxisDiscovery.desktop    #   Desktop-Eintrag
-│   ├── AxisDiscovery.png        #   Icon
-│   ├── entrypoint.sh            #   Starter-Weiche GUI/CLI
-│   └── requirements.txt         #   gebündelte Pakete (zeroconf, prettytable)
+├── build_appimage.sh            # Build (Tcl/Tk 9 + Python 3.13 aus Quellcode)
+├── appimage/AxisDiscovery/
+│   └── AxisDiscovery.png        # Icon für das AppImage
 └── README.md
 ```
 
-> Hinweis: `.buildenv/`, `*.AppImage` und `__pycache__/` sind per `.gitignore`
-> vom Repository ausgeschlossen.
+> Hinweis: `.tk9build/`, `*.AppImage` und `__pycache__/` sind per `.gitignore`
+> vom Repository ausgeschlossen. Der Build erzeugt `AppRun` und den
+> `.desktop`-Eintrag selbst.
