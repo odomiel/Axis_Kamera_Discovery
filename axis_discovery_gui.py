@@ -38,7 +38,6 @@ class AxisDiscoveryGUI(tk.Tk):
         self._searching = False
         self._refresh_after_id = None
 
-        self._build_menu()
         self._build_toolbar()
         self._build_table()
         self._build_statusbar()
@@ -46,14 +45,6 @@ class AxisDiscoveryGUI(tk.Tk):
         self.protocol("WM_DELETE_WINDOW", self._on_close)
 
     # ---------------------------------------------------------------- UI
-    def _build_menu(self):
-        menubar = tk.Menu(self)
-        settings = tk.Menu(menubar, tearoff=0)
-        settings.add_command(label="Info", command=self._show_info)
-        settings.add_command(label="Hilfe", command=self._show_help)
-        menubar.add_cascade(label="Einstellungen", menu=settings)
-        self.config(menu=menubar)
-
     def _build_toolbar(self):
         bar = ttk.Frame(self, padding=8)
         bar.pack(side=tk.TOP, fill=tk.X)
@@ -85,6 +76,14 @@ class AxisDiscoveryGUI(tk.Tk):
             bar, text="Exportieren...", command=self.export, state=tk.DISABLED
         )
         self.export_btn.pack(side=tk.RIGHT)
+
+        # Menue-Button "Einstellungen" direkt neben "Exportieren"
+        settings_btn = ttk.Menubutton(bar, text="Einstellungen")
+        self.settings_menu = tk.Menu(settings_btn, tearoff=0)
+        self.settings_menu.add_command(label="Info", command=self._show_info)
+        self.settings_menu.add_command(label="Hilfe", command=self._show_help)
+        settings_btn["menu"] = self.settings_menu
+        settings_btn.pack(side=tk.RIGHT, padx=(0, 8))
 
         self.progress = ttk.Progressbar(bar, mode="indeterminate", length=160)
         self.progress.pack(side=tk.RIGHT, padx=8)
