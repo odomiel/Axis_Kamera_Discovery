@@ -82,6 +82,9 @@ Bedienung:
 - **Dauer (s)** – Suchdauer (1–60 s, Standard 10).
 - **Auto-Refresh** + **alle (s)** – wiederholt die Suche automatisch im
   eingestellten Intervall (5–3600 s).
+- **Klick auf eine Spaltenüberschrift** – sortiert die Tabelle nach dieser
+  Spalte; erneuter Klick kehrt die Richtung um (auf-/absteigend, Pfeil ▲/▼).
+  Port wird numerisch, IP-Adressen werden nach Oktetten sortiert.
 - **Doppelklick** auf eine Zeile – öffnet `http://<IP>` (Weboberfläche der
   Kamera) im Browser.
 - **Exportieren…** – speichert die Ergebnisse als CSV oder Texttabelle

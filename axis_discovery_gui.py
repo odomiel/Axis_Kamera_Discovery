@@ -56,6 +56,7 @@ class AxisDiscoveryGUI(tk.Tk):
         self._searching = False
         self._refresh_after_id = None
         self._settings_popup = None
+        self._sort_state = {}  # Spalte -> zuletzt absteigend? (fuer Klick-Toggle)
 
         self._build_toolbar()
         self._build_table()
@@ -113,7 +114,8 @@ class AxisDiscoveryGUI(tk.Tk):
 
         self.tree = ttk.Treeview(frame, columns=COLUMNS, show="headings")
         for col in COLUMNS:
-            self.tree.heading(col, text=col)
+            # Klick auf die Ueberschrift sortiert nach dieser Spalte
+            self.tree.heading(col, text=col, command=lambda c=col: self._sort_by(c))
             self.tree.column(col, width=180, anchor=tk.W)
 
         vsb = ttk.Scrollbar(frame, orient="vertical", command=self.tree.yview)
@@ -133,6 +135,32 @@ class AxisDiscoveryGUI(tk.Tk):
         ttk.Label(
             self, textvariable=self.status_var, relief=tk.SUNKEN, anchor=tk.W, padding=4
         ).pack(side=tk.BOTTOM, fill=tk.X)
+
+    # ----------------------------------------------------------- Sortierung
+    @staticmethod
+    def _sort_key(value):
+        """Sortierschluessel: Zahlen numerisch, IPv4 nach Oktetten, sonst Text."""
+        v = value.strip()
+        if v.isdigit():
+            return (0, int(v))
+        first = v.split(",")[0].strip()
+        parts = first.split(".")
+        if len(parts) == 4 and all(p.isdigit() for p in parts):
+            return (0, tuple(int(p) for p in parts))
+        return (1, v.casefold())
+
+    def _sort_by(self, col):
+        reverse = self._sort_state.get(col, False)
+        rows = [(self.tree.set(iid, col), iid) for iid in self.tree.get_children("")]
+        rows.sort(key=lambda t: self._sort_key(t[0]), reverse=reverse)
+        for index, (_, iid) in enumerate(rows):
+            self.tree.move(iid, "", index)
+        self._sort_state[col] = not reverse  # naechster Klick: andere Richtung
+
+        # Pfeil nur in der aktiven Spalte anzeigen
+        for c in COLUMNS:
+            arrow = ("  ▲" if not reverse else "  ▼") if c == col else ""
+            self.tree.heading(c, text=c + arrow)
 
     # ----------------------------------------------------------- Suche
     def start_search(self):
