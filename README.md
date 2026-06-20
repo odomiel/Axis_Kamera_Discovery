@@ -13,6 +13,13 @@ Beide lassen sich als **eigenständiges AppImage** bündeln, das ein komplettes
 Python inklusive Tkinter/Tcl-Tk sowie alle Abhängigkeiten mitbringt und damit
 **unabhängig von der System-Installation** läuft.
 
+Es gibt zwei Build-Varianten:
+
+- **`build_tk9_appimage.sh`** – baut **Tcl/Tk 9** + Python 3.13 aus dem
+  Quellcode (modernste Tk-Version).
+- **`build_appimage.sh`** – leichtgewichtig über `python-appimage`
+  (Python 3.12, Tcl/Tk 8.6); schneller und breiter kompatibel.
+
 ---
 
 ## Funktionen
@@ -35,25 +42,30 @@ Python inklusive Tkinter/Tcl-Tk sowie alle Abhängigkeiten mitbringt und damit
 - **Nutzung des AppImage:** keine – nur Linux x86_64 (FUSE2 empfohlen).
 - **Direkt aus dem Quellcode:** Python 3 mit den Paketen `zeroconf` und
   `prettytable` sowie Tkinter (`python3-tk`).
-- **AppImage selbst bauen:** Python 3 mit `venv`/`ensurepip` und Internetzugang
-  (lädt das eigenständige Python und `python-appimage`).
+- **AppImage (8.6) selbst bauen:** Python 3 mit `venv`/`ensurepip` und
+  Internetzugang (lädt das eigenständige Python und `python-appimage`).
+- **AppImage (Tcl/Tk 9) selbst bauen:** C-Compiler (`gcc`/`make`), X11- und
+  Xft-/fontconfig-/freetype-Dev-Header sowie Internetzugang. Tcl 9, Tk 9 und
+  Python 3.13 werden aus dem Quellcode kompiliert (dauert einige Minuten).
 
 ---
 
 ## Schnellstart (AppImage)
 
 ```bash
-# Bauen
-./build_appimage.sh
+# Variante Tcl/Tk 9 (Python 3.13, aus Quellcode gebaut)
+./build_tk9_appimage.sh
+./AxisDiscovery-tk9-x86_64.AppImage
 
-# GUI starten (oder im Dateimanager doppelklicken)
+# Variante Tcl/Tk 8.6 (python-appimage, schneller)
+./build_appimage.sh
 ./AxisDiscovery-x86_64.AppImage
 ```
 
 Beim Build entstehen:
 
-- `AxisDiscovery-<version>-x86_64.AppImage` – versioniertes Artefakt
-- `AxisDiscovery-x86_64.AppImage` – Symlink auf die aktuelle Version
+- `AxisDiscovery[-tk9]-<version>-x86_64.AppImage` – versioniertes Artefakt
+- `AxisDiscovery[-tk9]-x86_64.AppImage` – Symlink auf die aktuelle Version
 
 ---
 
