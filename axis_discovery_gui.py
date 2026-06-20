@@ -44,6 +44,8 @@ class AxisDiscoveryGUI(tk.Tk):
         self._build_statusbar()
 
         self.protocol("WM_DELETE_WINDOW", self._on_close)
+        # Klick irgendwo schliesst ein offenes Einstellungen-Dropdown
+        self.bind_all("<Button-1>", self._on_global_click, add="+")
 
     # ---------------------------------------------------------------- UI
     def _build_toolbar(self):
@@ -219,7 +221,7 @@ class AxisDiscoveryGUI(tk.Tk):
             ttk.Button(
                 frame,
                 text=label,
-                command=lambda c=command: (self._close_settings_menu(), c()),
+                command=lambda c=command: self._choose_setting(c),
             ).pack(fill=tk.X)  # fuellt die volle Breite des Dropdowns
 
         self._settings_popup = popup
@@ -232,8 +234,23 @@ class AxisDiscoveryGUI(tk.Tk):
         y = btn.winfo_rooty() + btn.winfo_height()
         popup.geometry(f"{width}x{height}+{x}+{y}")
 
-        popup.bind("<FocusOut>", lambda _e: self._close_settings_menu())
-        popup.focus_set()
+    def _choose_setting(self, command):
+        # erst Dropdown schliessen, dann die Aktion ausfuehren
+        self._close_settings_menu()
+        command()
+
+    def _on_global_click(self, event):
+        # schliesst das Dropdown bei Klick ausserhalb (Klicks auf den Button
+        # und auf die Dropdown-Eintraege werden von deren eigenen Befehlen erledigt)
+        popup = self._settings_popup
+        if popup is None or not popup.winfo_exists():
+            return
+        w = event.widget
+        if w is self.settings_btn:
+            return
+        if isinstance(w, tk.Widget) and str(w).startswith(str(popup)):
+            return
+        self._close_settings_menu()
 
     def _close_settings_menu(self):
         if self._settings_popup is not None and self._settings_popup.winfo_exists():
