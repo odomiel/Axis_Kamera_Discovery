@@ -134,8 +134,10 @@ Bedienung:
   - **Konfiguration** – wendet eine Konfigurationsdatei (`.cfg`) aus dem Axis
     Device Manager an. Nach der Auswahl zeigt der Dialog Modell, Firmware und
     Anzahl der enthaltenen Parameter/Profile. Die enthaltenen Parameter werden
-    per `param.cgi` gesetzt; die Datei sollte zum Modell passen. *(Stream-Profile
-    aus der Datei werden derzeit noch nicht übernommen.)*
+    per `param.cgi` gesetzt; optional werden auch die **Stream-Profile**
+    übernommen (moderne Geräte via `streamprofile.cgi`, ältere via `param.cgi`;
+    gleichnamige vorhandene Profile werden übersprungen). Die Datei sollte zum
+    Modell passen.
 
   Die Aufrufe laufen über die Axis-VAPIX-API bzw. den ONVIF-Dienst (HTTPS mit
   selbstsignierten Zertifikaten wird unterstützt); das Ergebnis wird je Kamera

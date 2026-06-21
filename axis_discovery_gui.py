@@ -877,12 +877,15 @@ class CameraSettingsDialog(tk.Toplevel):
         self.cfg_info_var = tk.StringVar(value="Keine Datei gewaehlt.")
         ttk.Label(tab_cfg, textvariable=self.cfg_info_var, wraplength=560,
                   justify=tk.LEFT).pack(anchor=tk.W, pady=(6, 0))
+        self.cfg_profiles_var = tk.BooleanVar(value=True)
+        ttk.Checkbutton(tab_cfg, text="Stream-Profile mit uebernehmen",
+                        variable=self.cfg_profiles_var).pack(anchor=tk.W, pady=(6, 0))
         ttk.Label(
             tab_cfg,
             text="Wendet die Parameter aus der Axis-Device-Manager-Konfiguration "
-            "(param.cgi) auf die markierten Kameras an. Die Konfiguration sollte "
-            "zum Modell passen. (Stream-Profile werden derzeit noch nicht "
-            "uebernommen.)",
+            "(param.cgi) auf die markierten Kameras an; optional auch die "
+            "Stream-Profile (gleichnamige vorhandene Profile werden uebersprungen). "
+            "Die Konfiguration sollte zum Modell passen.",
             wraplength=560, justify=tk.LEFT,
         ).pack(anchor=tk.W, pady=(8, 0))
 
@@ -1256,10 +1259,12 @@ class CameraSettingsDialog(tk.Toplevel):
         conn = self._conn_kwargs()
         conn["timeout"] = max(30, conn["timeout"])
         cfg = self._cfg
-        threading.Thread(target=self._worker_config, args=(cfg, conn), daemon=True).start()
+        with_profiles = self.cfg_profiles_var.get()
+        threading.Thread(target=self._worker_config, args=(cfg, with_profiles, conn),
+                         daemon=True).start()
         self.after(150, self._poll)
 
-    def _worker_config(self, cfg, kwargs):
+    def _worker_config(self, cfg, with_profiles, kwargs):
         for cam in self.cameras:
             ip = get_first_ip(cam)
             cname = cam.get("Name", ip)
@@ -1267,7 +1272,8 @@ class CameraSettingsDialog(tk.Toplevel):
                 self._queue.put((cname, False, "keine IP-Adresse bekannt"))
                 continue
             try:
-                msg = vapix.apply_adm_config(ip, config=cfg, **kwargs)
+                msg = vapix.apply_adm_config(ip, config=cfg, with_profiles=with_profiles,
+                                             **kwargs)
                 self._queue.put((cname, True, msg))
             except vapix.VapixError as exc:
                 self._queue.put((cname, False, str(exc)))
