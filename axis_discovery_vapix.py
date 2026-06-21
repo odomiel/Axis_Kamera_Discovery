@@ -22,6 +22,8 @@ gesprochen, weil Axis-Geraete in der Regel selbstsignierte Zertifikate nutzen.
 Authentifizierung per HTTP-Digest (mit Basic als Rueckfall).
 """
 
+import json
+import os
 import re
 import ssl
 import urllib.error
@@ -345,3 +347,122 @@ def set_onvif_user_password(ip, username, password, target_user, new_password,
     _check_onvif_response(
         _onvif_post_auto(ip, username, password, inner, scheme, port, timeout))
     return f"ONVIF-Passwort von '{target_user}' geaendert"
+
+
+# =====================================================================
+# Firmware-Update
+# =====================================================================
+
+def _multipart_body(parts):
+    """Baut einen multipart/form-data-Body.
+
+    parts: Liste von (name, filename|None, content_type|None, data:bytes|str).
+    Liefert (body_bytes, boundary).
+    """
+    boundary = "----AxisIPUtil" + os.urandom(12).hex()
+    bb = boundary.encode("ascii")
+    crlf = b"\r\n"
+    buf = []
+    for name, filename, ctype, data in parts:
+        disp = f'form-data; name="{name}"'
+        if filename is not None:
+            disp += f'; filename="{filename}"'
+        buf.append(b"--" + bb)
+        buf.append(b"Content-Disposition: " + disp.encode("utf-8"))
+        if ctype:
+            buf.append(b"Content-Type: " + ctype.encode("ascii"))
+        buf.append(b"")
+        buf.append(data if isinstance(data, bytes) else data.encode("utf-8"))
+    buf.append(b"--" + bb + b"--")
+    buf.append(b"")
+    return crlf.join(buf), boundary
+
+
+def _post_multipart(ip, username, password, path, parts, scheme, port, timeout):
+    """POSTet einen multipart/form-data-Body und liefert den Antworttext."""
+    if port is None:
+        port = DEFAULT_PORTS[scheme]
+    host_port = f"{ip}:{port}"
+    url = f"{scheme}://{host_port}{path}"
+    body, boundary = _multipart_body(parts)
+    opener = _build_opener(host_port, username, password)
+    req = urllib.request.Request(
+        url, data=body,
+        headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
+    )
+    with opener.open(req, timeout=timeout) as resp:
+        return resp.read().decode("utf-8", errors="replace")
+
+
+def _parse_fw_response(resp):
+    """Wertet die JSON-Antwort von firmwaremanagement.cgi aus."""
+    try:
+        obj = json.loads(resp)
+    except ValueError:
+        # kein JSON -> grobe Heuristik
+        if re.search(r"error|fail", resp, re.IGNORECASE):
+            raise VapixError(f"Geraet meldete: {resp.strip()[:200]}")
+        return "Firmware-Upgrade gestartet"
+    if isinstance(obj, dict) and obj.get("error"):
+        err = obj["error"]
+        raise VapixError(f"Fehler {err.get('code', '?')}: {err.get('message', err)}")
+    version = ""
+    if isinstance(obj, dict):
+        version = obj.get("data", {}).get("firmwareVersion", "")
+    return "Firmware aktualisiert" + (f" auf {version}" if version else "")
+
+
+def _legacy_upgrade(ip, username, password, filename, data, scheme, port, timeout):
+    """Aelterer Upgrade-Weg (firmwareupgrade.cgi) fuer Geraete ohne die JSON-API."""
+    parts = [("file", filename, "application/octet-stream", data)]
+    resp = _post_multipart(ip, username, password, "/axis-cgi/firmwareupgrade.cgi",
+                           parts, scheme, port, timeout)
+    if re.search(r"error|fail", resp, re.IGNORECASE):
+        raise VapixError(f"Geraet meldete: {resp.strip()[:200]}")
+    return "Firmware hochgeladen (Legacy) - Geraet startet neu"
+
+
+def upgrade_firmware(ip, username, password, firmware_path, scheme="auto",
+                     port=None, timeout=600, factory_default=False):
+    """Spielt eine Firmware-Datei auf die Kamera auf.
+
+    Nutzt die moderne JSON-API (firmwaremanagement.cgi); fehlt diese (aeltere
+    Geraete -> HTTP 404), wird auf firmwareupgrade.cgi zurueckgefallen. Das
+    Geraet startet nach dem Upgrade selbsttaetig neu.
+    """
+    with open(firmware_path, "rb") as f:
+        data = f.read()
+    filename = os.path.basename(firmware_path)
+    payload = json.dumps({
+        "apiVersion": "1.0",
+        "context": "axisiputil",
+        "method": "upgrade",
+        "params": {"factoryDefaultMode": "hard" if factory_default else "none"},
+    })
+    parts = [("payload", None, None, payload),
+             ("file", filename, "application/octet-stream", data)]
+
+    schemes = ["https", "http"] if scheme == "auto" else [scheme]
+    last = None
+    for sc in schemes:
+        try:
+            resp = _post_multipart(ip, username, password,
+                                   "/axis-cgi/firmwaremanagement.cgi",
+                                   parts, sc, port, timeout)
+            return _parse_fw_response(resp)
+        except urllib.error.HTTPError as exc:
+            if exc.code in (404, 501):  # moderne API fehlt -> Legacy versuchen
+                try:
+                    return _legacy_upgrade(ip, username, password, filename, data,
+                                           sc, port, timeout)
+                except VapixError as e:
+                    last = e
+                    continue
+            if exc.code == 401:
+                raise VapixError("Authentifizierung fehlgeschlagen (Benutzer/Passwort?).")
+            last = VapixError(f"HTTP-Fehler {exc.code}: {exc.reason}")
+        except (urllib.error.URLError, TimeoutError, OSError) as exc:
+            # Verbindungsabbruch evtl. durch Neustart direkt nach dem Upload
+            last = VapixError(f"Verbindung getrennt (Geraet startet evtl. neu?): {exc}")
+        # naechstes Schema probieren
+    raise last if last is not None else VapixError("Firmware-Upgrade nicht moeglich")

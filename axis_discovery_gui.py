@@ -841,6 +841,28 @@ class CameraSettingsDialog(tk.Toplevel):
             values=vapix.ONVIF_LEVELS,
         ).grid(row=2, column=1, sticky=tk.W, padx=4, pady=2)
 
+        # ===== Reiter: Firmware =====
+        tab_fw = ttk.Frame(self.nb, padding=8)
+        self.nb.add(tab_fw, text="Firmware")
+        self.fw_path_var = tk.StringVar()
+        ff = ttk.Frame(tab_fw)
+        ff.pack(fill=tk.X)
+        ttk.Label(ff, text="Firmware-Datei:").grid(row=0, column=0, sticky=tk.W, padx=4, pady=2)
+        ttk.Entry(ff, textvariable=self.fw_path_var, width=46).grid(row=0, column=1, padx=4, pady=2)
+        ttk.Button(ff, text="Durchsuchen...", command=self._choose_firmware).grid(
+            row=0, column=2, padx=4, pady=2)
+        self.fw_factory_var = tk.BooleanVar(value=False)
+        ttk.Checkbutton(tab_fw, text="Werkseinstellungen beim Update (factory default)",
+                        variable=self.fw_factory_var).pack(anchor=tk.W, pady=(6, 0))
+        ttk.Label(
+            tab_fw,
+            text="Achtung: Die Firmware muss zum Kameramodell passen. Sie wird auf "
+            "ALLE markierten Kameras gespielt - nur Kameras gleichen Modells "
+            "auswaehlen. Der Vorgang dauert einige Minuten; die Kamera startet "
+            "danach neu.",
+            wraplength=560, justify=tk.LEFT,
+        ).pack(anchor=tk.W, pady=(8, 0))
+
         # --- Buttons ---
         btns = ttk.Frame(outer)
         btns.pack(fill=tk.X, pady=(6, 4))
@@ -942,8 +964,10 @@ class CameraSettingsDialog(tk.Toplevel):
             self._apply_ip()
         elif tab == 1:
             self._apply_user(onvif=False)
-        else:
+        elif tab == 2:
             self._apply_user(onvif=True)
+        else:
+            self._apply_firmware()
 
     def _apply_ip(self):
         mode = self._mode_var.get()
@@ -1113,6 +1137,55 @@ class CameraSettingsDialog(tk.Toplevel):
                         msg = self._factory_call(op, kwargs)
                     else:
                         msg = op(kwargs, True)
+                self._queue.put((cname, True, msg))
+            except vapix.VapixError as exc:
+                self._queue.put((cname, False, str(exc)))
+        self._queue.put(None)
+
+    # --------------------------------------------------------- Firmware
+    def _choose_firmware(self):
+        path = filedialog.askopenfilename(
+            title="Firmware-Datei waehlen", parent=self,
+            filetypes=[("Firmware", "*.bin"), ("Alle Dateien", "*.*")],
+        )
+        if path:
+            self.fw_path_var.set(path)
+
+    def _apply_firmware(self):
+        path = self.fw_path_var.get().strip()
+        if not path or not os.path.isfile(path):
+            messagebox.showerror("Eingabefehler", "Bitte eine gueltige Firmware-Datei waehlen.",
+                                 parent=self)
+            return
+        confirm = (
+            f"Firmware\n  {os.path.basename(path)}\n"
+            f"auf {len(self.cameras)} Kamera(s) aufspielen?\n\n"
+            "Die Firmware MUSS zum Modell passen. Der Vorgang dauert einige "
+            "Minuten, danach startet die Kamera neu."
+        )
+        if not messagebox.askyesno("Firmware-Update bestaetigen", confirm, parent=self):
+            return
+        self._clear_log()
+        self._set_busy(True)
+        self._log(f"Spiele Firmware auf ({len(self.cameras)} Kamera(s)) - bitte warten...")
+        conn = self._conn_kwargs()
+        conn["timeout"] = 600  # Firmware-Upload braucht deutlich laenger
+        factory = self.fw_factory_var.get()
+        threading.Thread(
+            target=self._worker_firmware, args=(path, factory, conn), daemon=True,
+        ).start()
+        self.after(150, self._poll)
+
+    def _worker_firmware(self, path, factory, kwargs):
+        for cam in self.cameras:
+            ip = get_first_ip(cam)
+            cname = cam.get("Name", ip)
+            if not ip:
+                self._queue.put((cname, False, "keine IP-Adresse bekannt"))
+                continue
+            try:
+                msg = vapix.upgrade_firmware(ip, firmware_path=path,
+                                             factory_default=factory, **kwargs)
                 self._queue.put((cname, True, msg))
             except vapix.VapixError as exc:
                 self._queue.put((cname, False, str(exc)))
