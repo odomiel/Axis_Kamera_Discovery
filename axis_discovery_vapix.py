@@ -29,6 +29,7 @@ import ssl
 import urllib.error
 import urllib.parse
 import urllib.request
+import xml.etree.ElementTree as ET
 
 # Axis-Geraete haben meist selbstsignierte Zertifikate -> Zertifikatspruefung aus.
 _SSL_CONTEXT = ssl._create_unverified_context()
@@ -91,6 +92,41 @@ def _request_auto(ip, username, password, path, scheme="auto", port=None, timeou
         return _request(ip, username, password, path, "https", port, timeout, auth)
     except VapixError:
         return _request(ip, username, password, path, "http", port, timeout, auth)
+
+
+def _post_form(ip, username, password, path, fields, scheme, port, timeout):
+    """POSTet x-www-form-urlencoded und liefert den Antworttext."""
+    if port is None:
+        port = DEFAULT_PORTS[scheme]
+    host_port = f"{ip}:{port}"
+    url = f"{scheme}://{host_port}{path}"
+    body = urllib.parse.urlencode(fields).encode("utf-8")
+    opener = _build_opener(host_port, username, password)
+    req = urllib.request.Request(
+        url, data=body,
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+    )
+    try:
+        with opener.open(req, timeout=timeout) as resp:
+            return resp.read().decode("utf-8", errors="replace")
+    except urllib.error.HTTPError as exc:
+        if exc.code == 401:
+            raise VapixError("Authentifizierung fehlgeschlagen (Benutzer/Passwort?).")
+        raise VapixError(f"HTTP-Fehler {exc.code}: {exc.reason}")
+    except urllib.error.URLError as exc:
+        raise VapixError(f"Nicht erreichbar: {exc.reason}")
+    except (TimeoutError, OSError) as exc:
+        raise VapixError(f"Verbindungsfehler: {exc}")
+
+
+def _post_form_auto(ip, username, password, path, fields, scheme="auto", port=None, timeout=30):
+    """Wie _post_form, aber 'auto' probiert erst HTTPS, dann HTTP."""
+    if scheme != "auto":
+        return _post_form(ip, username, password, path, fields, scheme, port, timeout)
+    try:
+        return _post_form(ip, username, password, path, fields, "https", port, timeout)
+    except VapixError:
+        return _post_form(ip, username, password, path, fields, "http", port, timeout)
 
 
 def is_unconfigured(ip, scheme="auto", port=None, timeout=10):
@@ -510,3 +546,65 @@ def upgrade_firmware(ip, username, password, firmware_path, scheme="auto",
         return _modern_upgrade(ip, username, password, filename, data,
                                factory_default, sc, port, timeout)
     return _legacy_upgrade(ip, username, password, filename, data, sc, port, timeout)
+
+
+# =====================================================================
+# Axis-Device-Manager-Konfigurationsdateien (.cfg / AcmDeviceParameterExport)
+# =====================================================================
+
+def parse_adm_config(path):
+    """Liest eine ADM-.cfg (XML) und liefert Modell, Firmware, Parameter, Profile.
+
+    Wirft VapixError bei ungueltigem Format.
+    """
+    try:
+        with open(path, "rb") as f:
+            root = ET.fromstring(f.read())
+    except (OSError, ET.ParseError) as exc:
+        raise VapixError(f"Datei nicht lesbar/kein gueltiges XML: {exc}")
+    if root.tag != "AcmDeviceParameterExport":
+        raise VapixError("Keine ADM-Konfigurationsdatei (AcmDeviceParameterExport).")
+
+    params = {}
+    for p in root.findall("./ParameterList/Parameter"):
+        name = (p.findtext("Name") or "").strip()
+        if name:
+            params[name] = p.findtext("Value") or ""
+    profiles = []
+    for sp in root.findall("./StreamProfileList/StreamProfile"):
+        name = (sp.findtext("Name") or "").strip()
+        if name:
+            profiles.append({
+                "name": name,
+                "description": sp.findtext("Description") or "",
+                "parameters": sp.findtext("Parameters") or "",
+            })
+    return {
+        "model": root.findtext("Model") or "",
+        "firmware": root.findtext("FirmwareVersion") or "",
+        "parameters": params,
+        "profiles": profiles,
+    }
+
+
+def apply_parameters(ip, username, password, params, scheme="auto", port=None, timeout=30):
+    """Setzt eine Reihe von param.cgi-Parametern (per POST) in einem Aufruf."""
+    if not params:
+        return 0
+    fields = {"action": "update"}
+    fields.update(params)
+    text = _post_form_auto(ip, username, password, "/axis-cgi/param.cgi",
+                           fields, scheme, port, timeout)
+    if re.search(r"#\s*Error|^Error", text, re.IGNORECASE | re.MULTILINE):
+        raise VapixError(f"param.cgi meldete: {text.strip()[:200]}")
+    return len(params)
+
+
+def apply_adm_config(ip, username, password, config, scheme="auto", port=None, timeout=30):
+    """Wendet eine geparste ADM-Konfiguration an (aktuell: ParameterList).
+
+    'config' ist das Dict aus parse_adm_config(). Liefert eine Ergebnis-Meldung.
+    """
+    count = apply_parameters(ip, username, password, config.get("parameters", {}),
+                             scheme, port, timeout)
+    return f"{count} Parameter angewendet"

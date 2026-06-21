@@ -863,6 +863,29 @@ class CameraSettingsDialog(tk.Toplevel):
             wraplength=560, justify=tk.LEFT,
         ).pack(anchor=tk.W, pady=(8, 0))
 
+        # ===== Reiter: Konfiguration (ADM .cfg) =====
+        tab_cfg = ttk.Frame(self.nb, padding=8)
+        self.nb.add(tab_cfg, text="Konfiguration")
+        self.cfg_path_var = tk.StringVar()
+        self._cfg = None  # zuletzt geparste Konfiguration
+        cf = ttk.Frame(tab_cfg)
+        cf.pack(fill=tk.X)
+        ttk.Label(cf, text="ADM-Konfig (.cfg):").grid(row=0, column=0, sticky=tk.W, padx=4, pady=2)
+        ttk.Entry(cf, textvariable=self.cfg_path_var, width=46).grid(row=0, column=1, padx=4, pady=2)
+        ttk.Button(cf, text="Durchsuchen...", command=self._choose_config).grid(
+            row=0, column=2, padx=4, pady=2)
+        self.cfg_info_var = tk.StringVar(value="Keine Datei gewaehlt.")
+        ttk.Label(tab_cfg, textvariable=self.cfg_info_var, wraplength=560,
+                  justify=tk.LEFT).pack(anchor=tk.W, pady=(6, 0))
+        ttk.Label(
+            tab_cfg,
+            text="Wendet die Parameter aus der Axis-Device-Manager-Konfiguration "
+            "(param.cgi) auf die markierten Kameras an. Die Konfiguration sollte "
+            "zum Modell passen. (Stream-Profile werden derzeit noch nicht "
+            "uebernommen.)",
+            wraplength=560, justify=tk.LEFT,
+        ).pack(anchor=tk.W, pady=(8, 0))
+
         # --- Buttons ---
         btns = ttk.Frame(outer)
         btns.pack(fill=tk.X, pady=(6, 4))
@@ -966,8 +989,10 @@ class CameraSettingsDialog(tk.Toplevel):
             self._apply_user(onvif=False)
         elif tab == 2:
             self._apply_user(onvif=True)
-        else:
+        elif tab == 3:
             self._apply_firmware()
+        else:
+            self._apply_config()
 
     def _apply_ip(self):
         mode = self._mode_var.get()
@@ -1186,6 +1211,63 @@ class CameraSettingsDialog(tk.Toplevel):
             try:
                 msg = vapix.upgrade_firmware(ip, firmware_path=path,
                                              factory_default=factory, **kwargs)
+                self._queue.put((cname, True, msg))
+            except vapix.VapixError as exc:
+                self._queue.put((cname, False, str(exc)))
+        self._queue.put(None)
+
+    # ----------------------------------------------- ADM-Konfiguration
+    def _choose_config(self):
+        path = filedialog.askopenfilename(
+            title="ADM-Konfigurationsdatei waehlen", parent=self,
+            filetypes=[("ADM-Konfiguration", "*.cfg"), ("Alle Dateien", "*.*")],
+        )
+        if not path:
+            return
+        self.cfg_path_var.set(path)
+        try:
+            self._cfg = vapix.parse_adm_config(path)
+            self.cfg_info_var.set(
+                f"Modell: {self._cfg['model'] or '?'} | Firmware: "
+                f"{self._cfg['firmware'] or '?'} | {len(self._cfg['parameters'])} "
+                f"Parameter, {len(self._cfg['profiles'])} Stream-Profil(e)"
+            )
+        except vapix.VapixError as exc:
+            self._cfg = None
+            self.cfg_info_var.set(f"Fehler: {exc}")
+
+    def _apply_config(self):
+        if self._cfg is None:
+            messagebox.showerror("Eingabefehler",
+                                 "Bitte eine gueltige ADM-Konfigurationsdatei waehlen.",
+                                 parent=self)
+            return
+        confirm = (
+            f"Konfiguration fuer Modell '{self._cfg['model'] or '?'}'\n"
+            f"({len(self._cfg['parameters'])} Parameter) auf "
+            f"{len(self.cameras)} Kamera(s) anwenden?\n\n"
+            "Die Konfiguration sollte zum Kameramodell passen."
+        )
+        if not messagebox.askyesno("Konfiguration anwenden", confirm, parent=self):
+            return
+        self._clear_log()
+        self._set_busy(True)
+        self._log(f"Wende Konfiguration an ({len(self.cameras)} Kamera(s))...")
+        conn = self._conn_kwargs()
+        conn["timeout"] = max(30, conn["timeout"])
+        cfg = self._cfg
+        threading.Thread(target=self._worker_config, args=(cfg, conn), daemon=True).start()
+        self.after(150, self._poll)
+
+    def _worker_config(self, cfg, kwargs):
+        for cam in self.cameras:
+            ip = get_first_ip(cam)
+            cname = cam.get("Name", ip)
+            if not ip:
+                self._queue.put((cname, False, "keine IP-Adresse bekannt"))
+                continue
+            try:
+                msg = vapix.apply_adm_config(ip, config=cfg, **kwargs)
                 self._queue.put((cname, True, msg))
             except vapix.VapixError as exc:
                 self._queue.put((cname, False, str(exc)))

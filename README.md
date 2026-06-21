@@ -37,6 +37,7 @@ Python 3.13 inklusive **Tcl/Tk 9** sowie alle Abhängigkeiten mitbringt und dami
 | Kamera-IP ändern (DHCP/fest, Mehrfachauswahl) | „Kamera Einstellungen" | – |
 | Benutzer/ONVIF-Benutzer anlegen oder Passwort ändern | „Kamera Einstellungen" | – |
 | Firmware-Update (Mehrfachauswahl) | „Kamera Einstellungen" | – |
+| ADM-Konfigurationsdatei anwenden | „Kamera Einstellungen" | – |
 | Dark Mode (heller/dunkler Modus) | Einstellungen → Checkbox „Dark Mode" | – |
 | Version anzeigen | im Fenstertitel | `--version/-v` |
 
@@ -130,10 +131,15 @@ Bedienung:
     nur Kameras gleichen Modells gemeinsam auswählen. Der Vorgang dauert einige
     Minuten, danach startet die Kamera neu. Optional „factory default".
 
+  - **Konfiguration** – wendet eine Konfigurationsdatei (`.cfg`) aus dem Axis
+    Device Manager an. Nach der Auswahl zeigt der Dialog Modell, Firmware und
+    Anzahl der enthaltenen Parameter/Profile. Die enthaltenen Parameter werden
+    per `param.cgi` gesetzt; die Datei sollte zum Modell passen. *(Stream-Profile
+    aus der Datei werden derzeit noch nicht übernommen.)*
+
   Die Aufrufe laufen über die Axis-VAPIX-API bzw. den ONVIF-Dienst (HTTPS mit
   selbstsignierten Zertifikaten wird unterstützt); das Ergebnis wird je Kamera
-  angezeigt. *(Konfigurationsdateien aus dem Axis Device Manager sind noch in
-  Entwicklung.)*
+  angezeigt.
 - **Einstellungen** (Menü-Button rechts neben „Exportieren") mit den Einträgen:
   - **Dark Mode** – Checkbox; angehakt schaltet die Oberfläche auf den dunklen
     Modus um, ohne Haken gilt der helle Modus. Die Einstellung bleibt über

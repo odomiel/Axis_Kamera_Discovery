@@ -23,7 +23,7 @@ import argparse
 
 # Versionsschema: JJ.MM.TT, bei mehreren Releases am selben Tag b1, b2, ...
 # (wird von bump_version.py gepflegt)
-__version__ = "26.06.21b20"
+__version__ = "26.06.21b21"
 
 FIELD_NAMES = [
     "Name",
