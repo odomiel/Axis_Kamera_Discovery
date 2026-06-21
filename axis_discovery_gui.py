@@ -363,11 +363,14 @@ class AxisDiscoveryGUI(tk.Tk):
 
         self._settings_popup = popup
 
-        # Position unter dem Button, Breite exakt wie der Einstellungen-Button
+        # Breite mindestens wie der Button, aber breit genug fuer den laengsten
+        # Eintrag (z. B. die "Dark Mode"-Checkbox), damit nichts abgeschnitten wird.
         popup.update_idletasks()
-        width = btn.winfo_width()
+        width = max(btn.winfo_width(), frame.winfo_reqwidth())
         height = frame.winfo_reqheight()
-        x = btn.winfo_rootx()
+        # rechtsbuendig zur Button-Kante ausrichten (der Button sitzt rechts),
+        # damit das breitere Menue nicht ueber den Fensterrand hinauslaeuft
+        x = btn.winfo_rootx() + btn.winfo_width() - width
         y = btn.winfo_rooty() + btn.winfo_height()
         popup.geometry(f"{width}x{height}+{x}+{y}")
 
