@@ -808,6 +808,12 @@ class CameraSettingsDialog(tk.Toplevel):
             text="Auslieferungszustand (Standard-Zugangsdaten/ohne Anmeldung probieren; Anlegen als Administrator)",
             variable=self.factory_var,
         ).pack(anchor=tk.W, pady=(2, 0))
+        ttk.Label(
+            tab_user,
+            text="Hinweis: Bei aelteren Kameras (z. B. M7001) zur Ersteinstellung "
+            "\"Passwort aendern\" fuer Benutzer 'root' verwenden.",
+            wraplength=560, justify=tk.LEFT,
+        ).pack(anchor=tk.W, pady=(2, 0))
 
         # ===== Reiter: ONVIF-Benutzer =====
         tab_onvif = ttk.Frame(self.nb, padding=8)

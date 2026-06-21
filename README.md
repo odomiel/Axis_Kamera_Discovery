@@ -111,7 +111,10 @@ Bedienung:
     Geräte wie die M7001 antworten auf root/pass). Der (Erst-)Benutzer wird in
     diesem Fall als **Administrator** angelegt; im Ergebnis steht, welcher Zugang
     funktioniert hat. Das gilt auch für *Passwort ändern* (z. B. das
-    Standard-Passwort von `root` ersetzen).
+    Standard-Passwort von `root` ersetzen). **Bei älteren Kameras (z. B. M7001)
+    ist zur Ersteinstellung *Passwort ändern* für den Benutzer `root` zu
+    verwenden** (ein neuer Benutzer lässt sich dort nicht anlegen, solange `root`
+    schon existiert).
   - **ONVIF-Benutzer** – ONVIF-Benutzer *anlegen* (Stufe
     Administrator/Operator/User) oder *Passwort ändern*.
 
