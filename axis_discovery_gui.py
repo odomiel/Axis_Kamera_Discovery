@@ -23,6 +23,7 @@ einfriert.
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import json
 import os
 import platform
 import queue
@@ -43,6 +44,14 @@ from axis_discovery_cli import (
 )
 
 COLUMNS = FIELD_NAMES
+
+# Speicherort fuer benutzerdefinierte Einstellungen (z. B. Dark Mode).
+# Folgt XDG: $XDG_CONFIG_HOME/axis_ip_utility/settings.json, sonst ~/.config/...
+CONFIG_DIR = os.path.join(
+    os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config"),
+    "axis_ip_utility",
+)
+CONFIG_PATH = os.path.join(CONFIG_DIR, "settings.json")
 
 # Farbpaletten fuer hellen und dunklen Modus. Die Schluessel sind in beiden
 # Paletten identisch, sodass _apply_theme dieselben Style-Optionen setzen kann.
@@ -86,11 +95,14 @@ class AxisDiscoveryGUI(tk.Tk):
         self._sort_state = {}  # Spalte -> zuletzt absteigend? (fuer Klick-Toggle)
         self._text_windows = []  # offene Hilfe-/Lizenz-Fenster (fuer Theme-Wechsel)
 
+        # Gespeicherte Einstellungen laden (Dark Mode bleibt ueber Neustarts erhalten)
+        self._config = self._load_config()
+
         # "clam" ist das einzige mitgelieferte ttk-Theme, das alle Farben
         # zuverlaessig uebernimmt; darauf baut der Dark/Light-Wechsel auf.
         self._style = ttk.Style(self)
         self._style.theme_use("clam")
-        self.dark_mode_var = tk.BooleanVar(value=False)
+        self.dark_mode_var = tk.BooleanVar(value=bool(self._config.get("dark_mode", False)))
 
         # Fonts fuer die automatische Spaltenbreiten-Messung
         self._cell_font = tkfont.nametofont("TkDefaultFont")
@@ -375,6 +387,28 @@ class AxisDiscoveryGUI(tk.Tk):
     # ------------------------------------------------------------- Dark Mode
     def _toggle_dark_mode(self):
         self._apply_theme(self.dark_mode_var.get())
+        self._config["dark_mode"] = self.dark_mode_var.get()
+        self._save_config()
+
+    # ----------------------------------------------------- Einstellungen-Datei
+    @staticmethod
+    def _load_config():
+        """Liest die gespeicherten Einstellungen; bei Fehlern leeres Dict."""
+        try:
+            with open(CONFIG_PATH, encoding="utf-8") as f:
+                data = json.load(f)
+            return data if isinstance(data, dict) else {}
+        except (OSError, ValueError):
+            return {}
+
+    def _save_config(self):
+        """Schreibt die Einstellungen als JSON (Fehler werden still ignoriert)."""
+        try:
+            os.makedirs(CONFIG_DIR, exist_ok=True)
+            with open(CONFIG_PATH, "w", encoding="utf-8") as f:
+                json.dump(self._config, f, indent=2)
+        except OSError:
+            pass
 
     def _apply_theme(self, dark):
         """Faerbt alle Widgets passend zum hellen oder dunklen Modus ein."""

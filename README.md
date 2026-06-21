@@ -94,7 +94,8 @@ Bedienung:
   (Format folgt der gewählten Dateiendung).
 - **Einstellungen** (Menü-Button rechts neben „Exportieren") mit den Einträgen:
   - **Dark Mode** – Checkbox; angehakt schaltet die Oberfläche auf den dunklen
-    Modus um, ohne Haken gilt der helle Modus.
+    Modus um, ohne Haken gilt der helle Modus. Die Einstellung wird gespeichert
+    (`~/.config/axis_ip_utility/settings.json`) und bleibt über Neustarts erhalten.
   - **Info** – Programmname und Version
   - **Hilfe** – zeigt diese README in einem Fenster
   - **Lizenzen** – zeigt `THIRD_PARTY_LICENSES.md` (Lizenzen der gebündelten
