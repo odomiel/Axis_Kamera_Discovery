@@ -781,9 +781,10 @@ class CameraSettingsDialog(tk.Toplevel):
                         variable=self.user_action_var, command=self._on_user_action).pack(anchor=tk.W)
         uf = ttk.Frame(tab_user)
         uf.pack(fill=tk.X, pady=(6, 0))
-        self.nu_name_var = tk.StringVar()
+        # "root" als Vorschlag fuer den (Erst-)Benutzer; aenderbar.
+        self.nu_name_var = tk.StringVar(value="root")
         self.nu_pass_var = tk.StringVar()
-        self.nu_role_var = tk.StringVar(value="viewer")
+        self.nu_role_var = tk.StringVar(value="administrator")
         ttk.Label(uf, text="Benutzername:").grid(row=0, column=0, sticky=tk.W, padx=4, pady=2)
         ttk.Entry(uf, textvariable=self.nu_name_var, width=20).grid(row=0, column=1, padx=4, pady=2)
         ttk.Label(uf, text="Passwort:").grid(row=1, column=0, sticky=tk.W, padx=4, pady=2)
@@ -795,6 +796,10 @@ class CameraSettingsDialog(tk.Toplevel):
             values=("administrator", "operator", "viewer"),
         )
         self.nu_role_cb.grid(row=2, column=1, sticky=tk.W, padx=4, pady=2)
+        ttk.Label(
+            tab_user,
+            text="Hinweis: 'root' ist der uebliche Erstbenutzer (Administrator).",
+        ).pack(anchor=tk.W, pady=(6, 0))
 
         # ===== Reiter: ONVIF-Benutzer =====
         tab_onvif = ttk.Frame(self.nb, padding=8)
