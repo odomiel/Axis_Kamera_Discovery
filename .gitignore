@@ -13,3 +13,7 @@ CLAUDE.md
 build/
 dist/
 *.exe
+# Lokale ADM-Konfigurationsdateien (Testdaten)
+AxisDeviceManagerKonfigurationsdateien/
+# SSH Deploy-Keys
+deploy_key/
