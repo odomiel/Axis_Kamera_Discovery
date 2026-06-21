@@ -800,6 +800,14 @@ class CameraSettingsDialog(tk.Toplevel):
             tab_user,
             text="Hinweis: 'root' ist der uebliche Erstbenutzer (Administrator).",
         ).pack(anchor=tk.W, pady=(6, 0))
+        # Manuelle Option, falls die Auto-Erkennung des Auslieferungszustands
+        # bei diesem Modell/dieser Firmware nicht greift.
+        self.factory_var = tk.BooleanVar(value=False)
+        ttk.Checkbutton(
+            tab_user,
+            text="Kamera im Auslieferungszustand (Erstbenutzer ohne Anmeldung, als Administrator)",
+            variable=self.factory_var,
+        ).pack(anchor=tk.W, pady=(2, 0))
 
         # ===== Reiter: ONVIF-Benutzer =====
         tab_onvif = ttk.Frame(self.nb, padding=8)
@@ -1026,13 +1034,15 @@ class CameraSettingsDialog(tk.Toplevel):
         self._set_busy(True)
         self._log(f"Wende Aenderung an ({len(self.cameras)} Kamera(s))...")
         kwargs = self._conn_kwargs()
+        # Manuell erzwungener Auslieferungszustand (nur fuer regulaere Benutzer)
+        factory = self.factory_var.get() and not onvif
         threading.Thread(
             target=self._worker_user,
-            args=(onvif, action, name, pwd, level, kwargs), daemon=True,
+            args=(onvif, action, name, pwd, level, factory, kwargs), daemon=True,
         ).start()
         self.after(150, self._poll)
 
-    def _worker_user(self, onvif, action, name, pwd, level, kwargs):
+    def _worker_user(self, onvif, action, name, pwd, level, factory, kwargs):
         for cam in self.cameras:
             ip = get_first_ip(cam)
             cname = cam.get("Name", ip)
@@ -1047,14 +1057,15 @@ class CameraSettingsDialog(tk.Toplevel):
                     msg = vapix.set_onvif_user_password(ip, target_user=name,
                                                         new_password=pwd, level=level, **kwargs)
                 elif action == "add":
-                    # Sonderfall: werksneue Kamera ohne gesetztes Passwort ->
-                    # Erstbenutzer ohne Anmeldung anlegen.
-                    if vapix.is_unconfigured(ip, scheme=kwargs["scheme"],
-                                             port=kwargs["port"], timeout=kwargs["timeout"]):
-                        # Erstbenutzer im Auslieferungszustand muss Administrator sein.
+                    # Auslieferungszustand: manuell angehakt ODER automatisch erkannt.
+                    # Erstbenutzer dann ohne Anmeldung und als Administrator anlegen.
+                    is_factory = factory or vapix.is_unconfigured(
+                        ip, scheme=kwargs["scheme"], port=kwargs["port"],
+                        timeout=kwargs["timeout"])
+                    if is_factory:
                         msg = vapix.add_user(ip, new_user=name, new_password=pwd,
                                              role="administrator", authenticate=False, **kwargs)
-                        msg += " (Auslieferungszustand: Rolle Administrator erzwungen, ohne Anmeldung)"
+                        msg += " (Auslieferungszustand: Administrator, ohne Anmeldung)"
                     else:
                         msg = vapix.add_user(ip, new_user=name, new_password=pwd,
                                              role=level, **kwargs)
