@@ -277,6 +277,33 @@ def set_user_password(ip, username, password, target_user, new_password,
     return f"Passwort von '{target_user}' geaendert"
 
 
+def add_or_set_user(ip, username, password, new_user, new_password, role="viewer",
+                    factory=False, scheme="auto", port=None, timeout=10):
+    """Legt einen Benutzer an; mit factory=True wird der Auslieferungszustand
+    behandelt: erst ohne Anmeldung, dann mit Standard-Zugangsdaten; existiert der
+    Benutzer bereits, wird stattdessen dessen Passwort gesetzt (als Administrator).
+    """
+    if not factory:
+        return add_user(ip, username, password, new_user, new_password, role,
+                        scheme, port, timeout)
+    attempts = [("", "", False)] + [(u, p, True) for u, p in DEFAULT_CREDENTIALS]
+    last = None
+    for usr, pwd, auth in attempts:
+        try:
+            try:
+                return add_user(ip, usr, pwd, new_user, new_password,
+                                "administrator", scheme, port, timeout, authenticate=auth)
+            except VapixError:
+                if not auth:
+                    raise  # ohne Anmeldung kein Update-Fallback (moderne Geraete)
+                return (set_user_password(ip, usr, pwd, new_user, new_password,
+                                          scheme, port, timeout, authenticate=auth)
+                        + " (vorhandener Benutzer, Passwort gesetzt)")
+        except VapixError as exc:
+            last = exc
+    raise last if last is not None else VapixError("kein Zugang moeglich")
+
+
 # =====================================================================
 # ONVIF-Benutzerverwaltung (ONVIF Device Service per SOAP)
 # =====================================================================

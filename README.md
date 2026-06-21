@@ -34,10 +34,10 @@ Python 3.13 inklusive **Tcl/Tk 9** sowie alle Abhängigkeiten mitbringt und dami
 | Export als CSV | Dialog (`.csv`) | `-o datei.csv` / `--format csv` |
 | Wiederholte Suche (Auto-Refresh) | Checkbox + Intervall | `--watch/-w SEKUNDEN` |
 | Kamera-Weboberfläche im Browser öffnen | Doppelklick auf Zeile | `--open` |
-| Kamera-IP ändern (DHCP/fest, Mehrfachauswahl) | „Kamera Einstellungen" | – |
-| Benutzer/ONVIF-Benutzer anlegen oder Passwort ändern | „Kamera Einstellungen" | – |
-| Firmware-Update (Mehrfachauswahl) | „Kamera Einstellungen" | – |
-| ADM-Konfigurationsdatei anwenden | „Kamera Einstellungen" | – |
+| Kamera-IP ändern (DHCP/fest, Mehrfachauswahl) | „Kamera Einstellungen" | `set-ip` / `set-dhcp` |
+| Benutzer/ONVIF-Benutzer anlegen oder Passwort ändern | „Kamera Einstellungen" | `user-add`/`user-passwd`/`onvif-add`/`onvif-passwd` |
+| Firmware-Update (Mehrfachauswahl) | „Kamera Einstellungen" | `firmware` |
+| ADM-Konfigurationsdatei anwenden | „Kamera Einstellungen" | `config` |
 | Dark Mode (heller/dunkler Modus) | Einstellungen → Checkbox „Dark Mode" | – |
 | Version anzeigen | im Fenstertitel | `--version/-v` |
 
@@ -205,6 +205,38 @@ python3 axis_kamera_discovery_cli.py --open
 
 # Über das AppImage
 ./Axis_Kamera_Discovery-x86_64.AppImage cli -t 20 -o kameras.csv
+```
+
+### Kamera-Konfiguration (Unterbefehle)
+
+Dieselben Aktionen wie im GUI-Dialog „Kamera Einstellungen" stehen als
+Unterbefehle bereit. Jeder nimmt **eine oder mehrere Ziel-IPs** und gemeinsame
+Verbindungsoptionen: `-u/--user` (Standard `root`), `-p/--password` (ohne Angabe
+wird interaktiv gefragt), `--scheme {auto,https,http}`, `--port`, `--conn-timeout`.
+
+| Unterbefehl | Zweck | Wichtige Optionen |
+|---|---|---|
+| `set-ip` | feste IP setzen | `--new-ip` (Pflicht), `--mask`, `--gateway` |
+| `set-dhcp` | auf DHCP umstellen | – |
+| `user-add` | Benutzer anlegen | `--name`, `--new-password`, `--role`, `--factory` |
+| `user-passwd` | Benutzer-Passwort ändern | `--name`, `--new-password` |
+| `onvif-add` | ONVIF-Benutzer anlegen | `--name`, `--new-password`, `--level` |
+| `onvif-passwd` | ONVIF-Passwort ändern | `--name`, `--new-password`, `--level` |
+| `firmware` | Firmware aufspielen | `--file` (.bin), `--factory-default` |
+| `config` | ADM-Konfiguration anwenden | `--file` (.cfg), `--no-profiles` |
+
+```bash
+# IP zweier Kameras (Passwort wird abgefragt)
+python3 axis_kamera_discovery_cli.py set-ip 192.168.0.90 --new-ip 192.168.0.50 --gateway 192.168.0.1
+
+# Erstbenutzer auf werksneuer Kamera (ohne Anmeldung / Standard-Zugangsdaten)
+python3 axis_kamera_discovery_cli.py user-add 192.168.0.90 --name root --new-password 'Geheim123' --factory
+
+# Firmware auf mehrere Kameras gleichen Modells
+./Axis_Kamera_Discovery-x86_64.AppImage cli firmware 192.168.0.50 192.168.0.51 --file fw.bin -u root -p pw
+
+# ADM-Konfiguration anwenden (inkl. Stream-Profile)
+./Axis_Kamera_Discovery-x86_64.AppImage cli config 192.168.0.50 --file Konfig.cfg -p pw
 ```
 
 ---

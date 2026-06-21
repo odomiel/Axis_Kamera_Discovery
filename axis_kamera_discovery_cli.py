@@ -20,10 +20,14 @@ import csv
 import webbrowser
 from prettytable import PrettyTable
 import argparse
+import getpass
+import os
+
+import axis_kamera_discovery_vapix as vapix
 
 # Versionsschema: JJ.MM.TT, bei mehreren Releases am selben Tag b1, b2, ...
 # (wird von bump_version.py gepflegt)
-__version__ = "26.06.21b27"
+__version__ = "26.06.21b28"
 
 FIELD_NAMES = [
     "Name",
@@ -166,8 +170,90 @@ def open_cameras(cameras, already_opened=None):
 def print_version():
     print(f"Axis_Kamera_Discovery CLI Version {__version__}")
 
+# ===================================================================
+# Kamera-Konfiguration ueber die Kommandozeile (nutzt axis_kamera_discovery_vapix)
+# ===================================================================
+
+def _conn_kwargs(args):
+    """Verbindungs-/Auth-Parameter aus den Argumenten; fragt Passwort ab, falls noetig."""
+    password = args.password
+    if password is None and not getattr(args, "factory", False):
+        password = getpass.getpass(f"Passwort fuer {args.user}: ")
+    return {
+        "username": args.user,
+        "password": password or "",
+        "scheme": args.scheme,
+        "port": args.port,
+        "timeout": args.conn_timeout,
+    }
+
+def _run_over_ips(ips, op):
+    """Fuehrt op(ip) je Kamera aus und gibt das Ergebnis aus. Liefert Exitcode."""
+    failed = 0
+    for ip in ips:
+        try:
+            print(f"[OK]     {ip}: {op(ip)}")
+        except vapix.VapixError as exc:
+            print(f"[FEHLER] {ip}: {exc}")
+            failed += 1
+    return 1 if failed else 0
+
+def cmd_set_ip(args):
+    k = _conn_kwargs(args)
+    return _run_over_ips(args.ips, lambda ip: vapix.set_static_ip(
+        ip, new_ip=args.new_ip, subnet_mask=args.mask, gateway=args.gateway, **k))
+
+def cmd_set_dhcp(args):
+    k = _conn_kwargs(args)
+    return _run_over_ips(args.ips, lambda ip: vapix.set_dhcp(ip, **k))
+
+def cmd_user_add(args):
+    k = _conn_kwargs(args)
+    return _run_over_ips(args.ips, lambda ip: vapix.add_or_set_user(
+        ip, new_user=args.name, new_password=args.new_password, role=args.role,
+        factory=args.factory, **k))
+
+def cmd_user_passwd(args):
+    k = _conn_kwargs(args)
+    return _run_over_ips(args.ips, lambda ip: vapix.set_user_password(
+        ip, target_user=args.name, new_password=args.new_password, **k))
+
+def cmd_onvif_add(args):
+    k = _conn_kwargs(args)
+    return _run_over_ips(args.ips, lambda ip: vapix.add_onvif_user(
+        ip, new_user=args.name, new_password=args.new_password, level=args.level, **k))
+
+def cmd_onvif_passwd(args):
+    k = _conn_kwargs(args)
+    return _run_over_ips(args.ips, lambda ip: vapix.set_onvif_user_password(
+        ip, target_user=args.name, new_password=args.new_password, level=args.level, **k))
+
+def cmd_firmware(args):
+    if not os.path.isfile(args.file):
+        print(f"[FEHLER] Datei nicht gefunden: {args.file}")
+        return 1
+    k = _conn_kwargs(args)
+    k["timeout"] = max(600, args.conn_timeout)  # Firmware-Upload braucht lange
+    return _run_over_ips(args.ips, lambda ip: vapix.upgrade_firmware(
+        ip, firmware_path=args.file, factory_default=args.factory_default, **k))
+
+def cmd_config(args):
+    try:
+        cfg = vapix.parse_adm_config(args.file)
+    except vapix.VapixError as exc:
+        print(f"[FEHLER] {exc}")
+        return 1
+    print(f"Konfiguration: Modell {cfg['model'] or '?'}, FW {cfg['firmware'] or '?'}, "
+          f"{len(cfg['parameters'])} Parameter, {len(cfg['profiles'])} Stream-Profil(e)")
+    k = _conn_kwargs(args)
+    k["timeout"] = max(30, args.conn_timeout)
+    return _run_over_ips(args.ips, lambda ip: vapix.apply_adm_config(
+        ip, config=cfg, with_profiles=not args.no_profiles, **k))
+
 def main():
-    parser = argparse.ArgumentParser(description='Discover Axis Cameras and export to a text file.')
+    parser = argparse.ArgumentParser(
+        description='Axis_Kamera_Discovery - Suche und Konfiguration von Axis-Kameras.')
+    # --- Discovery-Optionen (Standardaktion, wenn kein Unterbefehl angegeben ist) ---
     parser.add_argument('--output', '-o', type=str, default=None, help='Output file (export)')
     parser.add_argument('--format', '-f', choices=['txt', 'csv'], default=None,
                         help='Export format (default: from file extension, else txt)')
@@ -180,11 +266,74 @@ def main():
     parser.add_argument('--show', '-s', action='store_true', help='Show results in console')
     parser.add_argument('--version', '-v', action='store_true', help='Show version information')
 
+    # --- Unterbefehle zur Kamera-Konfiguration ---
+    sub = parser.add_subparsers(dest='command', metavar='BEFEHL',
+                                help='Kamera-Konfiguration (set-ip, set-dhcp, user-add, '
+                                     'user-passwd, onvif-add, onvif-passwd, firmware, config)')
+    # gemeinsame Verbindungs-/Auth-Optionen
+    conn = argparse.ArgumentParser(add_help=False)
+    conn.add_argument('ips', nargs='+', help='Ziel-IP(s) der Kamera(s)')
+    conn.add_argument('-u', '--user', default='root', help='Admin-Benutzer (Standard: root)')
+    conn.add_argument('-p', '--password', default=None,
+                      help='Admin-Passwort (ohne Angabe wird danach gefragt)')
+    conn.add_argument('--scheme', choices=['auto', 'https', 'http'], default='auto')
+    conn.add_argument('--port', type=int, default=None)
+    conn.add_argument('--conn-timeout', dest='conn_timeout', type=int, default=10,
+                      help='Verbindungs-Timeout in Sekunden (Standard: 10)')
+
+    sp = sub.add_parser('set-ip', parents=[conn], help='Feste IP-Adresse setzen')
+    sp.add_argument('--new-ip', dest='new_ip', required=True)
+    sp.add_argument('--mask', default='255.255.255.0')
+    sp.add_argument('--gateway', default='')
+    sp.set_defaults(func=cmd_set_ip)
+
+    sp = sub.add_parser('set-dhcp', parents=[conn], help='Auf DHCP umstellen')
+    sp.set_defaults(func=cmd_set_dhcp)
+
+    sp = sub.add_parser('user-add', parents=[conn], help='Benutzer anlegen')
+    sp.add_argument('--name', required=True, help='Name des neuen Benutzers')
+    sp.add_argument('--new-password', dest='new_password', required=True)
+    sp.add_argument('--role', choices=list(vapix.USER_ROLES), default='viewer')
+    sp.add_argument('--factory', action='store_true',
+                    help='Auslieferungszustand: ohne Anmeldung/Standard-Zugangsdaten, als Administrator')
+    sp.set_defaults(func=cmd_user_add)
+
+    sp = sub.add_parser('user-passwd', parents=[conn], help='Benutzer-Passwort aendern')
+    sp.add_argument('--name', required=True)
+    sp.add_argument('--new-password', dest='new_password', required=True)
+    sp.set_defaults(func=cmd_user_passwd)
+
+    sp = sub.add_parser('onvif-add', parents=[conn], help='ONVIF-Benutzer anlegen')
+    sp.add_argument('--name', required=True)
+    sp.add_argument('--new-password', dest='new_password', required=True)
+    sp.add_argument('--level', choices=list(vapix.ONVIF_LEVELS), default='Administrator')
+    sp.set_defaults(func=cmd_onvif_add)
+
+    sp = sub.add_parser('onvif-passwd', parents=[conn], help='ONVIF-Passwort aendern')
+    sp.add_argument('--name', required=True)
+    sp.add_argument('--new-password', dest='new_password', required=True)
+    sp.add_argument('--level', choices=list(vapix.ONVIF_LEVELS), default='Administrator')
+    sp.set_defaults(func=cmd_onvif_passwd)
+
+    sp = sub.add_parser('firmware', parents=[conn], help='Firmware (.bin) aufspielen')
+    sp.add_argument('--file', required=True, help='Firmware-Datei (.bin)')
+    sp.add_argument('--factory-default', dest='factory_default', action='store_true')
+    sp.set_defaults(func=cmd_firmware)
+
+    sp = sub.add_parser('config', parents=[conn], help='ADM-Konfigurationsdatei (.cfg) anwenden')
+    sp.add_argument('--file', required=True, help='Axis-Device-Manager-Konfiguration (.cfg)')
+    sp.add_argument('--no-profiles', dest='no_profiles', action='store_true',
+                    help='Stream-Profile nicht uebernehmen')
+    sp.set_defaults(func=cmd_config)
+
     args = parser.parse_args()
 
     if args.version:
         print_version()
         return
+
+    if getattr(args, 'command', None):
+        raise SystemExit(args.func(args))
 
     show_in_console = not args.output or args.show
 
