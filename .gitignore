@@ -9,3 +9,7 @@ base.AppImage
 appimagetool*.AppImage
 .tk9build_log.txt
 CLAUDE.md
+# PyInstaller (Windows-Build)
+build/
+dist/
+*.exe

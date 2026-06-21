@@ -1,0 +1,32 @@
+# Baut die Windows-.exe von Axis_Kamera_Discovery mit PyInstaller.
+# Kompatibel mit GitHub Actions und Forgejo/Gitea Actions (.github/workflows wird
+# von beiden gelesen). Forgejo benoetigt dafuer einen registrierten Windows-Runner.
+name: Windows Build
+
+on:
+  workflow_dispatch:        # manuell ausloesbar
+  push:
+    tags:
+      - "v*"                # bei Versions-Tags automatisch
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Abhaengigkeiten installieren
+        run: pip install pyinstaller zeroconf prettytable ifaddr
+
+      - name: .exe bauen
+        run: pyinstaller --noconfirm Axis_Kamera_Discovery.spec
+
+      - name: Artefakt hochladen
+        uses: actions/upload-artifact@v4
+        with:
+          name: Axis_Kamera_Discovery-windows
+          path: dist/*.exe

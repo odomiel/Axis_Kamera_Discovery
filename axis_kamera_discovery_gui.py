@@ -27,6 +27,7 @@ import json
 import os
 import platform
 import queue
+import sys
 import threading
 import webbrowser
 from importlib import metadata
@@ -47,11 +48,17 @@ import axis_kamera_discovery_vapix as vapix
 COLUMNS = FIELD_NAMES
 
 # Speicherort fuer benutzerdefinierte Einstellungen (z. B. Dark Mode).
-# Folgt XDG: $XDG_CONFIG_HOME/axis_kamera_discovery/settings.json, sonst ~/.config/...
-CONFIG_DIR = os.path.join(
-    os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config"),
-    "axis_kamera_discovery",
-)
+# Windows: %APPDATA%\Axis_Kamera_Discovery ; sonst XDG ($XDG_CONFIG_HOME) bzw. ~/.config
+if os.name == "nt":
+    CONFIG_DIR = os.path.join(
+        os.environ.get("APPDATA") or os.path.expanduser("~"),
+        "Axis_Kamera_Discovery",
+    )
+else:
+    CONFIG_DIR = os.path.join(
+        os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config"),
+        "axis_kamera_discovery",
+    )
 CONFIG_PATH = os.path.join(CONFIG_DIR, "settings.json")
 
 # Standardwerte aller persistenten Einstellungen. Die settings.json ist ein
@@ -654,7 +661,10 @@ class AxisDiscoveryGUI(tk.Tk):
         self._show_text_window("THIRD_PARTY_LICENSES.md", "Lizenzen")
 
     def _show_text_window(self, filename, title):
-        path = os.path.join(os.path.dirname(os.path.abspath(__file__)), filename)
+        # Unter PyInstaller liegen gebundelte Datendateien in sys._MEIPASS,
+        # sonst neben diesem Modul (AppImage/Quellcode).
+        base = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
+        path = os.path.join(base, filename)
         if not os.path.exists(path):
             messagebox.showerror(title, f"{filename} wurde nicht gefunden.")
             return

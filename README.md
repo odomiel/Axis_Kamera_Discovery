@@ -69,6 +69,12 @@ Beim Build entstehen:
 - `Axis_Kamera_Discovery-<version>-x86_64.AppImage` – versioniertes Artefakt
 - `Axis_Kamera_Discovery-x86_64.AppImage` – Symlink auf die aktuelle Version
 
+### Windows (.exe)
+
+Für Windows 11 gibt es eine **funktionsgleiche** Variante (zwei One-File-Exes:
+GUI + CLI), gebaut mit PyInstaller. Anleitung und CI-Workflow:
+siehe [`BUILD_WINDOWS.md`](BUILD_WINDOWS.md).
+
 ---
 
 ## GUI
