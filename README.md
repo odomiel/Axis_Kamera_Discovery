@@ -104,7 +104,9 @@ Bedienung:
     *Feste IP ab Start-IP fortlaufend* (vergibt fortlaufende Adressen) oder
     *Pro Kamera einzeln* (je Kamera ein eigenes IP-Feld).
   - **Benutzer** – regulären Axis-Benutzer *anlegen* (mit Rolle
-    Administrator/Operator/Viewer) oder *Passwort ändern*.
+    Administrator/Operator/Viewer) oder *Passwort ändern*. Ist die Kamera noch
+    im **Auslieferungszustand** (kein Passwort gesetzt), wird das automatisch
+    erkannt und der Erstbenutzer ohne Anmeldung angelegt.
   - **ONVIF-Benutzer** – ONVIF-Benutzer *anlegen* (Stufe
     Administrator/Operator/User) oder *Passwort ändern*.
 

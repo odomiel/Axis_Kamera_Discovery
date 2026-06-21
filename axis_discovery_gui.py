@@ -1042,8 +1042,16 @@ class CameraSettingsDialog(tk.Toplevel):
                     msg = vapix.set_onvif_user_password(ip, target_user=name,
                                                         new_password=pwd, level=level, **kwargs)
                 elif action == "add":
-                    msg = vapix.add_user(ip, new_user=name, new_password=pwd,
-                                         role=level, **kwargs)
+                    # Sonderfall: werksneue Kamera ohne gesetztes Passwort ->
+                    # Erstbenutzer ohne Anmeldung anlegen.
+                    if vapix.is_unconfigured(ip, scheme=kwargs["scheme"],
+                                             port=kwargs["port"], timeout=kwargs["timeout"]):
+                        msg = vapix.add_user(ip, new_user=name, new_password=pwd,
+                                             role=level, authenticate=False, **kwargs)
+                        msg += " (Auslieferungszustand, ohne Anmeldung)"
+                    else:
+                        msg = vapix.add_user(ip, new_user=name, new_password=pwd,
+                                             role=level, **kwargs)
                 else:
                     msg = vapix.set_user_password(ip, target_user=name,
                                                   new_password=pwd, **kwargs)

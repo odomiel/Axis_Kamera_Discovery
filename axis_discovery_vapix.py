@@ -38,28 +38,35 @@ class VapixError(Exception):
     """Fehler bei einem VAPIX-Aufruf (Netzwerk, Auth oder Geraeteantwort)."""
 
 
-def _build_opener(host_port, username, password):
-    """Opener mit Digest-/Basic-Auth und ungepruefter HTTPS-Verbindung."""
-    pwmgr = urllib.request.HTTPPasswordMgrWithDefaultRealm()
-    # Realm None -> gilt fuer alle; URL ohne Schema deckt http und https ab.
-    pwmgr.add_password(None, host_port, username, password)
-    return urllib.request.build_opener(
-        urllib.request.HTTPDigestAuthHandler(pwmgr),
-        urllib.request.HTTPBasicAuthHandler(pwmgr),
-        urllib.request.HTTPSHandler(context=_SSL_CONTEXT),
-    )
+def _build_opener(host_port, username, password, auth=True):
+    """Opener mit ungepruefter HTTPS-Verbindung.
+
+    Mit auth=True zusaetzlich Digest-/Basic-Auth; mit auth=False ganz ohne
+    Authentifizierung (fuer werksneue Geraete ohne gesetztes Passwort).
+    """
+    handlers = [urllib.request.HTTPSHandler(context=_SSL_CONTEXT)]
+    if auth:
+        pwmgr = urllib.request.HTTPPasswordMgrWithDefaultRealm()
+        # Realm None -> gilt fuer alle; URL ohne Schema deckt http und https ab.
+        pwmgr.add_password(None, host_port, username, password)
+        handlers = [
+            urllib.request.HTTPDigestAuthHandler(pwmgr),
+            urllib.request.HTTPBasicAuthHandler(pwmgr),
+        ] + handlers
+    return urllib.request.build_opener(*handlers)
 
 
-def _request(ip, username, password, path, scheme="http", port=None, timeout=10):
+def _request(ip, username, password, path, scheme="http", port=None, timeout=10, auth=True):
     """Fuehrt einen GET-Aufruf aus und liefert den Antworttext (str).
 
-    Wirft VapixError bei Netzwerk-/Auth-/HTTP-Fehlern.
+    Wirft VapixError bei Netzwerk-/Auth-/HTTP-Fehlern. Mit auth=False ohne
+    Authentifizierung (werksneue Geraete).
     """
     if port is None:
         port = DEFAULT_PORTS[scheme]
     host_port = f"{ip}:{port}"
     url = f"{scheme}://{host_port}{path}"
-    opener = _build_opener(host_port, username, password)
+    opener = _build_opener(host_port, username, password, auth=auth)
     try:
         with opener.open(url, timeout=timeout) as resp:
             return resp.read().decode("utf-8", errors="replace")
@@ -73,14 +80,39 @@ def _request(ip, username, password, path, scheme="http", port=None, timeout=10)
         raise VapixError(f"Verbindungsfehler: {exc}")
 
 
-def _request_auto(ip, username, password, path, scheme="auto", port=None, timeout=10):
+def _request_auto(ip, username, password, path, scheme="auto", port=None, timeout=10, auth=True):
     """Wie _request, aber 'auto' probiert erst HTTPS, dann HTTP."""
     if scheme != "auto":
-        return _request(ip, username, password, path, scheme, port, timeout)
+        return _request(ip, username, password, path, scheme, port, timeout, auth)
     try:
-        return _request(ip, username, password, path, "https", port, timeout)
+        return _request(ip, username, password, path, "https", port, timeout, auth)
     except VapixError:
-        return _request(ip, username, password, path, "http", port, timeout)
+        return _request(ip, username, password, path, "http", port, timeout, auth)
+
+
+def is_unconfigured(ip, scheme="auto", port=None, timeout=10):
+    """True, wenn das Geraet ohne Authentifizierung antwortet (Auslieferungszustand).
+
+    Ein werksneues Axis-Geraet hat kein Passwort gesetzt und beantwortet einen
+    unauthentifizierten VAPIX-Aufruf mit 200; ein konfiguriertes Geraet mit 401.
+    """
+    schemes = ["https", "http"] if scheme == "auto" else [scheme]
+    path = "/axis-cgi/pwdgrp.cgi?action=get"
+    for sc in schemes:
+        p = port if port else DEFAULT_PORTS[sc]
+        url = f"{sc}://{ip}:{p}{path}"
+        opener = _build_opener(f"{ip}:{p}", "", "", auth=False)
+        try:
+            with opener.open(url, timeout=timeout) as resp:
+                resp.read()
+            return True  # 200 ohne Auth -> unkonfiguriert
+        except urllib.error.HTTPError as exc:
+            if exc.code == 401:
+                return False  # Auth verlangt -> konfiguriert
+            continue  # anderer HTTP-Fehler: naechstes Schema versuchen
+        except (urllib.error.URLError, TimeoutError, OSError):
+            continue  # nicht erreichbar ueber dieses Schema
+    return False
 
 
 def _parse_param_list(text):
@@ -161,8 +193,11 @@ USER_ROLES = {
 
 
 def add_user(ip, username, password, new_user, new_password, role="viewer",
-             scheme="auto", port=None, timeout=10):
-    """Legt einen regulaeren Axis-Benutzer mit der gewuenschten Rolle an."""
+             scheme="auto", port=None, timeout=10, authenticate=True):
+    """Legt einen regulaeren Axis-Benutzer mit der gewuenschten Rolle an.
+
+    Mit authenticate=False ohne Anmeldung (werksneue Kamera, Erstbenutzer).
+    """
     params = {
         "action": "add",
         "user": new_user,
@@ -171,7 +206,8 @@ def add_user(ip, username, password, new_user, new_password, role="viewer",
         "sgrp": USER_ROLES.get(role, "viewer"),
     }
     path = f"/axis-cgi/pwdgrp.cgi?{urllib.parse.urlencode(params)}"
-    text = _request_auto(ip, username, password, path, scheme, port, timeout)
+    text = _request_auto(ip, username, password, path, scheme, port, timeout,
+                         auth=authenticate)
     if "Error" in text:
         raise VapixError(f"Geraet meldete: {text.strip()}")
     return f"Benutzer '{new_user}' angelegt ({role})"
