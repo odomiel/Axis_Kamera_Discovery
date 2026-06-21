@@ -22,6 +22,10 @@ gesprochen, weil Axis-Geraete in der Regel selbstsignierte Zertifikate nutzen.
 Authentifizierung per HTTP-Digest (mit Basic als Rueckfall).
 """
 
+import base64
+import datetime
+import hashlib
+import os
 import ssl
 import urllib.error
 import urllib.parse
@@ -247,9 +251,40 @@ ONVIF_LEVELS = ("Administrator", "Operator", "User")
 _ONVIF_ENVELOPE = (
     '<?xml version="1.0" encoding="UTF-8"?>'
     '<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope">'
+    '{header}'
     '<s:Body xmlns:tds="http://www.onvif.org/ver10/device/wsdl" '
     'xmlns:tt="http://www.onvif.org/ver10/schema">{body}</s:Body></s:Envelope>'
 )
+
+# WS-Security-Namespaces (UsernameToken-Profil)
+_WSSE = "http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd"
+_WSU = "http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd"
+_PW_DIGEST = ("http://docs.oasis-open.org/wss/2004/01/"
+              "oasis-200401-wss-username-token-profile-1.0#PasswordDigest")
+_B64_ENC = ("http://docs.oasis-open.org/wss/2004/01/"
+            "oasis-200401-wss-soap-message-security-1.0#Base64Binary")
+
+
+def _ws_security_header(username, password):
+    """WS-Security UsernameToken (PasswordDigest) - von ONVIF-Diensten verlangt.
+
+    PasswordDigest = Base64(SHA1(Nonce + Created + Passwort)).
+    """
+    nonce = os.urandom(16)
+    created = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    digest = base64.b64encode(
+        hashlib.sha1(nonce + created.encode("utf-8") + password.encode("utf-8")).digest()
+    ).decode("ascii")
+    nonce_b64 = base64.b64encode(nonce).decode("ascii")
+    return (
+        f'<s:Header><Security s:mustUnderstand="1" xmlns="{_WSSE}">'
+        '<UsernameToken>'
+        f'<Username>{_xml_escape(username)}</Username>'
+        f'<Password Type="{_PW_DIGEST}">{digest}</Password>'
+        f'<Nonce EncodingType="{_B64_ENC}">{nonce_b64}</Nonce>'
+        f'<Created xmlns="{_WSU}">{created}</Created>'
+        '</UsernameToken></Security></s:Header>'
+    )
 
 
 def _xml_escape(text):
@@ -277,7 +312,8 @@ def _onvif_post(ip, username, password, inner, scheme, port, timeout):
         port = DEFAULT_PORTS[scheme]
     host_port = f"{ip}:{port}"
     url = f"{scheme}://{host_port}/onvif/device_service"
-    body = _ONVIF_ENVELOPE.format(body=inner).encode("utf-8")
+    header = _ws_security_header(username, password)
+    body = _ONVIF_ENVELOPE.format(header=header, body=inner).encode("utf-8")
     opener = _build_opener(host_port, username, password)
     req = urllib.request.Request(
         url, data=body,
