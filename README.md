@@ -34,6 +34,7 @@ Python 3.13 inklusive **Tcl/Tk 9** sowie alle Abhängigkeiten mitbringt und dami
 | Export als CSV | Dialog (`.csv`) | `-o datei.csv` / `--format csv` |
 | Wiederholte Suche (Auto-Refresh) | Checkbox + Intervall | `--watch/-w SEKUNDEN` |
 | Kamera-Weboberfläche im Browser öffnen | Doppelklick auf Zeile | `--open` |
+| Dark Mode (heller/dunkler Modus) | Einstellungen → Checkbox „Dark Mode" | – |
 | Version anzeigen | im Fenstertitel | `--version/-v` |
 
 ---
@@ -92,6 +93,8 @@ Bedienung:
 - **Exportieren…** – speichert die Ergebnisse als CSV oder Texttabelle
   (Format folgt der gewählten Dateiendung).
 - **Einstellungen** (Menü-Button rechts neben „Exportieren") mit den Einträgen:
+  - **Dark Mode** – Checkbox; angehakt schaltet die Oberfläche auf den dunklen
+    Modus um, ohne Haken gilt der helle Modus.
   - **Info** – Programmname und Version
   - **Hilfe** – zeigt diese README in einem Fenster
   - **Lizenzen** – zeigt `THIRD_PARTY_LICENSES.md` (Lizenzen der gebündelten

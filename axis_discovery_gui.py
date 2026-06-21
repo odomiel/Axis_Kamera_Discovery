@@ -44,6 +44,32 @@ from axis_discovery_cli import (
 
 COLUMNS = FIELD_NAMES
 
+# Farbpaletten fuer hellen und dunklen Modus. Die Schluessel sind in beiden
+# Paletten identisch, sodass _apply_theme dieselben Style-Optionen setzen kann.
+LIGHT_COLORS = {
+    "bg": "#f0f0f0",          # Fensterhintergrund
+    "fg": "#1a1a1a",          # Text
+    "field_bg": "#ffffff",    # Eingabefelder/Buttons
+    "select_bg": "#0a64a4",   # markierte Zeile
+    "select_fg": "#ffffff",
+    "heading_bg": "#e1e1e1",  # Tabellenkopf/Scrollbar
+    "active_bg": "#d0d0d0",   # Hover/aktiv
+    "tree_bg": "#ffffff",     # Tabellenflaeche
+    "disabled_fg": "#9a9a9a",
+}
+
+DARK_COLORS = {
+    "bg": "#2b2b2b",
+    "fg": "#e6e6e6",
+    "field_bg": "#3c3f41",
+    "select_bg": "#2f5b82",
+    "select_fg": "#ffffff",
+    "heading_bg": "#3c3f41",
+    "active_bg": "#4a4d4f",
+    "tree_bg": "#313335",
+    "disabled_fg": "#6f6f6f",
+}
+
 
 class AxisDiscoveryGUI(tk.Tk):
     def __init__(self):
@@ -58,6 +84,13 @@ class AxisDiscoveryGUI(tk.Tk):
         self._refresh_after_id = None
         self._settings_popup = None
         self._sort_state = {}  # Spalte -> zuletzt absteigend? (fuer Klick-Toggle)
+        self._text_windows = []  # offene Hilfe-/Lizenz-Fenster (fuer Theme-Wechsel)
+
+        # "clam" ist das einzige mitgelieferte ttk-Theme, das alle Farben
+        # zuverlaessig uebernimmt; darauf baut der Dark/Light-Wechsel auf.
+        self._style = ttk.Style(self)
+        self._style.theme_use("clam")
+        self.dark_mode_var = tk.BooleanVar(value=False)
 
         # Fonts fuer die automatische Spaltenbreiten-Messung
         self._cell_font = tkfont.nametofont("TkDefaultFont")
@@ -69,6 +102,7 @@ class AxisDiscoveryGUI(tk.Tk):
         self._build_toolbar()
         self._build_table()
         self._build_statusbar()
+        self._apply_theme(self.dark_mode_var.get())  # Startet im hellen Modus
 
         self.protocol("WM_DELETE_WINDOW", self._on_close)
         # Klick irgendwo schliesst ein offenes Einstellungen-Dropdown
@@ -285,6 +319,15 @@ class AxisDiscoveryGUI(tk.Tk):
         frame = ttk.Frame(popup, relief="solid", borderwidth=1)
         frame.pack(fill=tk.BOTH, expand=True)
 
+        # Dark-Mode-Umschalter: Haken an -> dunkel, Haken aus -> hell.
+        ttk.Checkbutton(
+            frame,
+            text="Dark Mode",
+            variable=self.dark_mode_var,
+            command=self._toggle_dark_mode,
+        ).pack(fill=tk.X, padx=4, pady=2)
+        ttk.Separator(frame, orient="horizontal").pack(fill=tk.X)
+
         for label, command in (
             ("Info", self._show_info),
             ("Hilfe", self._show_help),
@@ -328,6 +371,99 @@ class AxisDiscoveryGUI(tk.Tk):
         if self._settings_popup is not None and self._settings_popup.winfo_exists():
             self._settings_popup.destroy()
         self._settings_popup = None
+
+    # ------------------------------------------------------------- Dark Mode
+    def _toggle_dark_mode(self):
+        self._apply_theme(self.dark_mode_var.get())
+
+    def _apply_theme(self, dark):
+        """Faerbt alle Widgets passend zum hellen oder dunklen Modus ein."""
+        c = DARK_COLORS if dark else LIGHT_COLORS
+        s = self._style
+
+        self.configure(bg=c["bg"])
+
+        # Grundeinstellung fuer alle ttk-Widgets
+        s.configure(
+            ".",
+            background=c["bg"],
+            foreground=c["fg"],
+            fieldbackground=c["field_bg"],
+            bordercolor=c["active_bg"],
+            troughcolor=c["field_bg"],
+            arrowcolor=c["fg"],
+        )
+        s.configure("TFrame", background=c["bg"])
+        s.configure("TLabel", background=c["bg"], foreground=c["fg"])
+        s.configure("TSeparator", background=c["active_bg"])
+
+        s.configure("TButton", background=c["field_bg"], foreground=c["fg"])
+        s.map(
+            "TButton",
+            background=[("active", c["active_bg"]), ("disabled", c["bg"])],
+            foreground=[("disabled", c["disabled_fg"])],
+        )
+
+        s.configure(
+            "TCheckbutton",
+            background=c["bg"],
+            foreground=c["fg"],
+            indicatorbackground=c["field_bg"],
+            indicatorforeground=c["fg"],
+        )
+        s.map(
+            "TCheckbutton",
+            background=[("active", c["bg"])],
+            indicatorbackground=[("selected", c["select_bg"]), ("active", c["field_bg"])],
+            indicatorforeground=[("selected", c["select_fg"])],
+            foreground=[("disabled", c["disabled_fg"])],
+        )
+
+        s.configure(
+            "TSpinbox",
+            fieldbackground=c["field_bg"],
+            foreground=c["fg"],
+            background=c["field_bg"],
+            arrowcolor=c["fg"],
+        )
+
+        s.configure("TProgressbar", background=c["select_bg"], troughcolor=c["field_bg"])
+
+        s.configure("TScrollbar", background=c["heading_bg"], troughcolor=c["field_bg"])
+        s.map("TScrollbar", background=[("active", c["active_bg"])])
+
+        # Tabelle: Flaeche, Text und markierte Zeile
+        s.configure(
+            "Treeview",
+            background=c["tree_bg"],
+            foreground=c["fg"],
+            fieldbackground=c["tree_bg"],
+        )
+        s.map(
+            "Treeview",
+            background=[("selected", c["select_bg"])],
+            foreground=[("selected", c["select_fg"])],
+        )
+        s.configure("Treeview.Heading", background=c["heading_bg"], foreground=c["fg"])
+        s.map("Treeview.Heading", background=[("active", c["active_bg"])])
+
+        # Hilfe-/Lizenzfenster sind klassische tk.Text-Widgets ohne ttk-Style
+        self._theme_text_windows(c)
+
+    def _theme_text_windows(self, colors):
+        """Faerbt offene Hilfe-/Lizenzfenster (tk.Text) mit den aktuellen Farben."""
+        for win, text in list(self._text_windows):
+            if not win.winfo_exists():
+                self._text_windows.remove((win, text))
+                continue
+            win.configure(bg=colors["bg"])
+            text.configure(
+                bg=colors["tree_bg"],
+                fg=colors["fg"],
+                insertbackground=colors["fg"],
+                selectbackground=colors["select_bg"],
+                selectforeground=colors["select_fg"],
+            )
 
     def _show_info(self):
         messagebox.showinfo(
@@ -376,6 +512,17 @@ class AxisDiscoveryGUI(tk.Tk):
         text.insert("1.0", content)
         text.config(state=tk.DISABLED)  # schreibgeschuetzt
         text.pack(fill=tk.BOTH, expand=True)
+
+        # Fenster fuer spaetere Theme-Wechsel merken und sofort einfaerben
+        self._text_windows.append((win, text))
+        win.bind(
+            "<Destroy>",
+            lambda e, w=win: e.widget is w and self._forget_text_window(w),
+        )
+        self._theme_text_windows(DARK_COLORS if self.dark_mode_var.get() else LIGHT_COLORS)
+
+    def _forget_text_window(self, win):
+        self._text_windows = [(w, t) for (w, t) in self._text_windows if w is not win]
 
     # ----------------------------------------------------------- Aktionen
     def _open_in_browser(self, _event):
