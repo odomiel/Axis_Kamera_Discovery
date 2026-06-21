@@ -22,10 +22,7 @@ gesprochen, weil Axis-Geraete in der Regel selbstsignierte Zertifikate nutzen.
 Authentifizierung per HTTP-Digest (mit Basic als Rueckfall).
 """
 
-import base64
-import datetime
-import hashlib
-import os
+import re
 import ssl
 import urllib.error
 import urllib.parse
@@ -248,43 +245,17 @@ def set_user_password(ip, username, password, target_user, new_password,
 
 ONVIF_LEVELS = ("Administrator", "Operator", "User")
 
+# ONVIF-Benutzer werden ueber den VAPIX-SOAP-Endpoint /vapix/services verwaltet
+# (HTTP-Digest mit VAPIX-Admin), NICHT ueber /onvif/device_service (das ONVIF-
+# Auth/WS-Security verlangen wuerde). Genau so macht es der Axis Device Manager.
 _ONVIF_ENVELOPE = (
-    '<?xml version="1.0" encoding="UTF-8"?>'
-    '<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope">'
-    '{header}'
-    '<s:Body xmlns:tds="http://www.onvif.org/ver10/device/wsdl" '
-    'xmlns:tt="http://www.onvif.org/ver10/schema">{body}</s:Body></s:Envelope>'
+    '<?xml version="1.0" encoding="utf-8"?>'
+    '<soap:Envelope '
+    'xmlns:tt="http://www.onvif.org/ver10/schema" '
+    'xmlns:tds="http://www.onvif.org/ver10/device/wsdl" '
+    'xmlns:soap="http://www.w3.org/2003/05/soap-envelope">'
+    '<soap:Body>{body}</soap:Body></soap:Envelope>'
 )
-
-# WS-Security-Namespaces (UsernameToken-Profil)
-_WSSE = "http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd"
-_WSU = "http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd"
-_PW_DIGEST = ("http://docs.oasis-open.org/wss/2004/01/"
-              "oasis-200401-wss-username-token-profile-1.0#PasswordDigest")
-_B64_ENC = ("http://docs.oasis-open.org/wss/2004/01/"
-            "oasis-200401-wss-soap-message-security-1.0#Base64Binary")
-
-
-def _ws_security_header(username, password):
-    """WS-Security UsernameToken (PasswordDigest) - von ONVIF-Diensten verlangt.
-
-    PasswordDigest = Base64(SHA1(Nonce + Created + Passwort)).
-    """
-    nonce = os.urandom(16)
-    created = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    digest = base64.b64encode(
-        hashlib.sha1(nonce + created.encode("utf-8") + password.encode("utf-8")).digest()
-    ).decode("ascii")
-    nonce_b64 = base64.b64encode(nonce).decode("ascii")
-    return (
-        f'<s:Header><Security s:mustUnderstand="1" xmlns="{_WSSE}">'
-        '<UsernameToken>'
-        f'<Username>{_xml_escape(username)}</Username>'
-        f'<Password Type="{_PW_DIGEST}">{digest}</Password>'
-        f'<Nonce EncodingType="{_B64_ENC}">{nonce_b64}</Nonce>'
-        f'<Created xmlns="{_WSU}">{created}</Created>'
-        '</UsernameToken></Security></s:Header>'
-    )
 
 
 def _xml_escape(text):
@@ -293,32 +264,28 @@ def _xml_escape(text):
 
 
 def _extract_soap_fault(text):
-    """Holt eine lesbare Fehlermeldung aus einer SOAP-Fault-Antwort."""
-    for tag in ("faultstring", "s:Text", "Text", "faultcode", "s:Reason"):
-        start = text.find(f"<{tag}")
-        if start != -1:
-            gt = text.find(">", start)
-            end = text.find(f"</{tag}>", gt)
-            if gt != -1 and end != -1:
-                inner = text[gt + 1:end].strip()
-                if inner:
-                    return inner
+    """Holt eine lesbare Fehlermeldung aus einer SOAP-Fault-Antwort.
+
+    Praefix-unabhaengig (z. B. <SOAP-ENV:Text>, <s:Text>, <faultstring>),
+    SOAP 1.2 (Reason/Text) zuerst, dann SOAP 1.1 (faultstring).
+    """
+    for pat in (r"<(?:[\w-]+:)?Text[^>]*>([^<]+)</(?:[\w-]+:)?Text>",
+                r"<(?:[\w-]+:)?faultstring[^>]*>([^<]+)</(?:[\w-]+:)?faultstring>"):
+        m = re.search(pat, text)
+        if m and m.group(1).strip():
+            return m.group(1).strip()
     return ""
 
 
 def _onvif_post(ip, username, password, inner, scheme, port, timeout):
-    """POSTet einen SOAP-Body an das ONVIF Device Service der Kamera."""
+    """POSTet einen SOAP-Body an den VAPIX-Services-Endpoint (HTTP-Digest-Auth)."""
     if port is None:
         port = DEFAULT_PORTS[scheme]
     host_port = f"{ip}:{port}"
-    url = f"{scheme}://{host_port}/onvif/device_service"
-    header = _ws_security_header(username, password)
-    body = _ONVIF_ENVELOPE.format(header=header, body=inner).encode("utf-8")
+    url = f"{scheme}://{host_port}/vapix/services"
+    body = _ONVIF_ENVELOPE.format(body=inner).encode("utf-8")
     opener = _build_opener(host_port, username, password)
-    req = urllib.request.Request(
-        url, data=body,
-        headers={"Content-Type": "application/soap+xml; charset=utf-8"},
-    )
+    req = urllib.request.Request(url, data=body, headers={"Content-Type": "text/xml"})
     try:
         with opener.open(req, timeout=timeout) as resp:
             return resp.read().decode("utf-8", errors="replace")
@@ -344,29 +311,37 @@ def _onvif_post_auto(ip, username, password, inner, scheme, port, timeout):
         return _onvif_post(ip, username, password, inner, "http", port, timeout)
 
 
+def _check_onvif_response(text):
+    """Wirft VapixError, wenn die SOAP-Antwort einen Fault enthaelt."""
+    if "Fault" in text:
+        raise VapixError(f"ONVIF-Fehler: {_extract_soap_fault(text) or text.strip()}")
+
+
 def add_onvif_user(ip, username, password, new_user, new_password,
                    level="Administrator", scheme="auto", port=None, timeout=10):
-    """Legt einen ONVIF-Benutzer an (ONVIF CreateUsers)."""
+    """Legt einen ONVIF-Benutzer an (ONVIF CreateUsers ueber /vapix/services)."""
     inner = (
-        "<tds:CreateUsers><tds:User>"
+        '<tds:CreateUsers xmlns="http://www.onvif.org/ver10/device/wsdl"><User>'
         f"<tt:Username>{_xml_escape(new_user)}</tt:Username>"
         f"<tt:Password>{_xml_escape(new_password)}</tt:Password>"
         f"<tt:UserLevel>{level}</tt:UserLevel>"
-        "</tds:User></tds:CreateUsers>"
+        "</User></tds:CreateUsers>"
     )
-    _onvif_post_auto(ip, username, password, inner, scheme, port, timeout)
+    _check_onvif_response(
+        _onvif_post_auto(ip, username, password, inner, scheme, port, timeout))
     return f"ONVIF-Benutzer '{new_user}' angelegt ({level})"
 
 
 def set_onvif_user_password(ip, username, password, target_user, new_password,
                             level="Administrator", scheme="auto", port=None, timeout=10):
-    """Aendert Passwort/Stufe eines bestehenden ONVIF-Benutzers (ONVIF SetUser)."""
+    """Aendert Passwort/Stufe eines ONVIF-Benutzers (ONVIF SetUser ueber /vapix/services)."""
     inner = (
-        "<tds:SetUser><tds:User>"
+        '<tds:SetUser xmlns="http://www.onvif.org/ver10/device/wsdl"><User>'
         f"<tt:Username>{_xml_escape(target_user)}</tt:Username>"
         f"<tt:Password>{_xml_escape(new_password)}</tt:Password>"
         f"<tt:UserLevel>{level}</tt:UserLevel>"
-        "</tds:User></tds:SetUser>"
+        "</User></tds:SetUser>"
     )
-    _onvif_post_auto(ip, username, password, inner, scheme, port, timeout)
+    _check_onvif_response(
+        _onvif_post_auto(ip, username, password, inner, scheme, port, timeout))
     return f"ONVIF-Passwort von '{target_user}' geaendert"
