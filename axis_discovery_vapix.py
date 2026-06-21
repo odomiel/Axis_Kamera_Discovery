@@ -600,79 +600,39 @@ def apply_parameters(ip, username, password, params, scheme="auto", port=None, t
     return len(params)
 
 
-def _post_json(ip, username, password, path, obj, scheme, port, timeout):
-    """POSTet ein JSON-Objekt und liefert den Antworttext."""
-    if port is None:
-        port = DEFAULT_PORTS[scheme]
-    host_port = f"{ip}:{port}"
-    url = f"{scheme}://{host_port}{path}"
-    body = json.dumps(obj).encode("utf-8")
-    opener = _build_opener(host_port, username, password)
-    req = urllib.request.Request(url, data=body,
-                                 headers={"Content-Type": "application/json"})
-    try:
-        with opener.open(req, timeout=timeout) as resp:
-            return resp.read().decode("utf-8", errors="replace")
-    except urllib.error.HTTPError as exc:
-        if exc.code == 401:
-            raise VapixError("Authentifizierung fehlgeschlagen (Benutzer/Passwort?).")
-        raise VapixError(f"HTTP-Fehler {exc.code}: {exc.reason}")
-    except urllib.error.URLError as exc:
-        raise VapixError(f"Nicht erreichbar: {exc.reason}")
-    except (TimeoutError, OSError) as exc:
-        raise VapixError(f"Verbindungsfehler: {exc}")
+def _existing_stream_profiles(ip, username, password, scheme, port, timeout):
+    """Liefert {Profilname: 'S#'} der vorhandenen Stream-Profile (param.cgi).
 
-
-def _streamprofile_api_available(ip, username, password, scheme, port, timeout):
-    """True, wenn das moderne streamprofile.cgi (JSON) vorhanden ist."""
-    try:
-        _post_json(ip, username, password, "/axis-cgi/streamprofile.cgi",
-                   {"apiVersion": "1.0", "context": "probe", "method": "list",
-                    "params": {"streamProfileName": []}},
-                   scheme, port, timeout)
-        return True
-    except VapixError:
-        return False
-
-
-def _sp_create_modern(ip, username, password, profile, scheme, port, timeout):
-    """Legt ein Stream-Profil ueber streamprofile.cgi an. Liefert 'created'/'exists'."""
-    obj = {"apiVersion": "1.0", "context": "axisiputil", "method": "create",
-           "params": {"streamProfile": [{
-               "name": profile["name"],
-               "description": profile["description"],
-               "parameters": profile["parameters"],
-           }]}}
-    resp = _post_json(ip, username, password, "/axis-cgi/streamprofile.cgi",
-                      obj, scheme, port, timeout)
-    try:
-        data = json.loads(resp)
-    except ValueError:
-        return "created"
-    err = data.get("error") if isinstance(data, dict) else None
-    if err:
-        if err.get("code") == 2004:  # Name existiert bereits
-            return "exists"
-        raise VapixError(f"Profil '{profile['name']}': Fehler {err.get('code')}: "
-                         f"{err.get('message')}")
-    return "created"
-
-
-def _sp_existing_legacy(ip, username, password, scheme, port, timeout):
-    """Namen vorhandener Stream-Profile (param.cgi-Variante) als Menge."""
+    Funktioniert sowohl bei modernen als auch aelteren Geraeten -- beide pflegen
+    die Profile im param.cgi-Baum 'StreamProfile.S#'.
+    """
     text = _request_auto(ip, username, password,
                          "/axis-cgi/param.cgi?action=list&group=StreamProfile",
                          scheme, port, timeout)
-    names = set()
+    mapping = {}
     for line in text.splitlines():
-        m = re.match(r"root\.StreamProfile\.S\d+\.Name=(.+)$", line.strip())
+        m = re.match(r"root\.StreamProfile\.(S\d+)\.Name=(.+)$", line.strip())
         if m:
-            names.add(m.group(1).strip())
-    return names
+            mapping[m.group(2).strip()] = m.group(1)
+    return mapping
 
 
-def _sp_add_legacy(ip, username, password, profile, scheme, port, timeout):
-    """Legt ein Stream-Profil ueber param.cgi an (aeltere Geraete)."""
+def _sp_update(ip, username, password, sid, profile, scheme, port, timeout):
+    """Ueberschreibt ein vorhandenes Profil StreamProfile.<sid> in place."""
+    fields = {
+        "action": "update",
+        f"StreamProfile.{sid}.Name": profile["name"],
+        f"StreamProfile.{sid}.Description": profile["description"],
+        f"StreamProfile.{sid}.Parameters": profile["parameters"],
+    }
+    text = _post_form(ip, username, password, "/axis-cgi/param.cgi",
+                      fields, scheme, port, timeout)
+    if re.search(r"#\s*Error|failed", text, re.IGNORECASE):
+        raise VapixError(f"Profil '{profile['name']}': {text.strip()[:120]}")
+
+
+def _sp_add(ip, username, password, profile, scheme, port, timeout):
+    """Legt ein neues Stream-Profil per param.cgi an (modern wie legacy)."""
     fields = {
         "action": "add",
         "template": "streamprofile",
@@ -683,38 +643,31 @@ def _sp_add_legacy(ip, username, password, profile, scheme, port, timeout):
     }
     text = _post_form(ip, username, password, "/axis-cgi/param.cgi",
                       fields, scheme, port, timeout)
-    if re.search(r"error|failed", text, re.IGNORECASE):
+    if re.search(r"#\s*Error|failed", text, re.IGNORECASE):
         raise VapixError(f"Profil '{profile['name']}': {text.strip()[:120]}")
 
 
 def apply_stream_profiles(ip, username, password, profiles, scheme, port, timeout):
-    """Legt die Stream-Profile an (modern via streamprofile.cgi, sonst param.cgi).
-
-    Vorhandene (gleichnamige) Profile werden uebersprungen. Liefert
-    (angelegt, uebersprungen, fehlgeschlagen).
+    """Wendet Stream-Profile an: vorhandene (gleicher Name) werden ueberschrieben,
+    neue angelegt. Einheitlich ueber param.cgi. Liefert
+    (angelegt, ueberschrieben, fehlgeschlagen).
     """
     if not profiles:
         return (0, 0, 0)
-    modern = _streamprofile_api_available(ip, username, password, scheme, port, timeout)
-    existing = set() if modern else _sp_existing_legacy(
-        ip, username, password, scheme, port, timeout)
-    created = skipped = failed = 0
+    existing = _existing_stream_profiles(ip, username, password, scheme, port, timeout)
+    created = updated = failed = 0
     for prof in profiles:
         try:
-            if modern:
-                if _sp_create_modern(ip, username, password, prof,
-                                     scheme, port, timeout) == "exists":
-                    skipped += 1
-                else:
-                    created += 1
-            elif prof["name"] in existing:
-                skipped += 1
+            sid = existing.get(prof["name"])
+            if sid:
+                _sp_update(ip, username, password, sid, prof, scheme, port, timeout)
+                updated += 1
             else:
-                _sp_add_legacy(ip, username, password, prof, scheme, port, timeout)
+                _sp_add(ip, username, password, prof, scheme, port, timeout)
                 created += 1
         except VapixError:
             failed += 1
-    return (created, skipped, failed)
+    return (created, updated, failed)
 
 
 def apply_adm_config(ip, username, password, config, scheme="auto", port=None,
@@ -728,8 +681,8 @@ def apply_adm_config(ip, username, password, config, scheme="auto", port=None,
                              sc, port, timeout)
     msg = f"{count} Parameter angewendet"
     if with_profiles and config.get("profiles"):
-        created, skipped, failed = apply_stream_profiles(
+        created, updated, failed = apply_stream_profiles(
             ip, username, password, config["profiles"], sc, port, timeout)
-        msg += (f"; Profile: {created} angelegt, {skipped} vorhanden, "
+        msg += (f"; Profile: {created} angelegt, {updated} ueberschrieben, "
                 f"{failed} fehlgeschlagen")
     return msg

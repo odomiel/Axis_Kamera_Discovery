@@ -884,8 +884,8 @@ class CameraSettingsDialog(tk.Toplevel):
             tab_cfg,
             text="Wendet die Parameter aus der Axis-Device-Manager-Konfiguration "
             "(param.cgi) auf die markierten Kameras an; optional auch die "
-            "Stream-Profile (gleichnamige vorhandene Profile werden uebersprungen). "
-            "Die Konfiguration sollte zum Modell passen.",
+            "Stream-Profile (gleichnamige vorhandene Profile werden ueberschrieben, "
+            "neue angelegt). Die Konfiguration sollte zum Modell passen.",
             wraplength=560, justify=tk.LEFT,
         ).pack(anchor=tk.W, pady=(8, 0))
 
