@@ -1051,9 +1051,10 @@ class CameraSettingsDialog(tk.Toplevel):
                     # Erstbenutzer ohne Anmeldung anlegen.
                     if vapix.is_unconfigured(ip, scheme=kwargs["scheme"],
                                              port=kwargs["port"], timeout=kwargs["timeout"]):
+                        # Erstbenutzer im Auslieferungszustand muss Administrator sein.
                         msg = vapix.add_user(ip, new_user=name, new_password=pwd,
-                                             role=level, authenticate=False, **kwargs)
-                        msg += " (Auslieferungszustand, ohne Anmeldung)"
+                                             role="administrator", authenticate=False, **kwargs)
+                        msg += " (Auslieferungszustand: Rolle Administrator erzwungen, ohne Anmeldung)"
                     else:
                         msg = vapix.add_user(ip, new_user=name, new_password=pwd,
                                              role=level, **kwargs)

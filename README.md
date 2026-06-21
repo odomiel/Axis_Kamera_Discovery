@@ -106,7 +106,8 @@ Bedienung:
   - **Benutzer** – regulären Axis-Benutzer *anlegen* (mit Rolle
     Administrator/Operator/Viewer) oder *Passwort ändern*. Ist die Kamera noch
     im **Auslieferungszustand** (kein Passwort gesetzt), wird das automatisch
-    erkannt und der Erstbenutzer ohne Anmeldung angelegt.
+    erkannt und der Erstbenutzer ohne Anmeldung als **Administrator** angelegt
+    (die Rolle wird in diesem Fall erzwungen).
   - **ONVIF-Benutzer** – ONVIF-Benutzer *anlegen* (Stufe
     Administrator/Operator/User) oder *Passwort ändern*.
 
