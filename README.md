@@ -34,6 +34,7 @@ Python 3.13 inklusive **Tcl/Tk 9** sowie alle Abhängigkeiten mitbringt und dami
 | Export als CSV | Dialog (`.csv`) | `-o datei.csv` / `--format csv` |
 | Wiederholte Suche (Auto-Refresh) | Checkbox + Intervall | `--watch/-w SEKUNDEN` |
 | Kamera-Weboberfläche im Browser öffnen | Doppelklick auf Zeile | `--open` |
+| Kamera-IP ändern (DHCP/fest, Mehrfachauswahl) | „Kamera Einstellungen" | – |
 | Dark Mode (heller/dunkler Modus) | Einstellungen → Checkbox „Dark Mode" | – |
 | Version anzeigen | im Fenstertitel | `--version/-v` |
 
@@ -92,8 +93,20 @@ Bedienung:
   Kamera) im Browser.
 - **Exportieren…** – speichert die Ergebnisse als CSV oder Texttabelle
   (Format folgt der gewählten Dateiendung).
-- **Kamera Einstellungen** (Button links neben „Einstellungen") – zum Ändern von
-  Einstellungen an den gefundenen Kameras. *(In Entwicklung.)*
+- **Kamera Einstellungen** (Button links neben „Einstellungen") – ändert
+  Einstellungen an den in der Liste **markierten** Kameras (Mehrfachauswahl
+  möglich). Öffnet einen Dialog mit Zugangsdaten (Benutzer/Passwort,
+  Verbindung `auto`/`https`/`http`, optionaler Port, Timeout) und einem
+  „Verbindung testen"-Knopf (lesend, ohne Änderung). Aktuell umgesetzt:
+  **IP-Adresse ändern** in drei Varianten:
+  - *Auf DHCP umstellen* – alle markierten Kameras auf DHCP,
+  - *Feste IP ab Start-IP fortlaufend* – vergibt fortlaufende Adressen,
+  - *Pro Kamera einzeln* – je Kamera ein eigenes IP-Feld.
+
+  Die Aufrufe laufen über die Axis-VAPIX-API (HTTPS mit selbstsignierten
+  Zertifikaten wird unterstützt); das Ergebnis wird je Kamera angezeigt.
+  *(Weitere Funktionen wie Benutzer-/ONVIF-Verwaltung, Firmware-Update und
+  Konfigurationsdateien sind in Entwicklung.)*
 - **Einstellungen** (Menü-Button rechts neben „Exportieren") mit den Einträgen:
   - **Dark Mode** – Checkbox; angehakt schaltet die Oberfläche auf den dunklen
     Modus um, ohne Haken gilt der helle Modus. Die Einstellung bleibt über

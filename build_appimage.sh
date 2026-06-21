@@ -135,6 +135,7 @@ wheel wcwidth     "n.endswith('.whl')"
 echo "==== AppDir zusammenstellen ===="
 mkdir -p "$APPDIR/app"
 cp "$ROOT/axis_discovery_gui.py" "$ROOT/axis_discovery_cli.py" \
+   "$ROOT/axis_discovery_vapix.py" \
    "$ROOT/README.md" "$ROOT/THIRD_PARTY_LICENSES.md" "$ROOT/LICENSE" "$APPDIR/app/"
 
 # Desktop + Icon (fuer appimagetool im AppDir-Wurzelverzeichnis)

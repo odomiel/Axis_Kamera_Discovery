@@ -42,6 +42,7 @@ from axis_discovery_cli import (
     FIELD_NAMES,
     __version__,
 )
+import axis_discovery_vapix as vapix
 
 COLUMNS = FIELD_NAMES
 
@@ -495,6 +496,23 @@ class AxisDiscoveryGUI(tk.Tk):
             arrowcolor=c["fg"],
         )
 
+        # Eingabefelder/Comboboxen (u. a. im Kamera-Einstellungen-Dialog)
+        s.configure("TEntry", fieldbackground=c["field_bg"], foreground=c["fg"],
+                    insertcolor=c["fg"])
+        s.configure("TCombobox", fieldbackground=c["field_bg"], foreground=c["fg"],
+                    background=c["field_bg"], arrowcolor=c["fg"])
+        s.map("TCombobox",
+              fieldbackground=[("readonly", c["field_bg"])],
+              foreground=[("readonly", c["fg"])])
+        s.configure("TLabelframe", background=c["bg"], bordercolor=c["active_bg"])
+        s.configure("TLabelframe.Label", background=c["bg"], foreground=c["fg"])
+        s.configure("TRadiobutton", background=c["bg"], foreground=c["fg"],
+                    indicatorbackground=c["field_bg"])
+        s.map("TRadiobutton",
+              background=[("active", c["bg"])],
+              indicatorbackground=[("selected", c["select_bg"])],
+              foreground=[("disabled", c["disabled_fg"])])
+
         s.configure("TProgressbar", background=c["select_bg"], troughcolor=c["field_bg"])
 
         s.configure("TScrollbar", background=c["heading_bg"], troughcolor=c["field_bg"])
@@ -594,12 +612,16 @@ class AxisDiscoveryGUI(tk.Tk):
 
     # ------------------------------------------------- Kamera-Einstellungen
     def _open_camera_settings(self):
-        # Platzhalter: Funktion zum Aendern von Kamera-Einstellungen folgt.
-        messagebox.showinfo(
-            "Kamera Einstellungen",
-            "Die Funktion zum Aendern von Kamera-Einstellungen wird gerade "
-            "umgesetzt und ist noch nicht verfuegbar.",
-        )
+        selection = self.tree.selection()
+        if not selection:
+            messagebox.showinfo(
+                "Kamera Einstellungen",
+                "Bitte zuerst eine oder mehrere Kameras in der Liste auswaehlen.",
+            )
+            return
+        cams = [dict(zip(COLUMNS, self.tree.item(iid, "values"))) for iid in selection]
+        palette = DARK_COLORS if self.dark_mode_var.get() else LIGHT_COLORS
+        CameraSettingsDialog(self, cams, palette)
 
     # ----------------------------------------------------------- Aktionen
     def _open_in_browser(self, _event):
@@ -630,6 +652,290 @@ class AxisDiscoveryGUI(tk.Tk):
         # Format anhand der Dateiendung (csv -> CSV, sonst Texttabelle)
         export_results(self.cameras, path)
         self.status_var.set(f"Exportiert nach {path}")
+
+
+class CameraSettingsDialog(tk.Toplevel):
+    """Dialog zum Aendern von Einstellungen an einer oder mehreren Kameras.
+
+    Phase 1: IP-Adresse aendern (DHCP, Start-IP fortlaufend, oder pro Kamera).
+    Die Aufrufe laufen in einem Hintergrund-Thread; Ergebnisse je Kamera werden
+    ueber eine Queue eingesammelt und im Ergebnisfeld angezeigt.
+    """
+
+    def __init__(self, master, cameras, palette):
+        super().__init__(master)
+        self.title("Kamera Einstellungen")
+        self.geometry("720x620")
+        self.transient(master)
+        self._palette = palette
+        self.configure(bg=palette["bg"])
+
+        self.cameras = cameras
+        self._queue = queue.Queue()
+        self._working = False
+        self._ip_entries = {}   # Kamera-Index -> StringVar (Modus "pro Kamera")
+        self._mode_var = tk.StringVar(value="dhcp")
+
+        self._build_ui()
+        self._on_mode_change()  # passende Felder anzeigen/ausblenden
+
+    # ------------------------------------------------------------------ UI
+    def _build_ui(self):
+        outer = ttk.Frame(self, padding=10)
+        outer.pack(fill=tk.BOTH, expand=True)
+
+        ttk.Label(
+            outer,
+            text=f"{len(self.cameras)} Kamera(s) ausgewaehlt",
+            font=("TkDefaultFont", 10, "bold"),
+        ).pack(anchor=tk.W)
+
+        # --- Zugangsdaten ---
+        cred = ttk.LabelFrame(outer, text="Zugangsdaten", padding=8)
+        cred.pack(fill=tk.X, pady=(8, 4))
+        self.user_var = tk.StringVar(value="root")
+        self.pass_var = tk.StringVar()
+        self.scheme_var = tk.StringVar(value="auto")
+        self.port_var = tk.StringVar()
+        self.timeout_var = tk.IntVar(value=10)
+
+        ttk.Label(cred, text="Benutzer:").grid(row=0, column=0, sticky=tk.W, padx=4, pady=2)
+        ttk.Entry(cred, textvariable=self.user_var, width=18).grid(row=0, column=1, padx=4, pady=2)
+        ttk.Label(cred, text="Passwort:").grid(row=0, column=2, sticky=tk.W, padx=4, pady=2)
+        ttk.Entry(cred, textvariable=self.pass_var, width=18, show="*").grid(row=0, column=3, padx=4, pady=2)
+
+        ttk.Label(cred, text="Verbindung:").grid(row=1, column=0, sticky=tk.W, padx=4, pady=2)
+        ttk.Combobox(
+            cred, textvariable=self.scheme_var, width=15, state="readonly",
+            values=("auto", "https", "http"),
+        ).grid(row=1, column=1, padx=4, pady=2)
+        ttk.Label(cred, text="Port (optional):").grid(row=1, column=2, sticky=tk.W, padx=4, pady=2)
+        ttk.Entry(cred, textvariable=self.port_var, width=18).grid(row=1, column=3, padx=4, pady=2)
+        ttk.Label(cred, text="Timeout (s):").grid(row=2, column=0, sticky=tk.W, padx=4, pady=2)
+        ttk.Spinbox(cred, from_=2, to=120, width=6, textvariable=self.timeout_var).grid(
+            row=2, column=1, sticky=tk.W, padx=4, pady=2
+        )
+
+        # --- Aktion: IP-Adresse aendern ---
+        action = ttk.LabelFrame(outer, text="IP-Adresse aendern", padding=8)
+        action.pack(fill=tk.X, pady=4)
+
+        ttk.Radiobutton(action, text="Auf DHCP umstellen", value="dhcp",
+                        variable=self._mode_var, command=self._on_mode_change).pack(anchor=tk.W)
+        ttk.Radiobutton(action, text="Feste IP ab Start-IP fortlaufend", value="range",
+                        variable=self._mode_var, command=self._on_mode_change).pack(anchor=tk.W)
+        ttk.Radiobutton(action, text="Pro Kamera einzeln", value="each",
+                        variable=self._mode_var, command=self._on_mode_change).pack(anchor=tk.W)
+
+        # gemeinsame Felder Maske/Gateway (fuer "range" und "each")
+        self.mask_var = tk.StringVar(value="255.255.255.0")
+        self.gw_var = tk.StringVar()
+        self.start_ip_var = tk.StringVar()
+
+        self._shared = ttk.Frame(action)
+        ttk.Label(self._shared, text="Subnetzmaske:").grid(row=0, column=0, sticky=tk.W, padx=4, pady=2)
+        ttk.Entry(self._shared, textvariable=self.mask_var, width=18).grid(row=0, column=1, padx=4, pady=2)
+        ttk.Label(self._shared, text="Gateway (optional):").grid(row=0, column=2, sticky=tk.W, padx=4, pady=2)
+        ttk.Entry(self._shared, textvariable=self.gw_var, width=18).grid(row=0, column=3, padx=4, pady=2)
+
+        self._range_frame = ttk.Frame(action)
+        ttk.Label(self._range_frame, text="Start-IP:").grid(row=0, column=0, sticky=tk.W, padx=4, pady=2)
+        ttk.Entry(self._range_frame, textvariable=self.start_ip_var, width=18).grid(row=0, column=1, padx=4, pady=2)
+        ttk.Label(
+            self._range_frame,
+            text="(wird fortlaufend an die Kameras in Listenreihenfolge vergeben)",
+        ).grid(row=0, column=2, columnspan=2, sticky=tk.W, padx=4)
+
+        # "each": je Kamera ein IP-Feld
+        self._each_frame = ttk.Frame(action)
+        for idx, cam in enumerate(self.cameras):
+            name = cam.get("Name", "?")
+            current = get_first_ip(cam)
+            var = tk.StringVar(value=current)
+            self._ip_entries[idx] = var
+            ttk.Label(self._each_frame, text=f"{name} ({current or '—'}):").grid(
+                row=idx, column=0, sticky=tk.W, padx=4, pady=1
+            )
+            ttk.Entry(self._each_frame, textvariable=var, width=18).grid(
+                row=idx, column=1, padx=4, pady=1
+            )
+
+        # --- Buttons ---
+        btns = ttk.Frame(outer)
+        btns.pack(fill=tk.X, pady=(6, 4))
+        self.test_btn = ttk.Button(btns, text="Verbindung testen", command=self._test_connection)
+        self.test_btn.pack(side=tk.LEFT)
+        self.apply_btn = ttk.Button(btns, text="Anwenden", command=self._apply)
+        self.apply_btn.pack(side=tk.LEFT, padx=(8, 0))
+        ttk.Button(btns, text="Schliessen", command=self.destroy).pack(side=tk.RIGHT)
+
+        # --- Ergebnisanzeige ---
+        ttk.Label(outer, text="Ergebnis:").pack(anchor=tk.W, pady=(6, 0))
+        self.result = scrolledtext.ScrolledText(outer, height=10, wrap=tk.WORD)
+        self.result.configure(
+            bg=self._palette["tree_bg"], fg=self._palette["fg"],
+            insertbackground=self._palette["fg"],
+        )
+        self.result.pack(fill=tk.BOTH, expand=True, pady=(2, 0))
+        self.result.config(state=tk.DISABLED)
+
+    def _on_mode_change(self):
+        mode = self._mode_var.get()
+        for frame in (self._shared, self._range_frame, self._each_frame):
+            frame.pack_forget()
+        if mode == "range":
+            self._range_frame.pack(fill=tk.X, pady=(6, 0))
+            self._shared.pack(fill=tk.X, pady=(2, 0))
+        elif mode == "each":
+            self._each_frame.pack(fill=tk.X, pady=(6, 0))
+            self._shared.pack(fill=tk.X, pady=(2, 0))
+
+    # ------------------------------------------------------------- Logging
+    def _log(self, text):
+        self.result.config(state=tk.NORMAL)
+        self.result.insert(tk.END, text + "\n")
+        self.result.see(tk.END)
+        self.result.config(state=tk.DISABLED)
+
+    def _clear_log(self):
+        self.result.config(state=tk.NORMAL)
+        self.result.delete("1.0", tk.END)
+        self.result.config(state=tk.DISABLED)
+
+    # ---------------------------------------------------------- Hilfsdaten
+    def _conn_kwargs(self):
+        """Verbindungsparameter aus den Eingabefeldern als Dict."""
+        port = self.port_var.get().strip()
+        return {
+            "username": self.user_var.get(),
+            "password": self.pass_var.get(),
+            "scheme": self.scheme_var.get(),
+            "port": int(port) if port.isdigit() else None,
+            "timeout": max(2, self.timeout_var.get()),
+        }
+
+    def _set_busy(self, busy):
+        self._working = busy
+        state = tk.DISABLED if busy else tk.NORMAL
+        self.test_btn.config(state=state)
+        self.apply_btn.config(state=state)
+
+    # ------------------------------------------------- Verbindung testen
+    def _test_connection(self):
+        if self._working:
+            return
+        self._clear_log()
+        self._set_busy(True)
+        self._log("Teste Verbindung (lesend, ohne Aenderung)...")
+        kwargs = self._conn_kwargs()
+        threading.Thread(
+            target=self._worker_test, args=(kwargs,), daemon=True
+        ).start()
+        self.after(150, self._poll)
+
+    def _worker_test(self, kwargs):
+        for cam in self.cameras:
+            ip = get_first_ip(cam)
+            name = cam.get("Name", ip)
+            if not ip:
+                self._queue.put((name, False, "keine IP-Adresse bekannt"))
+                continue
+            try:
+                info = vapix.get_device_info(ip, **kwargs)
+                self._queue.put((name, True, f"{info['model']} (S/N {info['serial']})"))
+            except vapix.VapixError as exc:
+                self._queue.put((name, False, str(exc)))
+        self._queue.put(None)  # Ende-Marker
+
+    # --------------------------------------------------------- Anwenden
+    def _apply(self):
+        if self._working:
+            return
+        mode = self._mode_var.get()
+        # Plausibilitaet pruefen und Zieladressen vorberechnen
+        try:
+            targets = self._compute_targets(mode)
+        except ValueError as exc:
+            messagebox.showerror("Eingabefehler", str(exc), parent=self)
+            return
+
+        confirm = "Auf DHCP umstellen?" if mode == "dhcp" else \
+            "Folgende IP-Adressen setzen?\n\n" + "\n".join(
+                f"  {self.cameras[i].get('Name','?')}: {t}" for i, t in targets.items()
+            )
+        if not messagebox.askyesno("Aenderung bestaetigen", confirm, parent=self):
+            return
+
+        self._clear_log()
+        self._set_busy(True)
+        self._log(f"Wende Aenderung an ({len(self.cameras)} Kamera(s))...")
+        kwargs = self._conn_kwargs()
+        threading.Thread(
+            target=self._worker_apply, args=(mode, targets, kwargs), daemon=True
+        ).start()
+        self.after(150, self._poll)
+
+    def _compute_targets(self, mode):
+        """Berechnet die Ziel-IP je Kamera-Index (leer bei DHCP). Wirft ValueError."""
+        if mode == "dhcp":
+            return {}
+        mask = self.mask_var.get().strip()
+        if not mask:
+            raise ValueError("Bitte eine Subnetzmaske angeben.")
+        targets = {}
+        if mode == "range":
+            start = self.start_ip_var.get().strip()
+            if not start:
+                raise ValueError("Bitte eine Start-IP angeben.")
+            try:
+                for offset in range(len(self.cameras)):
+                    targets[offset] = vapix.next_ip(start, offset)
+            except ValueError:
+                raise ValueError(f"Ungueltige Start-IP: {start}")
+        elif mode == "each":
+            for idx in range(len(self.cameras)):
+                value = self._ip_entries[idx].get().strip()
+                if not value:
+                    raise ValueError(
+                        f"Bitte fuer '{self.cameras[idx].get('Name','?')}' eine IP angeben."
+                    )
+                targets[idx] = value
+        return targets
+
+    def _worker_apply(self, mode, targets, kwargs):
+        mask = self.mask_var.get().strip()
+        gateway = self.gw_var.get().strip()
+        for idx, cam in enumerate(self.cameras):
+            ip = get_first_ip(cam)
+            name = cam.get("Name", ip)
+            if not ip:
+                self._queue.put((name, False, "keine IP-Adresse bekannt"))
+                continue
+            try:
+                if mode == "dhcp":
+                    vapix.set_dhcp(ip, **kwargs)
+                    self._queue.put((name, True, "auf DHCP umgestellt"))
+                else:
+                    new_ip = targets[idx]
+                    vapix.set_static_ip(ip, new_ip=new_ip, subnet_mask=mask,
+                                        gateway=gateway, **kwargs)
+                    self._queue.put((name, True, f"IP gesetzt auf {new_ip}"))
+            except vapix.VapixError as exc:
+                self._queue.put((name, False, str(exc)))
+        self._queue.put(None)
+
+    def _poll(self):
+        try:
+            while True:
+                item = self._queue.get_nowait()
+                if item is None:
+                    self._set_busy(False)
+                    self._log("Fertig.")
+                    return
+                name, ok, msg = item
+                self._log(f"  [{'OK' if ok else 'FEHLER'}] {name}: {msg}")
+        except queue.Empty:
+            self.after(150, self._poll)
 
 
 def main():
