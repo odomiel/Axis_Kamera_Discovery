@@ -14,6 +14,7 @@ betroffen.
 | Tcl | 9.0.3 | Tcl/Tk License (BSD-artig) |
 | Tk | 9.0.3 | Tcl/Tk License (BSD-artig) |
 | libffi | 3.6.0 | libffi License (MIT-artig) |
+| OpenSSL | 3.5.7 | Apache License 2.0 |
 | zeroconf | 0.149.16 | **LGPL-2.1-or-later** |
 | ifaddr | 0.2.0 | MIT |
 | prettytable | 3.17.0 | BSD-3-Clause |
@@ -95,6 +96,20 @@ IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
 CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
 TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
+
+## OpenSSL 3.5.7
+
+Copyright © 1998-2025 The OpenSSL Project Authors. Alle Rechte vorbehalten.
+
+Lizenziert unter der **Apache License, Version 2.0** (permissiv). Der
+vollständige Lizenztext ist erhältlich unter
+https://www.apache.org/licenses/LICENSE-2.0 bzw. im Quellpaket unter `LICENSE.txt`.
+Quellcode: https://github.com/openssl/openssl
+
+Wird im AppImage als `libssl`/`libcrypto` gebündelt und vom Python-`ssl`-Modul
+für HTTPS-Verbindungen zu den Kameras (VAPIX-API) genutzt.
 
 ---
 

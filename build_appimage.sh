@@ -4,9 +4,10 @@
 #
 # Da kein Basis-Image mit Tk 9 existiert, werden Tcl 9, Tk 9 und Python 3.13
 # (erste Version mit offizieller Tcl/Tk-9-Unterstuetzung) aus dem Quellcode
-# gebaut. libffi wird ebenfalls gebaut (fuer _ctypes -> ifaddr/zeroconf).
+# gebaut. libffi wird ebenfalls gebaut (fuer _ctypes -> ifaddr/zeroconf),
+# OpenSSL fuer das ssl-Modul (HTTPS-Zugriff auf die Kameras / VAPIX).
 # Die reinen Laufzeit-Pakete kommen als fertige cp313-Wheels (curl + entpacken),
-# damit kein OpenSSL/pip noetig ist.
+# damit kein pip noetig ist.
 #
 set -euo pipefail
 
@@ -22,6 +23,7 @@ TK_VER=9.0.3
 PY_VER=3.13.14
 PY_XY=3.13
 FFI_VER=3.6.0
+SSL_VER=3.5.7
 
 mkdir -p "$SRC"
 rm -rf "$APPDIR"
@@ -37,10 +39,11 @@ dl "https://downloads.sourceforge.net/project/tcl/Tcl/$TCL_VER/tcl$TCL_VER-src.t
 dl "https://downloads.sourceforge.net/project/tcl/Tcl/$TK_VER/tk$TK_VER-src.tar.gz"    "$SRC/tk.tar.gz"
 dl "https://www.python.org/ftp/python/$PY_VER/Python-$PY_VER.tgz"                       "$SRC/python.tgz"
 dl "https://github.com/libffi/libffi/releases/download/v$FFI_VER/libffi-$FFI_VER.tar.gz" "$SRC/libffi.tar.gz"
+dl "https://github.com/openssl/openssl/releases/download/openssl-$SSL_VER/openssl-$SSL_VER.tar.gz" "$SRC/openssl.tar.gz"
 
 cd "$SRC"
-rm -rf "tcl$TCL_VER" "tk$TK_VER" "Python-$PY_VER" "libffi-$FFI_VER"
-tar xf tcl.tar.gz; tar xf tk.tar.gz; tar xf python.tgz; tar xf libffi.tar.gz
+rm -rf "tcl$TCL_VER" "tk$TK_VER" "Python-$PY_VER" "libffi-$FFI_VER" "openssl-$SSL_VER"
+tar xf tcl.tar.gz; tar xf tk.tar.gz; tar xf python.tgz; tar xf libffi.tar.gz; tar xf openssl.tar.gz
 
 export PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig"
 export LD_LIBRARY_PATH="$PREFIX/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
@@ -51,6 +54,17 @@ cd "$SRC/libffi-$FFI_VER"
 ./configure --prefix="$PREFIX" --disable-static --disable-docs >/dev/null
 make -j"$JOBS" >/dev/null
 make install >/dev/null
+
+# --------------------------------------------------------------- 2b. OpenSSL
+# Wird fuer das Python-ssl-Modul benoetigt (HTTPS-Zugriff auf die Kameras).
+# install_sw: nur Bibliotheken/Header, keine Doku. rpath, damit libssl seine
+# libcrypto im selben lib/-Verzeichnis findet.
+echo "==== OpenSSL $SSL_VER ===="
+cd "$SRC/openssl-$SSL_VER"
+./Configure --prefix="$PREFIX" --libdir=lib --openssldir="$PREFIX/ssl" \
+            shared -Wl,-rpath,'$ORIGIN/../lib' >/dev/null
+make -j"$JOBS" >/dev/null
+make install_sw >/dev/null
 
 # --------------------------------------------------------------- 3. Tcl 9
 echo "==== Tcl $TCL_VER ===="
@@ -76,6 +90,8 @@ cd "$SRC/Python-$PY_VER"
     --prefix="$PREFIX" \
     --enable-shared \
     --with-ensurepip=no \
+    --with-openssl="$PREFIX" \
+    --with-openssl-rpath=auto \
     --with-tcltk-includes="-I$PREFIX/include" \
     --with-tcltk-libs="-L$PREFIX/lib -ltcl9.0 -ltk9.0" \
     CPPFLAGS="-I$PREFIX/include" \
@@ -87,6 +103,8 @@ make install >/dev/null 2>&1
 PYBIN="$PREFIX/bin/python$PY_XY"
 echo ">> Tcl/Tk-Version im neuen Python:"
 "$PYBIN" -c "import tkinter; r=tkinter.Tk(); print('  Tcl/Tk', r.tk.call('info','patchlevel')); r.destroy()"
+echo ">> OpenSSL-Version im neuen Python:"
+"$PYBIN" -c "import ssl; print('  ', ssl.OPENSSL_VERSION)"
 
 # --------------------------------------------------------------- 6. Wheels vendoren
 echo "==== Laufzeit-Pakete (cp313-Wheels) ===="
