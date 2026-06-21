@@ -65,6 +65,7 @@ DEFAULT_SETTINGS = {
     "search_duration": 10,   # "Dauer (s)"
     "autorefresh": False,    # Auto-Refresh aktiv
     "refresh_interval": 30,  # "alle (s)"
+    "hidden_columns": [],    # ausgeblendete Tabellenspalten
 }
 
 # Farbpaletten fuer hellen und dunklen Modus. Die Schluessel sind in beiden
@@ -212,7 +213,48 @@ class AxisDiscoveryGUI(tk.Tk):
         frame.columnconfigure(0, weight=1)
 
         self.tree.bind("<Double-1>", self._open_in_browser)
+        self._apply_column_visibility()  # gespeicherte Spaltenauswahl anwenden
         self._autosize_columns()  # initiale Breite an die Ueberschriften anpassen
+
+    # ----------------------------------------------------- Spalten ein/aus
+    def _apply_column_visibility(self):
+        """Setzt die sichtbaren Spalten gemaess gespeicherter Auswahl."""
+        hidden = set(self.get_setting("hidden_columns") or [])
+        visible = [c for c in COLUMNS if c not in hidden]
+        # Mindestens eine Spalte sichtbar lassen
+        self.tree["displaycolumns"] = visible if visible else list(COLUMNS)
+
+    def _show_columns_dialog(self):
+        """Kleiner Dialog mit einer Checkbox je Spalte (sichtbar/ausgeblendet)."""
+        palette = DARK_COLORS if self.dark_mode_var.get() else LIGHT_COLORS
+        win = tk.Toplevel(self)
+        win.title("Spalten")
+        win.transient(self)
+        win.resizable(False, False)
+        win.configure(bg=palette["bg"])
+        frame = ttk.Frame(win, padding=10)
+        frame.pack(fill=tk.BOTH, expand=True)
+        ttk.Label(frame, text="Sichtbare Spalten:").pack(anchor=tk.W, pady=(0, 6))
+
+        hidden = set(self.get_setting("hidden_columns") or [])
+        self._col_vars = {}
+        for col in COLUMNS:
+            var = tk.BooleanVar(value=col not in hidden)
+            self._col_vars[col] = var
+            ttk.Checkbutton(frame, text=col, variable=var,
+                            command=self._on_columns_changed).pack(anchor=tk.W)
+        ttk.Button(frame, text="Schliessen", command=win.destroy).pack(anchor=tk.E, pady=(8, 0))
+
+    def _on_columns_changed(self):
+        visible = [c for c, v in self._col_vars.items() if v.get()]
+        if not visible:
+            # Mindestens eine Spalte muss sichtbar bleiben -> erste wieder aktivieren
+            first = next(iter(self._col_vars))
+            self._col_vars[first].set(True)
+            visible = [first]
+        hidden = [c for c in COLUMNS if c not in visible]
+        self.set_setting("hidden_columns", hidden)
+        self._apply_column_visibility()
 
     def _autosize_columns(self):
         """Passt jede Spaltenbreite an den breitesten Inhalt (inkl. Ueberschrift) an."""
@@ -380,6 +422,7 @@ class AxisDiscoveryGUI(tk.Tk):
         ttk.Separator(frame, orient="horizontal").pack(fill=tk.X)
 
         for label, command in (
+            ("Spalten...", self._show_columns_dialog),
             ("Info", self._show_info),
             ("Hilfe", self._show_help),
             ("Lizenzen", self._show_licenses),

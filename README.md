@@ -144,6 +144,9 @@ Bedienung:
   selbstsignierten Zertifikaten wird unterstützt); das Ergebnis wird je Kamera
   angezeigt.
 - **Einstellungen** (Menü-Button rechts neben „Exportieren") mit den Einträgen:
+  - **Spalten…** – öffnet einen Dialog mit einer Checkbox je Tabellenspalte;
+    abgewählte Spalten werden ausgeblendet. Die Auswahl wird in `settings.json`
+    gespeichert (mindestens eine Spalte bleibt sichtbar).
   - **Dark Mode** – Checkbox; angehakt schaltet die Oberfläche auf den dunklen
     Modus um, ohne Haken gilt der helle Modus. Die Einstellung bleibt über
     Neustarts erhalten – sie wird in der gemeinsamen Einstellungsdatei
