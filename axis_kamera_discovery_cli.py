@@ -23,7 +23,7 @@ import argparse
 
 # Versionsschema: JJ.MM.TT, bei mehreren Releases am selben Tag b1, b2, ...
 # (wird von bump_version.py gepflegt)
-__version__ = "26.06.21b25"
+__version__ = "26.06.21b26"
 
 FIELD_NAMES = [
     "Name",
@@ -53,6 +53,9 @@ class AxisDiscovery:
 
             # Filtern Sie den zusätzlichen Teil aus dem Namen
             name = name.replace("._axis-video._tcp.local.", "")
+            # Seriennummer/MAC aus dem Namen entfernen -> nur der Kameratyp bleibt
+            # (mDNS-Name ist z. B. "AXIS M7001 - ACCC8E07ADC9")
+            name = name.rsplit(" - ", 1)[0].strip()
 
             # Konvertieren Sie Byte-Objekte in Strings für die MAC-Adresse/Seriennummer
             mac_address = info.properties.get(b'macaddress', b'').decode('utf-8')

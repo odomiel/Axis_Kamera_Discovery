@@ -5,7 +5,7 @@ Findet **Axis-Netzwerkkameras** im lokalen Netz per Zeroconf/mDNS
 
 | Spalte | Inhalt |
 |---|---|
-| Name | Gerätename |
+| Name | Kameratyp/Modell (ohne Seriennummer) |
 | IP Adresse: Zeroconfig | Link-Local-/Zeroconf-Adresse (`169.254.x.x`) |
 | IP Adresse: Konfiguriert | konfigurierte (reguläre) IP-Adresse |
 | Port | HTTP-Port |
