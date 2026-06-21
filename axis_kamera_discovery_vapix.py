@@ -1,4 +1,4 @@
-# Axis IP Utility - VAPIX-Client zum Aendern von Kamera-Einstellungen.
+# Axis_Kamera_Discovery - VAPIX-Client zum Aendern von Kamera-Einstellungen.
 # Copyright (C) 2026 Mirik
 #
 # This program is free software: you can redistribute it and/or modify

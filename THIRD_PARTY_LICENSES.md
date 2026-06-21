@@ -1,8 +1,8 @@
 # Drittanbieter-Lizenzen
 
-Das ausgelieferte AppImage von **Axis IP Utility** bündelt die unten
-aufgeführten Komponenten. Der eigene Programmcode (`axis_discovery_cli.py`,
-`axis_discovery_gui.py`, `bump_version.py`, `build_appimage.sh`) steht unter der
+Das ausgelieferte AppImage von **Axis_Kamera_Discovery** bündelt die unten
+aufgeführten Komponenten. Der eigene Programmcode (`axis_kamera_discovery_cli.py`,
+`axis_kamera_discovery_gui.py`, `bump_version.py`, `build_appimage.sh`) steht unter der
 **GPL-3.0-or-later** (siehe `LICENSE`) und ist von den folgenden Lizenzen nicht
 betroffen.
 
@@ -24,7 +24,7 @@ betroffen.
 > permissiv lizenziert. `zeroconf` steht unter der LGPL (schwaches Copyleft).
 > Beim Verteilen des AppImage muss der LGPL-Lizenztext beiliegen und es muss
 > möglich sein, `zeroconf` durch eine eigene Version zu ersetzen – beim AppImage
-> ist das über `./AxisDiscovery-x86_64.AppImage --appimage-extract`, Austausch
+> ist das über `./Axis_Kamera_Discovery-x86_64.AppImage --appimage-extract`, Austausch
 > der Dateien und erneutes Packen gegeben. Der Quellcode ist erhältlich unter
 > https://github.com/python-zeroconf/python-zeroconf .
 

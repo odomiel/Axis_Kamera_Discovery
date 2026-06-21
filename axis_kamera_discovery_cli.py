@@ -1,4 +1,4 @@
-# Axis IP Utility - findet Axis-Netzwerkkameras per Zeroconf/mDNS.
+# Axis_Kamera_Discovery - findet Axis-Netzwerkkameras per Zeroconf/mDNS.
 # Copyright (C) 2026 Mirik
 #
 # This program is free software: you can redistribute it and/or modify
@@ -23,7 +23,7 @@ import argparse
 
 # Versionsschema: JJ.MM.TT, bei mehreren Releases am selben Tag b1, b2, ...
 # (wird von bump_version.py gepflegt)
-__version__ = "26.06.21b24"
+__version__ = "26.06.21b25"
 
 FIELD_NAMES = [
     "Name",
@@ -161,7 +161,7 @@ def open_cameras(cameras, already_opened=None):
     return already_opened
 
 def print_version():
-    print(f"Axis Discovery CLI Version {__version__}")
+    print(f"Axis_Kamera_Discovery CLI Version {__version__}")
 
 def main():
     parser = argparse.ArgumentParser(description='Discover Axis Cameras and export to a text file.')

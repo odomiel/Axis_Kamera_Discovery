@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """Grafische Oberflaeche fuer die Axis-Kamera-Suche.
 
-Verwendet die Discovery-Logik aus axis_discovery_cli.py wieder und stellt
+Verwendet die Discovery-Logik aus axis_kamera_discovery_cli.py wieder und stellt
 sie ueber eine Tkinter-Oberflaeche bereit. Die Suche laeuft in einem
 Hintergrund-Thread, damit das Fenster waehrend der ~10 Sekunden nicht
 einfriert.
 """
 
-# Axis IP Utility - findet Axis-Netzwerkkameras per Zeroconf/mDNS.
+# Axis_Kamera_Discovery - findet Axis-Netzwerkkameras per Zeroconf/mDNS.
 # Copyright (C) 2026 Mirik
 #
 # This program is free software: you can redistribute it and/or modify
@@ -35,22 +35,22 @@ import tkinter as tk
 import tkinter.font as tkfont
 from tkinter import filedialog, messagebox, scrolledtext, ttk
 
-from axis_discovery_cli import (
+from axis_kamera_discovery_cli import (
     AxisDiscovery,
     export_results,
     get_first_ip,
     FIELD_NAMES,
     __version__,
 )
-import axis_discovery_vapix as vapix
+import axis_kamera_discovery_vapix as vapix
 
 COLUMNS = FIELD_NAMES
 
 # Speicherort fuer benutzerdefinierte Einstellungen (z. B. Dark Mode).
-# Folgt XDG: $XDG_CONFIG_HOME/axis_ip_utility/settings.json, sonst ~/.config/...
+# Folgt XDG: $XDG_CONFIG_HOME/axis_kamera_discovery/settings.json, sonst ~/.config/...
 CONFIG_DIR = os.path.join(
     os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config"),
-    "axis_ip_utility",
+    "axis_kamera_discovery",
 )
 CONFIG_PATH = os.path.join(CONFIG_DIR, "settings.json")
 
@@ -97,7 +97,7 @@ DARK_COLORS = {
 class AxisDiscoveryGUI(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title(f"Axis Kamera Discovery {__version__}")
+        self.title(f"Axis_Kamera_Discovery {__version__}")
         self.geometry("1000x500")
         self.minsize(700, 350)
 
@@ -581,7 +581,7 @@ class AxisDiscoveryGUI(tk.Tk):
     def _show_info(self):
         messagebox.showinfo(
             "Info",
-            "Axis IP Utility\n"
+            "Axis_Kamera_Discovery\n"
             f"Version {__version__}\n\n"
             "Findet Axis-Kameras im lokalen Netzwerk per Zeroconf/mDNS.\n\n"
             "Komponenten:\n"

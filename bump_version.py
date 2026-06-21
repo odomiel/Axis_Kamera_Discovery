@@ -6,14 +6,14 @@ Regeln:
   * Weitere Releases am selben Tag -> Suffix b1, b2, b3 ... hochzaehlend
     (z. B. 26.06.20b1, 26.06.20b2)
 
-Die Version wird in axis_discovery_cli.py (__version__) gepflegt.
+Die Version wird in axis_kamera_discovery_cli.py (__version__) gepflegt.
 Aufruf:
   python3 bump_version.py            # naechste Version setzen und schreiben
   python3 bump_version.py --print    # nur die *aktuelle* Version ausgeben
   python3 bump_version.py --dry-run  # naechste Version berechnen, aber nicht schreiben
 """
 
-# Axis IP Utility - findet Axis-Netzwerkkameras per Zeroconf/mDNS.
+# Axis_Kamera_Discovery - findet Axis-Netzwerkkameras per Zeroconf/mDNS.
 # Copyright (C) 2026 Mirik
 #
 # This program is free software: you can redistribute it and/or modify
@@ -35,7 +35,7 @@ import re
 import sys
 from pathlib import Path
 
-VERSION_FILE = Path(__file__).resolve().parent / "axis_discovery_cli.py"
+VERSION_FILE = Path(__file__).resolve().parent / "axis_kamera_discovery_cli.py"
 _VERSION_RE = re.compile(r'^__version__\s*=\s*["\']([^"\']*)["\']', re.MULTILINE)
 _PARSE_RE = re.compile(r'^(\d{2}\.\d{2}\.\d{2})(?:b(\d+))?$')
 
@@ -43,7 +43,7 @@ _PARSE_RE = re.compile(r'^(\d{2}\.\d{2}\.\d{2})(?:b(\d+))?$')
 def read_version(text):
     match = _VERSION_RE.search(text)
     if not match:
-        raise SystemExit("Konnte __version__ in axis_discovery_cli.py nicht finden.")
+        raise SystemExit("Konnte __version__ in axis_kamera_discovery_cli.py nicht finden.")
     return match.group(1)
 
 

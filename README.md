@@ -1,4 +1,4 @@
-# Axis IP Utility
+# Axis_Kamera_Discovery
 
 Findet **Axis-Netzwerkkameras** im lokalen Netz per Zeroconf/mDNS
 (`_axis-video._tcp.local.`) und zeigt sie mit folgenden Spalten an:
@@ -14,8 +14,8 @@ Findet **Axis-Netzwerkkameras** im lokalen Netz per Zeroconf/mDNS
 
 Das Projekt enthält zwei Oberflächen mit **identischem Funktionsumfang**:
 
-- **GUI** (`axis_discovery_gui.py`) – grafische Tkinter-Oberfläche
-- **CLI** (`axis_discovery_cli.py`) – Kommandozeilen-Werkzeug
+- **GUI** (`axis_kamera_discovery_gui.py`) – grafische Tkinter-Oberfläche
+- **CLI** (`axis_kamera_discovery_cli.py`) – Kommandozeilen-Werkzeug
 
 Beide lassen sich als **eigenständiges AppImage** bündeln, das ein komplettes
 Python 3.13 inklusive **Tcl/Tk 9** sowie alle Abhängigkeiten mitbringt und damit
@@ -61,13 +61,13 @@ Python 3.13 inklusive **Tcl/Tk 9** sowie alle Abhängigkeiten mitbringt und dami
 ./build_appimage.sh
 
 # GUI starten (oder im Dateimanager doppelklicken)
-./AxisDiscovery-x86_64.AppImage
+./Axis_Kamera_Discovery-x86_64.AppImage
 ```
 
 Beim Build entstehen:
 
-- `AxisDiscovery-<version>-x86_64.AppImage` – versioniertes Artefakt
-- `AxisDiscovery-x86_64.AppImage` – Symlink auf die aktuelle Version
+- `Axis_Kamera_Discovery-<version>-x86_64.AppImage` – versioniertes Artefakt
+- `Axis_Kamera_Discovery-x86_64.AppImage` – Symlink auf die aktuelle Version
 
 ---
 
@@ -76,9 +76,9 @@ Beim Build entstehen:
 Start ohne Argumente öffnet das Fenster:
 
 ```bash
-./AxisDiscovery-x86_64.AppImage
+./Axis_Kamera_Discovery-x86_64.AppImage
 # oder direkt aus dem Quellcode:
-python3 axis_discovery_gui.py
+python3 axis_kamera_discovery_gui.py
 ```
 
 Bedienung:
@@ -147,7 +147,7 @@ Bedienung:
   - **Dark Mode** – Checkbox; angehakt schaltet die Oberfläche auf den dunklen
     Modus um, ohne Haken gilt der helle Modus. Die Einstellung bleibt über
     Neustarts erhalten – sie wird in der gemeinsamen Einstellungsdatei
-    `~/.config/axis_ip_utility/settings.json` (bzw. `$XDG_CONFIG_HOME`) abgelegt,
+    `~/.config/axis_kamera_discovery/settings.json` (bzw. `$XDG_CONFIG_HOME`) abgelegt,
     in der auch künftige Einstellungen gespeichert werden.
   - **Info** – Programmname und Version
   - **Hilfe** – zeigt diese README in einem Fenster
@@ -162,11 +162,11 @@ Bedienung:
 durch Angabe eines Flags aufgerufen:
 
 ```bash
-./AxisDiscovery-x86_64.AppImage cli --help
-./AxisDiscovery-x86_64.AppImage --show          # Flag genügt -> CLI
+./Axis_Kamera_Discovery-x86_64.AppImage cli --help
+./Axis_Kamera_Discovery-x86_64.AppImage --show          # Flag genügt -> CLI
 
 # Direkt aus dem Quellcode:
-python3 axis_discovery_cli.py --help
+python3 axis_kamera_discovery_cli.py --help
 ```
 
 ### Optionen
@@ -186,22 +186,22 @@ python3 axis_discovery_cli.py --help
 
 ```bash
 # Einmalige Suche, Tabelle in der Konsole
-python3 axis_discovery_cli.py --show
+python3 axis_kamera_discovery_cli.py --show
 
 # 15 Sekunden suchen und als CSV exportieren
-python3 axis_discovery_cli.py -t 15 -o kameras.csv
+python3 axis_kamera_discovery_cli.py -t 15 -o kameras.csv
 
 # Als Texttabelle exportieren (Format per Flag erzwungen)
-python3 axis_discovery_cli.py -o kameras.txt -f txt
+python3 axis_kamera_discovery_cli.py -o kameras.txt -f txt
 
 # Alle 30 Sekunden suchen und Ergebnis anzeigen
-python3 axis_discovery_cli.py --watch 30 --show
+python3 axis_kamera_discovery_cli.py --watch 30 --show
 
 # Gefundene Kameras im Browser öffnen
-python3 axis_discovery_cli.py --open
+python3 axis_kamera_discovery_cli.py --open
 
 # Über das AppImage
-./AxisDiscovery-x86_64.AppImage cli -t 20 -o kameras.csv
+./Axis_Kamera_Discovery-x86_64.AppImage cli -t 20 -o kameras.csv
 ```
 
 ---
@@ -229,12 +229,12 @@ python3 bump_version.py             # nächste Version setzen und in den Code sc
 
 ```
 axis_IP_Utility/
-├── axis_discovery_cli.py        # Discovery-Kernlogik + CLI
-├── axis_discovery_gui.py        # Tkinter-GUI (nutzt die Kernlogik)
+├── axis_kamera_discovery_cli.py        # Discovery-Kernlogik + CLI
+├── axis_kamera_discovery_gui.py        # Tkinter-GUI (nutzt die Kernlogik)
 ├── bump_version.py              # Versionsverwaltung (JJ.MM.TT + bN)
 ├── build_appimage.sh            # Build (Tcl/Tk 9 + Python 3.13 aus Quellcode)
-├── appimage/AxisDiscovery/
-│   └── AxisDiscovery.png        # Icon für das AppImage
+├── appimage/Axis_Kamera_Discovery/
+│   └── Axis_Kamera_Discovery.png        # Icon für das AppImage
 ├── THIRD_PARTY_LICENSES.md      # Lizenzen der gebündelten Komponenten
 ├── LICENSE                      # GPL-3.0 Lizenztext
 └── README.md

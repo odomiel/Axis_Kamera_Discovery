@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Baut ein eigenstaendiges AppImage der Axis-Discovery-GUI mit Tcl/Tk 9.
+# Baut ein eigenstaendiges AppImage von Axis_Kamera_Discovery mit Tcl/Tk 9.
 #
 # Da kein Basis-Image mit Tk 9 existiert, werden Tcl 9, Tk 9 und Python 3.13
 # (erste Version mit offizieller Tcl/Tk-9-Unterstuetzung) aus dem Quellcode
@@ -134,20 +134,20 @@ wheel wcwidth     "n.endswith('.whl')"
 # --------------------------------------------------------------- 7. App + AppDir
 echo "==== AppDir zusammenstellen ===="
 mkdir -p "$APPDIR/app"
-cp "$ROOT/axis_discovery_gui.py" "$ROOT/axis_discovery_cli.py" \
-   "$ROOT/axis_discovery_vapix.py" \
+cp "$ROOT/axis_kamera_discovery_gui.py" "$ROOT/axis_kamera_discovery_cli.py" \
+   "$ROOT/axis_kamera_discovery_vapix.py" \
    "$ROOT/README.md" "$ROOT/THIRD_PARTY_LICENSES.md" "$ROOT/LICENSE" "$APPDIR/app/"
 
 # Desktop + Icon (fuer appimagetool im AppDir-Wurzelverzeichnis)
-cp "$ROOT/appimage/AxisDiscovery/AxisDiscovery.png" "$APPDIR/AxisDiscovery.png"
-cat > "$APPDIR/AxisDiscovery.desktop" <<'DESKTOP'
+cp "$ROOT/appimage/Axis_Kamera_Discovery/Axis_Kamera_Discovery.png" "$APPDIR/Axis_Kamera_Discovery.png"
+cat > "$APPDIR/Axis_Kamera_Discovery.desktop" <<'DESKTOP'
 [Desktop Entry]
 Type=Application
-Name=AxisDiscovery
-GenericName=Axis Kamera Discovery
+Name=Axis_Kamera_Discovery
+GenericName=Axis_Kamera_Discovery
 Comment=Findet Axis-Kameras im lokalen Netzwerk per Zeroconf
 Exec=AppRun %u
-Icon=AxisDiscovery
+Icon=Axis_Kamera_Discovery
 Categories=Network;Utility;
 Terminal=false
 DESKTOP
@@ -164,9 +164,9 @@ export LD_LIBRARY_PATH="\$HERE/usr/lib\${LD_LIBRARY_PATH:+:\$LD_LIBRARY_PATH}"
 # TCL_LIBRARY/TK_LIBRARY noetig (waere sogar fehleranfaellig).
 PY="\$HERE/usr/bin/python$PY_XY"
 case "\${1:-}" in
-    cli) shift; exec "\$PY" "\$HERE/app/axis_discovery_cli.py" "\$@" ;;
-    -*)  exec "\$PY" "\$HERE/app/axis_discovery_cli.py" "\$@" ;;
-    *)   exec "\$PY" "\$HERE/app/axis_discovery_gui.py" "\$@" ;;
+    cli) shift; exec "\$PY" "\$HERE/app/axis_kamera_discovery_cli.py" "\$@" ;;
+    -*)  exec "\$PY" "\$HERE/app/axis_kamera_discovery_cli.py" "\$@" ;;
+    *)   exec "\$PY" "\$HERE/app/axis_kamera_discovery_gui.py" "\$@" ;;
 esac
 APPRUN
 chmod +x "$APPDIR/AppRun"
@@ -182,8 +182,8 @@ dl "https://github.com/AppImage/appimagetool/releases/download/continuous/appima
 chmod +x "$AIT"
 
 VERSION="$(python3 "$ROOT/bump_version.py" --print)"
-OUT="$ROOT/AxisDiscovery-${VERSION}-x86_64.AppImage"
+OUT="$ROOT/Axis_Kamera_Discovery-${VERSION}-x86_64.AppImage"
 ARCH=x86_64 "$AIT" --appimage-extract-and-run "$APPDIR" "$OUT" 2>&1 | tail -5
-ln -sfn "$(basename "$OUT")" "$ROOT/AxisDiscovery-x86_64.AppImage"
+ln -sfn "$(basename "$OUT")" "$ROOT/Axis_Kamera_Discovery-x86_64.AppImage"
 
 echo ">> Fertig: $OUT"
