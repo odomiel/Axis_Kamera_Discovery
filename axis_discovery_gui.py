@@ -810,9 +810,10 @@ class CameraSettingsDialog(tk.Toplevel):
         ).pack(anchor=tk.W, pady=(2, 0))
         ttk.Label(
             tab_user,
-            text="Ersteinstellung (Auslieferungszustand anhaken): moderne Kameras "
-            "ueber \"Benutzer anlegen\" mit Benutzer 'root'; aeltere Kameras "
-            "(z. B. M7001) ueber \"Passwort aendern\" fuer Benutzer 'root'.",
+            text="Ersteinstellung: \"Auslieferungszustand\" anhaken und \"Benutzer "
+            "anlegen\" mit Benutzer 'root' + Passwort. Funktioniert fuer moderne "
+            "Kameras (legt den Erstadmin an) wie aeltere (z. B. M7001: setzt das "
+            "Passwort des vorhandenen 'root').",
             wraplength=560, justify=tk.LEFT,
         ).pack(anchor=tk.W, pady=(2, 0))
 
@@ -1088,8 +1089,20 @@ class CameraSettingsDialog(tk.Toplevel):
                         eff_role = "administrator" if factory else level
 
                         def op(ck, auth):
-                            return vapix.add_user(ip, new_user=name, new_password=pwd,
-                                                  role=eff_role, authenticate=auth, **ck)
+                            try:
+                                return vapix.add_user(ip, new_user=name, new_password=pwd,
+                                                      role=eff_role, authenticate=auth, **ck)
+                            except vapix.VapixError:
+                                # Ohne Anmeldung (moderne werksneue Kamera) ist
+                                # "anlegen" der einzige Weg -> Fehler weiterreichen.
+                                if not auth:
+                                    raise
+                                # Aeltere Kamera: 'root' existiert bereits ->
+                                # stattdessen dessen Passwort setzen.
+                                return (vapix.set_user_password(
+                                    ip, target_user=name, new_password=pwd,
+                                    authenticate=auth, **ck)
+                                    + " (vorhandener Benutzer, Passwort gesetzt)")
                     else:
                         def op(ck, auth):
                             return vapix.set_user_password(ip, target_user=name,
