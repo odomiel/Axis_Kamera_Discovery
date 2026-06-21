@@ -146,3 +146,141 @@ def next_ip(ip_str, step=1):
     value = (parts[0] << 24) | (parts[1] << 16) | (parts[2] << 8) | parts[3]
     value += step
     return ".".join(str((value >> shift) & 0xFF) for shift in (24, 16, 8, 0))
+
+
+# =====================================================================
+# Benutzerverwaltung (regulaere Axis-Benutzer ueber pwdgrp.cgi)
+# =====================================================================
+
+# Rolle -> Axis-Sekundaergruppen (sgrp). "users" ist die Primaergruppe.
+USER_ROLES = {
+    "administrator": "admin:operator:viewer:ptz",
+    "operator": "operator:viewer:ptz",
+    "viewer": "viewer",
+}
+
+
+def add_user(ip, username, password, new_user, new_password, role="viewer",
+             scheme="auto", port=None, timeout=10):
+    """Legt einen regulaeren Axis-Benutzer mit der gewuenschten Rolle an."""
+    params = {
+        "action": "add",
+        "user": new_user,
+        "pwd": new_password,
+        "grp": "users",
+        "sgrp": USER_ROLES.get(role, "viewer"),
+    }
+    path = f"/axis-cgi/pwdgrp.cgi?{urllib.parse.urlencode(params)}"
+    text = _request_auto(ip, username, password, path, scheme, port, timeout)
+    if "Error" in text:
+        raise VapixError(f"Geraet meldete: {text.strip()}")
+    return f"Benutzer '{new_user}' angelegt ({role})"
+
+
+def set_user_password(ip, username, password, target_user, new_password,
+                      scheme="auto", port=None, timeout=10):
+    """Aendert das Passwort eines bestehenden regulaeren Axis-Benutzers."""
+    params = {"action": "update", "user": target_user, "pwd": new_password}
+    path = f"/axis-cgi/pwdgrp.cgi?{urllib.parse.urlencode(params)}"
+    text = _request_auto(ip, username, password, path, scheme, port, timeout)
+    if "Error" in text:
+        raise VapixError(f"Geraet meldete: {text.strip()}")
+    return f"Passwort von '{target_user}' geaendert"
+
+
+# =====================================================================
+# ONVIF-Benutzerverwaltung (ONVIF Device Service per SOAP)
+# =====================================================================
+
+ONVIF_LEVELS = ("Administrator", "Operator", "User")
+
+_ONVIF_ENVELOPE = (
+    '<?xml version="1.0" encoding="UTF-8"?>'
+    '<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope">'
+    '<s:Body xmlns:tds="http://www.onvif.org/ver10/device/wsdl" '
+    'xmlns:tt="http://www.onvif.org/ver10/schema">{body}</s:Body></s:Envelope>'
+)
+
+
+def _xml_escape(text):
+    return (text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+            .replace('"', "&quot;").replace("'", "&apos;"))
+
+
+def _extract_soap_fault(text):
+    """Holt eine lesbare Fehlermeldung aus einer SOAP-Fault-Antwort."""
+    for tag in ("faultstring", "s:Text", "Text", "faultcode", "s:Reason"):
+        start = text.find(f"<{tag}")
+        if start != -1:
+            gt = text.find(">", start)
+            end = text.find(f"</{tag}>", gt)
+            if gt != -1 and end != -1:
+                inner = text[gt + 1:end].strip()
+                if inner:
+                    return inner
+    return ""
+
+
+def _onvif_post(ip, username, password, inner, scheme, port, timeout):
+    """POSTet einen SOAP-Body an das ONVIF Device Service der Kamera."""
+    if port is None:
+        port = DEFAULT_PORTS[scheme]
+    host_port = f"{ip}:{port}"
+    url = f"{scheme}://{host_port}/onvif/device_service"
+    body = _ONVIF_ENVELOPE.format(body=inner).encode("utf-8")
+    opener = _build_opener(host_port, username, password)
+    req = urllib.request.Request(
+        url, data=body,
+        headers={"Content-Type": "application/soap+xml; charset=utf-8"},
+    )
+    try:
+        with opener.open(req, timeout=timeout) as resp:
+            return resp.read().decode("utf-8", errors="replace")
+    except urllib.error.HTTPError as exc:
+        if exc.code == 401:
+            raise VapixError("Authentifizierung fehlgeschlagen (Benutzer/Passwort?).")
+        detail = exc.read().decode("utf-8", errors="replace")
+        reason = _extract_soap_fault(detail) or f"HTTP {exc.code}: {exc.reason}"
+        raise VapixError(f"ONVIF-Fehler: {reason}")
+    except urllib.error.URLError as exc:
+        raise VapixError(f"Nicht erreichbar: {exc.reason}")
+    except (TimeoutError, OSError) as exc:
+        raise VapixError(f"Verbindungsfehler: {exc}")
+
+
+def _onvif_post_auto(ip, username, password, inner, scheme, port, timeout):
+    """Wie _onvif_post, aber 'auto' probiert erst HTTPS, dann HTTP."""
+    if scheme != "auto":
+        return _onvif_post(ip, username, password, inner, scheme, port, timeout)
+    try:
+        return _onvif_post(ip, username, password, inner, "https", port, timeout)
+    except VapixError:
+        return _onvif_post(ip, username, password, inner, "http", port, timeout)
+
+
+def add_onvif_user(ip, username, password, new_user, new_password,
+                   level="Administrator", scheme="auto", port=None, timeout=10):
+    """Legt einen ONVIF-Benutzer an (ONVIF CreateUsers)."""
+    inner = (
+        "<tds:CreateUsers><tds:User>"
+        f"<tt:Username>{_xml_escape(new_user)}</tt:Username>"
+        f"<tt:Password>{_xml_escape(new_password)}</tt:Password>"
+        f"<tt:UserLevel>{level}</tt:UserLevel>"
+        "</tds:User></tds:CreateUsers>"
+    )
+    _onvif_post_auto(ip, username, password, inner, scheme, port, timeout)
+    return f"ONVIF-Benutzer '{new_user}' angelegt ({level})"
+
+
+def set_onvif_user_password(ip, username, password, target_user, new_password,
+                            level="Administrator", scheme="auto", port=None, timeout=10):
+    """Aendert Passwort/Stufe eines bestehenden ONVIF-Benutzers (ONVIF SetUser)."""
+    inner = (
+        "<tds:SetUser><tds:User>"
+        f"<tt:Username>{_xml_escape(target_user)}</tt:Username>"
+        f"<tt:Password>{_xml_escape(new_password)}</tt:Password>"
+        f"<tt:UserLevel>{level}</tt:UserLevel>"
+        "</tds:User></tds:SetUser>"
+    )
+    _onvif_post_auto(ip, username, password, inner, scheme, port, timeout)
+    return f"ONVIF-Passwort von '{target_user}' geaendert"

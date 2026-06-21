@@ -506,6 +506,11 @@ class AxisDiscoveryGUI(tk.Tk):
               foreground=[("readonly", c["fg"])])
         s.configure("TLabelframe", background=c["bg"], bordercolor=c["active_bg"])
         s.configure("TLabelframe.Label", background=c["bg"], foreground=c["fg"])
+        s.configure("TNotebook", background=c["bg"], bordercolor=c["active_bg"])
+        s.configure("TNotebook.Tab", background=c["heading_bg"], foreground=c["fg"])
+        s.map("TNotebook.Tab",
+              background=[("selected", c["bg"]), ("active", c["active_bg"])],
+              foreground=[("selected", c["fg"])])
         s.configure("TRadiobutton", background=c["bg"], foreground=c["fg"],
                     indicatorbackground=c["field_bg"])
         s.map("TRadiobutton",
@@ -657,7 +662,9 @@ class AxisDiscoveryGUI(tk.Tk):
 class CameraSettingsDialog(tk.Toplevel):
     """Dialog zum Aendern von Einstellungen an einer oder mehreren Kameras.
 
-    Phase 1: IP-Adresse aendern (DHCP, Start-IP fortlaufend, oder pro Kamera).
+    Reiter "IP-Adresse": IP aendern (DHCP, Start-IP fortlaufend, oder pro Kamera).
+    Reiter "Benutzer": regulaeren Axis-Benutzer anlegen oder dessen Passwort aendern.
+    Reiter "ONVIF-Benutzer": ONVIF-Benutzer anlegen oder dessen Passwort aendern.
     Die Aufrufe laufen in einem Hintergrund-Thread; Ergebnisse je Kamera werden
     ueber eine Queue eingesammelt und im Ergebnisfeld angezeigt.
     """
@@ -677,7 +684,8 @@ class CameraSettingsDialog(tk.Toplevel):
         self._mode_var = tk.StringVar(value="dhcp")
 
         self._build_ui()
-        self._on_mode_change()  # passende Felder anzeigen/ausblenden
+        self._on_mode_change()   # passende IP-Felder anzeigen/ausblenden
+        self._on_user_action()   # Rollen-Feld je nach Benutzer-Aktion schalten
 
     # ------------------------------------------------------------------ UI
     def _build_ui(self):
@@ -716,15 +724,18 @@ class CameraSettingsDialog(tk.Toplevel):
             row=2, column=1, sticky=tk.W, padx=4, pady=2
         )
 
-        # --- Aktion: IP-Adresse aendern ---
-        action = ttk.LabelFrame(outer, text="IP-Adresse aendern", padding=8)
-        action.pack(fill=tk.X, pady=4)
+        # --- Aktionen in Reitern ---
+        self.nb = ttk.Notebook(outer)
+        self.nb.pack(fill=tk.X, pady=4)
 
-        ttk.Radiobutton(action, text="Auf DHCP umstellen", value="dhcp",
+        # ===== Reiter: IP-Adresse =====
+        tab_ip = ttk.Frame(self.nb, padding=8)
+        self.nb.add(tab_ip, text="IP-Adresse")
+        ttk.Radiobutton(tab_ip, text="Auf DHCP umstellen", value="dhcp",
                         variable=self._mode_var, command=self._on_mode_change).pack(anchor=tk.W)
-        ttk.Radiobutton(action, text="Feste IP ab Start-IP fortlaufend", value="range",
+        ttk.Radiobutton(tab_ip, text="Feste IP ab Start-IP fortlaufend", value="range",
                         variable=self._mode_var, command=self._on_mode_change).pack(anchor=tk.W)
-        ttk.Radiobutton(action, text="Pro Kamera einzeln", value="each",
+        ttk.Radiobutton(tab_ip, text="Pro Kamera einzeln", value="each",
                         variable=self._mode_var, command=self._on_mode_change).pack(anchor=tk.W)
 
         # gemeinsame Felder Maske/Gateway (fuer "range" und "each")
@@ -732,13 +743,13 @@ class CameraSettingsDialog(tk.Toplevel):
         self.gw_var = tk.StringVar()
         self.start_ip_var = tk.StringVar()
 
-        self._shared = ttk.Frame(action)
+        self._shared = ttk.Frame(tab_ip)
         ttk.Label(self._shared, text="Subnetzmaske:").grid(row=0, column=0, sticky=tk.W, padx=4, pady=2)
         ttk.Entry(self._shared, textvariable=self.mask_var, width=18).grid(row=0, column=1, padx=4, pady=2)
         ttk.Label(self._shared, text="Gateway (optional):").grid(row=0, column=2, sticky=tk.W, padx=4, pady=2)
         ttk.Entry(self._shared, textvariable=self.gw_var, width=18).grid(row=0, column=3, padx=4, pady=2)
 
-        self._range_frame = ttk.Frame(action)
+        self._range_frame = ttk.Frame(tab_ip)
         ttk.Label(self._range_frame, text="Start-IP:").grid(row=0, column=0, sticky=tk.W, padx=4, pady=2)
         ttk.Entry(self._range_frame, textvariable=self.start_ip_var, width=18).grid(row=0, column=1, padx=4, pady=2)
         ttk.Label(
@@ -747,7 +758,7 @@ class CameraSettingsDialog(tk.Toplevel):
         ).grid(row=0, column=2, columnspan=2, sticky=tk.W, padx=4)
 
         # "each": je Kamera ein IP-Feld
-        self._each_frame = ttk.Frame(action)
+        self._each_frame = ttk.Frame(tab_ip)
         for idx, cam in enumerate(self.cameras):
             name = cam.get("Name", "?")
             current = get_first_ip(cam)
@@ -759,6 +770,54 @@ class CameraSettingsDialog(tk.Toplevel):
             ttk.Entry(self._each_frame, textvariable=var, width=18).grid(
                 row=idx, column=1, padx=4, pady=1
             )
+
+        # ===== Reiter: Benutzer (regulaere Axis-Benutzer) =====
+        tab_user = ttk.Frame(self.nb, padding=8)
+        self.nb.add(tab_user, text="Benutzer")
+        self.user_action_var = tk.StringVar(value="add")
+        ttk.Radiobutton(tab_user, text="Benutzer anlegen", value="add",
+                        variable=self.user_action_var, command=self._on_user_action).pack(anchor=tk.W)
+        ttk.Radiobutton(tab_user, text="Passwort aendern", value="setpw",
+                        variable=self.user_action_var, command=self._on_user_action).pack(anchor=tk.W)
+        uf = ttk.Frame(tab_user)
+        uf.pack(fill=tk.X, pady=(6, 0))
+        self.nu_name_var = tk.StringVar()
+        self.nu_pass_var = tk.StringVar()
+        self.nu_role_var = tk.StringVar(value="viewer")
+        ttk.Label(uf, text="Benutzername:").grid(row=0, column=0, sticky=tk.W, padx=4, pady=2)
+        ttk.Entry(uf, textvariable=self.nu_name_var, width=20).grid(row=0, column=1, padx=4, pady=2)
+        ttk.Label(uf, text="Passwort:").grid(row=1, column=0, sticky=tk.W, padx=4, pady=2)
+        ttk.Entry(uf, textvariable=self.nu_pass_var, width=20, show="*").grid(row=1, column=1, padx=4, pady=2)
+        self.nu_role_label = ttk.Label(uf, text="Rolle:")
+        self.nu_role_label.grid(row=2, column=0, sticky=tk.W, padx=4, pady=2)
+        self.nu_role_cb = ttk.Combobox(
+            uf, textvariable=self.nu_role_var, width=17, state="readonly",
+            values=("administrator", "operator", "viewer"),
+        )
+        self.nu_role_cb.grid(row=2, column=1, sticky=tk.W, padx=4, pady=2)
+
+        # ===== Reiter: ONVIF-Benutzer =====
+        tab_onvif = ttk.Frame(self.nb, padding=8)
+        self.nb.add(tab_onvif, text="ONVIF-Benutzer")
+        self.onv_action_var = tk.StringVar(value="add")
+        ttk.Radiobutton(tab_onvif, text="ONVIF-Benutzer anlegen", value="add",
+                        variable=self.onv_action_var).pack(anchor=tk.W)
+        ttk.Radiobutton(tab_onvif, text="Passwort aendern", value="setpw",
+                        variable=self.onv_action_var).pack(anchor=tk.W)
+        of = ttk.Frame(tab_onvif)
+        of.pack(fill=tk.X, pady=(6, 0))
+        self.onv_name_var = tk.StringVar()
+        self.onv_pass_var = tk.StringVar()
+        self.onv_level_var = tk.StringVar(value="Administrator")
+        ttk.Label(of, text="Benutzername:").grid(row=0, column=0, sticky=tk.W, padx=4, pady=2)
+        ttk.Entry(of, textvariable=self.onv_name_var, width=20).grid(row=0, column=1, padx=4, pady=2)
+        ttk.Label(of, text="Passwort:").grid(row=1, column=0, sticky=tk.W, padx=4, pady=2)
+        ttk.Entry(of, textvariable=self.onv_pass_var, width=20, show="*").grid(row=1, column=1, padx=4, pady=2)
+        ttk.Label(of, text="Stufe:").grid(row=2, column=0, sticky=tk.W, padx=4, pady=2)
+        ttk.Combobox(
+            of, textvariable=self.onv_level_var, width=17, state="readonly",
+            values=vapix.ONVIF_LEVELS,
+        ).grid(row=2, column=1, sticky=tk.W, padx=4, pady=2)
 
         # --- Buttons ---
         btns = ttk.Frame(outer)
@@ -847,10 +906,24 @@ class CameraSettingsDialog(tk.Toplevel):
                 self._queue.put((name, False, str(exc)))
         self._queue.put(None)  # Ende-Marker
 
+    def _on_user_action(self):
+        # Rolle nur beim Anlegen relevant; beim Passwortwechsel deaktivieren.
+        state = "readonly" if self.user_action_var.get() == "add" else tk.DISABLED
+        self.nu_role_cb.config(state=state)
+
     # --------------------------------------------------------- Anwenden
     def _apply(self):
         if self._working:
             return
+        tab = self.nb.index(self.nb.select())
+        if tab == 0:
+            self._apply_ip()
+        elif tab == 1:
+            self._apply_user(onvif=False)
+        else:
+            self._apply_user(onvif=True)
+
+    def _apply_ip(self):
         mode = self._mode_var.get()
         # Plausibilitaet pruefen und Zieladressen vorberechnen
         try:
@@ -922,6 +995,61 @@ class CameraSettingsDialog(tk.Toplevel):
                     self._queue.put((name, True, f"IP gesetzt auf {new_ip}"))
             except vapix.VapixError as exc:
                 self._queue.put((name, False, str(exc)))
+        self._queue.put(None)
+
+    # ------------------------------------------- Benutzer / ONVIF-Benutzer
+    def _apply_user(self, onvif):
+        action = (self.onv_action_var if onvif else self.user_action_var).get()
+        name = (self.onv_name_var if onvif else self.nu_name_var).get().strip()
+        pwd = (self.onv_pass_var if onvif else self.nu_pass_var).get()
+        level = self.onv_level_var.get() if onvif else self.nu_role_var.get()
+
+        if not name:
+            messagebox.showerror("Eingabefehler", "Bitte einen Benutzernamen angeben.", parent=self)
+            return
+        if not pwd:
+            messagebox.showerror("Eingabefehler", "Bitte ein Passwort angeben.", parent=self)
+            return
+
+        kind = "ONVIF-Benutzer" if onvif else "Benutzer"
+        verb = "anlegen" if action == "add" else "Passwort aendern fuer"
+        confirm = f"{kind} '{name}' {verb} auf {len(self.cameras)} Kamera(s)?"
+        if not messagebox.askyesno("Aenderung bestaetigen", confirm, parent=self):
+            return
+
+        self._clear_log()
+        self._set_busy(True)
+        self._log(f"Wende Aenderung an ({len(self.cameras)} Kamera(s))...")
+        kwargs = self._conn_kwargs()
+        threading.Thread(
+            target=self._worker_user,
+            args=(onvif, action, name, pwd, level, kwargs), daemon=True,
+        ).start()
+        self.after(150, self._poll)
+
+    def _worker_user(self, onvif, action, name, pwd, level, kwargs):
+        for cam in self.cameras:
+            ip = get_first_ip(cam)
+            cname = cam.get("Name", ip)
+            if not ip:
+                self._queue.put((cname, False, "keine IP-Adresse bekannt"))
+                continue
+            try:
+                if onvif and action == "add":
+                    msg = vapix.add_onvif_user(ip, new_user=name, new_password=pwd,
+                                               level=level, **kwargs)
+                elif onvif:
+                    msg = vapix.set_onvif_user_password(ip, target_user=name,
+                                                        new_password=pwd, level=level, **kwargs)
+                elif action == "add":
+                    msg = vapix.add_user(ip, new_user=name, new_password=pwd,
+                                         role=level, **kwargs)
+                else:
+                    msg = vapix.set_user_password(ip, target_user=name,
+                                                  new_password=pwd, **kwargs)
+                self._queue.put((cname, True, msg))
+            except vapix.VapixError as exc:
+                self._queue.put((cname, False, str(exc)))
         self._queue.put(None)
 
     def _poll(self):
