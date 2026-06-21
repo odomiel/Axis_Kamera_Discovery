@@ -53,6 +53,16 @@ CONFIG_DIR = os.path.join(
 )
 CONFIG_PATH = os.path.join(CONFIG_DIR, "settings.json")
 
+# Standardwerte aller persistenten Einstellungen. Die settings.json ist ein
+# einfaches JSON-Objekt {schluessel: wert}. Eine neue Einstellung wird allein
+# durch einen Eintrag hier verfuegbar: sie wird automatisch mit Default geladen,
+# ueber get_setting/set_setting gelesen/geschrieben und in der Datei gespeichert.
+# Beim Laden bleiben auch unbekannte (z. B. von einer neueren Version geschriebene)
+# Schluessel erhalten, sodass die Datei vorwaerts-/rueckwaertskompatibel bleibt.
+DEFAULT_SETTINGS = {
+    "dark_mode": False,
+}
+
 # Farbpaletten fuer hellen und dunklen Modus. Die Schluessel sind in beiden
 # Paletten identisch, sodass _apply_theme dieselben Style-Optionen setzen kann.
 LIGHT_COLORS = {
@@ -102,7 +112,7 @@ class AxisDiscoveryGUI(tk.Tk):
         # zuverlaessig uebernimmt; darauf baut der Dark/Light-Wechsel auf.
         self._style = ttk.Style(self)
         self._style.theme_use("clam")
-        self.dark_mode_var = tk.BooleanVar(value=bool(self._config.get("dark_mode", False)))
+        self.dark_mode_var = tk.BooleanVar(value=bool(self.get_setting("dark_mode")))
 
         # Fonts fuer die automatische Spaltenbreiten-Messung
         self._cell_font = tkfont.nametofont("TkDefaultFont")
@@ -387,28 +397,43 @@ class AxisDiscoveryGUI(tk.Tk):
     # ------------------------------------------------------------- Dark Mode
     def _toggle_dark_mode(self):
         self._apply_theme(self.dark_mode_var.get())
-        self._config["dark_mode"] = self.dark_mode_var.get()
-        self._save_config()
+        self.set_setting("dark_mode", self.dark_mode_var.get())
 
     # ----------------------------------------------------- Einstellungen-Datei
     @staticmethod
     def _load_config():
-        """Liest die gespeicherten Einstellungen; bei Fehlern leeres Dict."""
+        """Laedt die Einstellungen: Defaults als Basis, gespeicherte Werte gewinnen.
+
+        Unbekannte Schluessel aus der Datei bleiben erhalten (Vorwaerts-
+        kompatibilitaet); bei Lese-/Parse-Fehlern gelten die Defaults.
+        """
+        config = dict(DEFAULT_SETTINGS)
         try:
             with open(CONFIG_PATH, encoding="utf-8") as f:
                 data = json.load(f)
-            return data if isinstance(data, dict) else {}
+            if isinstance(data, dict):
+                config.update(data)
         except (OSError, ValueError):
-            return {}
+            pass
+        return config
 
     def _save_config(self):
-        """Schreibt die Einstellungen als JSON (Fehler werden still ignoriert)."""
+        """Schreibt alle Einstellungen als JSON (Fehler werden still ignoriert)."""
         try:
             os.makedirs(CONFIG_DIR, exist_ok=True)
             with open(CONFIG_PATH, "w", encoding="utf-8") as f:
-                json.dump(self._config, f, indent=2)
+                json.dump(self._config, f, indent=2, sort_keys=True)
         except OSError:
             pass
+
+    def get_setting(self, key, default=None):
+        """Liest eine Einstellung (Reihenfolge: Datei -> DEFAULT_SETTINGS -> default)."""
+        return self._config.get(key, DEFAULT_SETTINGS.get(key, default))
+
+    def set_setting(self, key, value):
+        """Setzt eine Einstellung und speichert sie sofort dauerhaft."""
+        self._config[key] = value
+        self._save_config()
 
     def _apply_theme(self, dark):
         """Faerbt alle Widgets passend zum hellen oder dunklen Modus ein."""

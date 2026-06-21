@@ -94,8 +94,10 @@ Bedienung:
   (Format folgt der gewählten Dateiendung).
 - **Einstellungen** (Menü-Button rechts neben „Exportieren") mit den Einträgen:
   - **Dark Mode** – Checkbox; angehakt schaltet die Oberfläche auf den dunklen
-    Modus um, ohne Haken gilt der helle Modus. Die Einstellung wird gespeichert
-    (`~/.config/axis_ip_utility/settings.json`) und bleibt über Neustarts erhalten.
+    Modus um, ohne Haken gilt der helle Modus. Die Einstellung bleibt über
+    Neustarts erhalten – sie wird in der gemeinsamen Einstellungsdatei
+    `~/.config/axis_ip_utility/settings.json` (bzw. `$XDG_CONFIG_HOME`) abgelegt,
+    in der auch künftige Einstellungen gespeichert werden.
   - **Info** – Programmname und Version
   - **Hilfe** – zeigt diese README in einem Fenster
   - **Lizenzen** – zeigt `THIRD_PARTY_LICENSES.md` (Lizenzen der gebündelten
