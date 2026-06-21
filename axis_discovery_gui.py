@@ -62,6 +62,9 @@ CONFIG_PATH = os.path.join(CONFIG_DIR, "settings.json")
 # Schluessel erhalten, sodass die Datei vorwaerts-/rueckwaertskompatibel bleibt.
 DEFAULT_SETTINGS = {
     "dark_mode": False,
+    "search_duration": 10,   # "Dauer (s)"
+    "autorefresh": False,    # Auto-Refresh aktiv
+    "refresh_interval": 30,  # "alle (s)"
 }
 
 # Farbpaletten fuer hellen und dunklen Modus. Die Schluessel sind in beiden
@@ -131,6 +134,10 @@ class AxisDiscoveryGUI(tk.Tk):
         # Klick irgendwo schliesst ein offenes Einstellungen-Dropdown
         self.bind_all("<Button-1>", self._on_global_click, add="+")
 
+        # War Auto-Refresh gespeichert aktiv, Schleife nach dem Start aufnehmen
+        if self.autorefresh_var.get():
+            self.after(400, self.start_search)
+
     # ---------------------------------------------------------------- UI
     def _build_toolbar(self):
         bar = ttk.Frame(self, padding=8)
@@ -140,12 +147,12 @@ class AxisDiscoveryGUI(tk.Tk):
         self.search_btn.pack(side=tk.LEFT)
 
         ttk.Label(bar, text="Dauer (s):").pack(side=tk.LEFT, padx=(12, 4))
-        self.timeout_var = tk.IntVar(value=10)
+        self.timeout_var = tk.IntVar(value=int(self.get_setting("search_duration")))
         ttk.Spinbox(bar, from_=1, to=60, width=4, textvariable=self.timeout_var).pack(
             side=tk.LEFT
         )
 
-        self.autorefresh_var = tk.BooleanVar(value=False)
+        self.autorefresh_var = tk.BooleanVar(value=bool(self.get_setting("autorefresh")))
         ttk.Checkbutton(
             bar,
             text="Auto-Refresh",
@@ -154,10 +161,14 @@ class AxisDiscoveryGUI(tk.Tk):
         ).pack(side=tk.LEFT, padx=(16, 4))
 
         ttk.Label(bar, text="alle (s):").pack(side=tk.LEFT, padx=(0, 4))
-        self.interval_var = tk.IntVar(value=30)
+        self.interval_var = tk.IntVar(value=int(self.get_setting("refresh_interval")))
         ttk.Spinbox(bar, from_=5, to=3600, width=5, textvariable=self.interval_var).pack(
             side=tk.LEFT
         )
+
+        # Aenderungen an Dauer/Intervall dauerhaft speichern
+        self.timeout_var.trace_add("write", self._persist_toolbar_settings)
+        self.interval_var.trace_add("write", self._persist_toolbar_settings)
 
         # Menue-Button "Einstellungen" rechts neben "Exportieren"
         self.settings_btn = ttk.Button(
@@ -305,8 +316,19 @@ class AxisDiscoveryGUI(tk.Tk):
 
         self._schedule_refresh()  # naechsten Auto-Refresh planen (falls aktiviert)
 
+    def _persist_toolbar_settings(self, *_):
+        """Speichert Dauer, Auto-Refresh und Intervall dauerhaft."""
+        try:
+            self._config["search_duration"] = self.timeout_var.get()
+            self._config["autorefresh"] = self.autorefresh_var.get()
+            self._config["refresh_interval"] = self.interval_var.get()
+        except tk.TclError:
+            return  # Feld gerade leer/ungueltig -> nichts speichern
+        self._save_config()
+
     # ------------------------------------------------------- Auto-Refresh
     def _on_autorefresh_toggle(self):
+        self._persist_toolbar_settings()
         if self.autorefresh_var.get():
             # Sofort einen Durchlauf starten; danach planen sich Folgelaeufe selbst
             if not self._searching:

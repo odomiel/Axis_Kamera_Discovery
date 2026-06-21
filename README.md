@@ -86,7 +86,9 @@ Bedienung:
 - **Suchen** – startet die Suche im Hintergrund (Fenster bleibt bedienbar).
 - **Dauer (s)** – Suchdauer (1–60 s, Standard 10).
 - **Auto-Refresh** + **alle (s)** – wiederholt die Suche automatisch im
-  eingestellten Intervall (5–3600 s).
+  eingestellten Intervall (5–3600 s). Auto-Refresh-Status, Intervall und
+  Such-Dauer werden gespeichert (`settings.json`) und beim nächsten Start wieder
+  hergestellt; war Auto-Refresh aktiv, läuft die Suche automatisch weiter.
 - **Spaltenbreiten** passen sich nach jeder Suche automatisch an den breitesten
   Inhalt (inkl. Überschrift) an.
 - **Klick auf eine Spaltenüberschrift** – sortiert die Tabelle nach dieser
