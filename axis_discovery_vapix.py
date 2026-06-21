@@ -412,11 +412,79 @@ def _parse_fw_response(resp):
     return "Firmware aktualisiert" + (f" auf {version}" if version else "")
 
 
+def _resolve_scheme(ip, username, password, scheme, port, timeout):
+    """Ermittelt ein Schema (https/http), ueber das die Kamera erreichbar ist."""
+    schemes = ["https", "http"] if scheme == "auto" else [scheme]
+    for sc in schemes:
+        p = port if port else DEFAULT_PORTS[sc]
+        url = f"{sc}://{ip}:{p}/axis-cgi/param.cgi?action=list&group=Properties.Firmware.Version"
+        opener = _build_opener(f"{ip}:{p}", username, password)
+        try:
+            with opener.open(url, timeout=timeout) as r:
+                r.read()
+            return sc
+        except urllib.error.HTTPError:
+            return sc  # verbunden (z. B. 401) -> Schema funktioniert
+        except (urllib.error.URLError, TimeoutError, OSError):
+            continue
+    return None
+
+
+def _has_firmware_api(ip, username, password, scheme, port, timeout):
+    """Prueft mit einem kleinen JSON-Aufruf, ob firmwaremanagement.cgi existiert."""
+    p = port if port else DEFAULT_PORTS[scheme]
+    url = f"{scheme}://{ip}:{p}/axis-cgi/firmwaremanagement.cgi"
+    body = json.dumps({"apiVersion": "1.0", "context": "probe", "method": "status"})
+    opener = _build_opener(f"{ip}:{p}", username, password)
+    req = urllib.request.Request(url, data=body.encode("utf-8"),
+                                 headers={"Content-Type": "application/json"})
+    try:
+        with opener.open(req, timeout=timeout) as r:
+            r.read()
+        return True
+    except urllib.error.HTTPError as exc:
+        return exc.code not in (404, 501)  # existiert, nur z. B. 401/400
+    except (urllib.error.URLError, TimeoutError, OSError):
+        return False  # CGI fehlt / Verbindung zurueckgesetzt -> Legacy
+
+
+def _modern_upgrade(ip, username, password, filename, data, factory_default,
+                    scheme, port, timeout):
+    payload = json.dumps({
+        "apiVersion": "1.0", "context": "axisiputil", "method": "upgrade",
+        "params": {"factoryDefaultMode": "hard" if factory_default else "none"},
+    })
+    parts = [("payload", None, None, payload),
+             ("file", filename, "application/octet-stream", data)]
+    try:
+        resp = _post_multipart(ip, username, password,
+                               "/axis-cgi/firmwaremanagement.cgi",
+                               parts, scheme, port, timeout)
+    except urllib.error.HTTPError as exc:
+        if exc.code == 401:
+            raise VapixError("Authentifizierung fehlgeschlagen (Benutzer/Passwort?).")
+        raise VapixError(f"HTTP-Fehler {exc.code}: {exc.reason}")
+    except (urllib.error.URLError, TimeoutError, OSError):
+        return "Firmware hochgeladen - Geraet startet neu (bitte Status pruefen)"
+    return _parse_fw_response(resp)
+
+
 def _legacy_upgrade(ip, username, password, filename, data, scheme, port, timeout):
-    """Aelterer Upgrade-Weg (firmwareupgrade.cgi) fuer Geraete ohne die JSON-API."""
+    """Aelterer Upgrade-Weg (firmwareupgrade.cgi) fuer Geraete ohne die JSON-API.
+
+    Aeltere Geraete trennen die Verbindung, sobald sie mit dem Flashen beginnen
+    -- das wird daher als Erfolg (Neustart laeuft) gewertet.
+    """
     parts = [("file", filename, "application/octet-stream", data)]
-    resp = _post_multipart(ip, username, password, "/axis-cgi/firmwareupgrade.cgi",
-                           parts, scheme, port, timeout)
+    try:
+        resp = _post_multipart(ip, username, password, "/axis-cgi/firmwareupgrade.cgi",
+                               parts, scheme, port, timeout)
+    except urllib.error.HTTPError as exc:
+        if exc.code == 401:
+            raise VapixError("Authentifizierung fehlgeschlagen (Benutzer/Passwort?).")
+        raise VapixError(f"HTTP-Fehler {exc.code}: {exc.reason}")
+    except (urllib.error.URLError, TimeoutError, OSError):
+        return "Firmware hochgeladen (Legacy) - Verbindung getrennt, Geraet flasht/startet neu (bitte pruefen)"
     if re.search(r"error|fail", resp, re.IGNORECASE):
         raise VapixError(f"Geraet meldete: {resp.strip()[:200]}")
     return "Firmware hochgeladen (Legacy) - Geraet startet neu"
@@ -426,43 +494,19 @@ def upgrade_firmware(ip, username, password, firmware_path, scheme="auto",
                      port=None, timeout=600, factory_default=False):
     """Spielt eine Firmware-Datei auf die Kamera auf.
 
-    Nutzt die moderne JSON-API (firmwaremanagement.cgi); fehlt diese (aeltere
-    Geraete -> HTTP 404), wird auf firmwareupgrade.cgi zurueckgefallen. Das
+    Ermittelt zuerst per kleinem Probe-Request, ob die moderne JSON-API
+    (firmwaremanagement.cgi) vorhanden ist; sonst Legacy (firmwareupgrade.cgi),
+    damit die grosse Datei nicht an einen nicht vorhandenen Endpoint geht. Das
     Geraet startet nach dem Upgrade selbsttaetig neu.
     """
     with open(firmware_path, "rb") as f:
         data = f.read()
     filename = os.path.basename(firmware_path)
-    payload = json.dumps({
-        "apiVersion": "1.0",
-        "context": "axisiputil",
-        "method": "upgrade",
-        "params": {"factoryDefaultMode": "hard" if factory_default else "none"},
-    })
-    parts = [("payload", None, None, payload),
-             ("file", filename, "application/octet-stream", data)]
 
-    schemes = ["https", "http"] if scheme == "auto" else [scheme]
-    last = None
-    for sc in schemes:
-        try:
-            resp = _post_multipart(ip, username, password,
-                                   "/axis-cgi/firmwaremanagement.cgi",
-                                   parts, sc, port, timeout)
-            return _parse_fw_response(resp)
-        except urllib.error.HTTPError as exc:
-            if exc.code in (404, 501):  # moderne API fehlt -> Legacy versuchen
-                try:
-                    return _legacy_upgrade(ip, username, password, filename, data,
-                                           sc, port, timeout)
-                except VapixError as e:
-                    last = e
-                    continue
-            if exc.code == 401:
-                raise VapixError("Authentifizierung fehlgeschlagen (Benutzer/Passwort?).")
-            last = VapixError(f"HTTP-Fehler {exc.code}: {exc.reason}")
-        except (urllib.error.URLError, TimeoutError, OSError) as exc:
-            # Verbindungsabbruch evtl. durch Neustart direkt nach dem Upload
-            last = VapixError(f"Verbindung getrennt (Geraet startet evtl. neu?): {exc}")
-        # naechstes Schema probieren
-    raise last if last is not None else VapixError("Firmware-Upgrade nicht moeglich")
+    sc = _resolve_scheme(ip, username, password, scheme, port, timeout=15)
+    if sc is None:
+        raise VapixError("Kamera nicht erreichbar.")
+    if _has_firmware_api(ip, username, password, sc, port, timeout=15):
+        return _modern_upgrade(ip, username, password, filename, data,
+                               factory_default, sc, port, timeout)
+    return _legacy_upgrade(ip, username, password, filename, data, sc, port, timeout)
