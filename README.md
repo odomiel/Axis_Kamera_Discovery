@@ -105,10 +105,13 @@ Bedienung:
     *Pro Kamera einzeln* (je Kamera ein eigenes IP-Feld).
   - **Benutzer** – regulären Axis-Benutzer *anlegen* (mit Rolle
     Administrator/Operator/Viewer) oder *Passwort ändern*. Ist die Kamera noch
-    im **Auslieferungszustand** (kein Passwort gesetzt), wird das nach
-    Möglichkeit automatisch erkannt; zusätzlich kann der Auslieferungszustand
-    per Checkbox erzwungen werden. In beiden Fällen wird der Erstbenutzer ohne
-    Anmeldung und als **Administrator** angelegt.
+    im **Auslieferungszustand**, hilft die Checkbox *Auslieferungszustand*: Sie
+    probiert für den Zugriff zuerst „ohne Anmeldung" (moderne werksneue Geräte)
+    und dann gängige **Standard-Zugangsdaten** (root/pass, root/root, …; ältere
+    Geräte wie die M7001 antworten auf root/pass). Der (Erst-)Benutzer wird in
+    diesem Fall als **Administrator** angelegt; im Ergebnis steht, welcher Zugang
+    funktioniert hat. Das gilt auch für *Passwort ändern* (z. B. das
+    Standard-Passwort von `root` ersetzen).
   - **ONVIF-Benutzer** – ONVIF-Benutzer *anlegen* (Stufe
     Administrator/Operator/User) oder *Passwort ändern*.
 

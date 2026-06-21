@@ -805,7 +805,7 @@ class CameraSettingsDialog(tk.Toplevel):
         self.factory_var = tk.BooleanVar(value=False)
         ttk.Checkbutton(
             tab_user,
-            text="Kamera im Auslieferungszustand (Erstbenutzer ohne Anmeldung, als Administrator)",
+            text="Auslieferungszustand (Standard-Zugangsdaten/ohne Anmeldung probieren; Anlegen als Administrator)",
             variable=self.factory_var,
         ).pack(anchor=tk.W, pady=(2, 0))
 
@@ -1042,6 +1042,24 @@ class CameraSettingsDialog(tk.Toplevel):
         ).start()
         self.after(150, self._poll)
 
+    def _factory_call(self, op, base_kwargs):
+        """Fuehrt op im Auslieferungszustand aus: erst ohne Anmeldung, dann mit
+        gaengigen Standard-Zugangsdaten; nimmt die erste funktionierende Variante.
+        """
+        attempts = [("ohne Anmeldung", "", "", False)]
+        for u, p in vapix.DEFAULT_CREDENTIALS:
+            attempts.append((f"{u}/{p or 'leer'}", u, p, True))
+        last = None
+        for label, u, p, auth in attempts:
+            ck = dict(base_kwargs)
+            ck["username"] = u
+            ck["password"] = p
+            try:
+                return op(ck, auth) + f" [Auslieferungszustand: {label}]"
+            except vapix.VapixError as exc:
+                last = exc
+        raise last if last is not None else vapix.VapixError("kein Zugang moeglich")
+
     def _worker_user(self, onvif, action, name, pwd, level, factory, kwargs):
         for cam in self.cameras:
             ip = get_first_ip(cam)
@@ -1056,22 +1074,24 @@ class CameraSettingsDialog(tk.Toplevel):
                 elif onvif:
                     msg = vapix.set_onvif_user_password(ip, target_user=name,
                                                         new_password=pwd, level=level, **kwargs)
-                elif action == "add":
-                    # Auslieferungszustand: manuell angehakt ODER automatisch erkannt.
-                    # Erstbenutzer dann ohne Anmeldung und als Administrator anlegen.
-                    is_factory = factory or vapix.is_unconfigured(
-                        ip, scheme=kwargs["scheme"], port=kwargs["port"],
-                        timeout=kwargs["timeout"])
-                    if is_factory:
-                        msg = vapix.add_user(ip, new_user=name, new_password=pwd,
-                                             role="administrator", authenticate=False, **kwargs)
-                        msg += " (Auslieferungszustand: Administrator, ohne Anmeldung)"
-                    else:
-                        msg = vapix.add_user(ip, new_user=name, new_password=pwd,
-                                             role=level, **kwargs)
                 else:
-                    msg = vapix.set_user_password(ip, target_user=name,
-                                                  new_password=pwd, **kwargs)
+                    # Regulaerer Benutzer: anlegen (im Auslieferungsfall als
+                    # Administrator) oder Passwort aendern.
+                    if action == "add":
+                        eff_role = "administrator" if factory else level
+
+                        def op(ck, auth):
+                            return vapix.add_user(ip, new_user=name, new_password=pwd,
+                                                  role=eff_role, authenticate=auth, **ck)
+                    else:
+                        def op(ck, auth):
+                            return vapix.set_user_password(ip, target_user=name,
+                                                           new_password=pwd,
+                                                           authenticate=auth, **ck)
+                    if factory:
+                        msg = self._factory_call(op, kwargs)
+                    else:
+                        msg = op(kwargs, True)
                 self._queue.put((cname, True, msg))
             except vapix.VapixError as exc:
                 self._queue.put((cname, False, str(exc)))

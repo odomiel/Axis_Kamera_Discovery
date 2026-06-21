@@ -191,6 +191,15 @@ USER_ROLES = {
     "viewer": "viewer",
 }
 
+# Werks-/Standard-Zugangsdaten (Benutzer, Passwort), die im Auslieferungszustand
+# durchprobiert werden. Aeltere Axis-Geraete (z. B. M7001) antworten auf root/pass.
+DEFAULT_CREDENTIALS = [
+    ("root", "pass"),
+    ("root", "root"),
+    ("root", "admin"),
+    ("root", ""),
+]
+
 
 def add_user(ip, username, password, new_user, new_password, role="viewer",
              scheme="auto", port=None, timeout=10, authenticate=True):
@@ -214,11 +223,12 @@ def add_user(ip, username, password, new_user, new_password, role="viewer",
 
 
 def set_user_password(ip, username, password, target_user, new_password,
-                      scheme="auto", port=None, timeout=10):
+                      scheme="auto", port=None, timeout=10, authenticate=True):
     """Aendert das Passwort eines bestehenden regulaeren Axis-Benutzers."""
     params = {"action": "update", "user": target_user, "pwd": new_password}
     path = f"/axis-cgi/pwdgrp.cgi?{urllib.parse.urlencode(params)}"
-    text = _request_auto(ip, username, password, path, scheme, port, timeout)
+    text = _request_auto(ip, username, password, path, scheme, port, timeout,
+                         auth=authenticate)
     if "Error" in text:
         raise VapixError(f"Geraet meldete: {text.strip()}")
     return f"Passwort von '{target_user}' geaendert"
