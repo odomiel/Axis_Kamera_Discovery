@@ -672,7 +672,8 @@ class CameraSettingsDialog(tk.Toplevel):
     def __init__(self, master, cameras, palette):
         super().__init__(master)
         self.title("Kamera Einstellungen")
-        self.geometry("720x620")
+        self.geometry("720x780")
+        self.minsize(720, 600)
         self.transient(master)
         self._palette = palette
         self.configure(bg=palette["bg"])
@@ -851,7 +852,7 @@ class CameraSettingsDialog(tk.Toplevel):
 
         # --- Ergebnisanzeige ---
         ttk.Label(outer, text="Ergebnis:").pack(anchor=tk.W, pady=(6, 0))
-        self.result = scrolledtext.ScrolledText(outer, height=10, wrap=tk.WORD)
+        self.result = scrolledtext.ScrolledText(outer, height=18, wrap=tk.WORD)
         self.result.configure(
             bg=self._palette["tree_bg"], fg=self._palette["fg"],
             insertbackground=self._palette["fg"],
