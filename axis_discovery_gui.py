@@ -164,6 +164,12 @@ class AxisDiscoveryGUI(tk.Tk):
         )
         self.settings_btn.pack(side=tk.RIGHT)
 
+        # "Kamera Einstellungen" direkt links neben "Einstellungen"
+        self.camera_settings_btn = ttk.Button(
+            bar, text="Kamera Einstellungen", command=self._open_camera_settings
+        )
+        self.camera_settings_btn.pack(side=tk.RIGHT, padx=(0, 8))
+
         self.export_btn = ttk.Button(
             bar, text="Exportieren...", command=self.export, state=tk.DISABLED
         )
@@ -585,6 +591,15 @@ class AxisDiscoveryGUI(tk.Tk):
 
     def _forget_text_window(self, win):
         self._text_windows = [(w, t) for (w, t) in self._text_windows if w is not win]
+
+    # ------------------------------------------------- Kamera-Einstellungen
+    def _open_camera_settings(self):
+        # Platzhalter: Funktion zum Aendern von Kamera-Einstellungen folgt.
+        messagebox.showinfo(
+            "Kamera Einstellungen",
+            "Die Funktion zum Aendern von Kamera-Einstellungen wird gerade "
+            "umgesetzt und ist noch nicht verfuegbar.",
+        )
 
     # ----------------------------------------------------------- Aktionen
     def _open_in_browser(self, _event):

@@ -92,6 +92,8 @@ Bedienung:
   Kamera) im Browser.
 - **Exportieren…** – speichert die Ergebnisse als CSV oder Texttabelle
   (Format folgt der gewählten Dateiendung).
+- **Kamera Einstellungen** (Button links neben „Einstellungen") – zum Ändern von
+  Einstellungen an den gefundenen Kameras. *(In Entwicklung.)*
 - **Einstellungen** (Menü-Button rechts neben „Exportieren") mit den Einträgen:
   - **Dark Mode** – Checkbox; angehakt schaltet die Oberfläche auf den dunklen
     Modus um, ohne Haken gilt der helle Modus. Die Einstellung bleibt über
