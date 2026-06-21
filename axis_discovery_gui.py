@@ -810,8 +810,9 @@ class CameraSettingsDialog(tk.Toplevel):
         ).pack(anchor=tk.W, pady=(2, 0))
         ttk.Label(
             tab_user,
-            text="Hinweis: Bei aelteren Kameras (z. B. M7001) zur Ersteinstellung "
-            "\"Passwort aendern\" fuer Benutzer 'root' verwenden.",
+            text="Ersteinstellung (Auslieferungszustand anhaken): moderne Kameras "
+            "ueber \"Benutzer anlegen\" mit Benutzer 'root'; aeltere Kameras "
+            "(z. B. M7001) ueber \"Passwort aendern\" fuer Benutzer 'root'.",
             wraplength=560, justify=tk.LEFT,
         ).pack(anchor=tk.W, pady=(2, 0))
 

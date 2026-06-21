@@ -111,10 +111,14 @@ Bedienung:
     Geräte wie die M7001 antworten auf root/pass). Der (Erst-)Benutzer wird in
     diesem Fall als **Administrator** angelegt; im Ergebnis steht, welcher Zugang
     funktioniert hat. Das gilt auch für *Passwort ändern* (z. B. das
-    Standard-Passwort von `root` ersetzen). **Bei älteren Kameras (z. B. M7001)
-    ist zur Ersteinstellung *Passwort ändern* für den Benutzer `root` zu
-    verwenden** (ein neuer Benutzer lässt sich dort nicht anlegen, solange `root`
-    schon existiert).
+    Standard-Passwort von `root` ersetzen). Zur **Ersteinstellung** (Checkbox
+    *Auslieferungszustand* anhaken):
+    - **Moderne Kameras** (AXIS OS, kein Standardkonto): *Benutzer anlegen* mit
+      Benutzer `root` – der Erstadmin wird unauthentifiziert als Administrator
+      angelegt (intern mit `grp=root`, ohne `comment`, wie von AXIS OS gefordert).
+    - **Ältere Kameras** (z. B. M7001, antworten auf `root/pass`): *Passwort
+      ändern* für den Benutzer `root` – dort lässt sich kein neuer Benutzer
+      anlegen, solange `root` bereits existiert.
   - **ONVIF-Benutzer** – ONVIF-Benutzer *anlegen* (Stufe
     Administrator/Operator/User) oder *Passwort ändern*.
 

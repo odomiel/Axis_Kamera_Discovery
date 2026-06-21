@@ -207,11 +207,15 @@ def add_user(ip, username, password, new_user, new_password, role="viewer",
 
     Mit authenticate=False ohne Anmeldung (werksneue Kamera, Erstbenutzer).
     """
+    # Der Benutzer "root" gehoert in die Primaergruppe "root" (Pflicht fuer den
+    # Erstadmin werksneuer AXIS-OS-Geraete), alle anderen in "users".
+    # Wichtig: KEIN comment-Parameter senden -- das laesst den Erstadmin auf
+    # AXIS OS < 11.5 fehlschlagen ("not a valid initial admin user").
     params = {
         "action": "add",
         "user": new_user,
         "pwd": new_password,
-        "grp": "users",
+        "grp": "root" if new_user == "root" else "users",
         "sgrp": USER_ROLES.get(role, "viewer"),
     }
     path = f"/axis-cgi/pwdgrp.cgi?{urllib.parse.urlencode(params)}"
