@@ -349,6 +349,10 @@ class AxisDiscoveryGUI(tk.Tk):
         self.set_setting("language", self.language_var.get())
         self._update_all_texts()
 
+    def _update_language_menu(self, *args):
+        """Aktualisiert den Text des Sprach-Menübuttons nach Sprachwechsel."""
+        self.lang_menu_btn.config(text=self._("menu_language"))
+
     def _update_all_texts(self):
         """Aktualisiert alle UI-Texte nach Sprachwechsel."""
         # Fenster-Titel
@@ -363,6 +367,10 @@ class AxisDiscoveryGUI(tk.Tk):
         self.camera_settings_btn.config(text=self._("btn_camera_settings"))
         self.settings_btn.config(text=self._("btn_settings"))
         self.disclaimer_btn.config(text=self._("disclaimer"))
+        
+        # Sprach-Menübutton
+        if hasattr(self, "lang_menu_btn"):
+            self.lang_menu_btn.config(text=self._("menu_language"))
         
         # Statusbar
         self._update_status_text()
@@ -693,33 +701,28 @@ class AxisDiscoveryGUI(tk.Tk):
         ).pack(fill=tk.X, padx=4, pady=2)
         ttk.Separator(frame, orient="horizontal").pack(fill=tk.X)
 
-        # Sprachauswahl mit Radiobuttons
-        ttk.Label(frame, text=self._("menu_language"), font=("TkDefaultFont", 10, "bold")).pack(
-            anchor=tk.W, padx=4, pady=(2, 0)
+        # Sprachauswahl mit Untermenü
+        self.lang_menu_btn = ttk.Menubutton(
+            frame,
+            text=self._("menu_language"),
+            direction="below"
         )
-        lang_frame = ttk.Frame(frame)
-        lang_frame.pack(fill=tk.X, padx=4)
+        self.lang_menu_btn.pack(anchor=tk.W, padx=4, pady=(2, 0), fill=tk.X)
         
-        self.lang_var = tk.StringVar(value=self.language_var.get())
+        # Untermenü für Sprachauswahl erstellen
+        lang_menu = tk.Menu(self.lang_menu_btn, tearoff=0)
+        lang_menu.add_command(
+            label=self._("menu_language_de"),
+            command=lambda: self.language_var.set("de")
+        )
+        lang_menu.add_command(
+            label=self._("menu_language_en"),
+            command=lambda: self.language_var.set("en")
+        )
+        self.lang_menu_btn.configure(menu=lang_menu)
         
-        ttk.Radiobutton(
-            lang_frame,
-            text=self._("menu_language_de"),
-            variable=self.lang_var,
-            value="de",
-            command=lambda: self.language_var.set("de"),
-        ).pack(anchor=tk.W, padx=(20, 0))
-        ttk.Radiobutton(
-            lang_frame,
-            text=self._("menu_language_en"),
-            variable=self.lang_var,
-            value="en",
-            command=lambda: self.language_var.set("en"),
-        ).pack(anchor=tk.W, padx=(20, 0))
-        
-        # Synchronisiere lang_var mit language_var
-        self.lang_var.trace_add("write", lambda *a: self.language_var.set(self.lang_var.get()))
-        self.language_var.trace_add("write", lambda *a: self.lang_var.set(self.language_var.get()))
+        # Aktualisiere Menü-Text wenn Sprache geändert wird
+        self.language_var.trace_add("write", self._update_language_menu)
         
         ttk.Separator(frame, orient="horizontal").pack(fill=tk.X)
 
