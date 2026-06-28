@@ -297,6 +297,8 @@ axis_IP_Utility/
 
 | Version | Änderungen |
 |---|---|
+| 26.06.28b7 | Fix: Spracheinstellung wird nach Neustart beachtet (Einstellungen/Kamera Einstellungen-Buttons) |
+| 26.06.28b5 | – |
 | 26.06.28b4 | Sprachauswahl (Deutsch/Englisch) implementiert |
 | 26.06.28b3 | Dokumentation aktualisiert |
 | 26.06.28b2 | Export orientiert sich an eingeblendeten Spalten (nur GUI); Disclaimer-Hinweis in Toolbar |

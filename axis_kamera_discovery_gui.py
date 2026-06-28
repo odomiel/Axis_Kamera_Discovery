@@ -442,18 +442,18 @@ class AxisDiscoveryGUI(tk.Tk):
 
         # Menue-Button "Einstellungen" rechts neben "Exportieren"
         self.settings_btn = ttk.Button(
-            bar, text="Einstellungen", command=self._toggle_settings_menu
+            bar, text=self._("btn_settings"), command=self._toggle_settings_menu
         )
         self.settings_btn.pack(side=tk.RIGHT)
 
         # "Kamera Einstellungen" direkt links neben "Einstellungen"
         self.camera_settings_btn = ttk.Button(
-            bar, text="Kamera Einstellungen", command=self._open_camera_settings
+            bar, text=self._("btn_camera_settings"), command=self._open_camera_settings
         )
         self.camera_settings_btn.pack(side=tk.RIGHT, padx=(0, 8))
 
         self.export_btn = ttk.Button(
-            bar, text="Exportieren...", command=self.export, state=tk.DISABLED
+            bar, text=self._("btn_export"), command=self.export, state=tk.DISABLED
         )
         self.export_btn.pack(side=tk.RIGHT, padx=(0, 8))
 
