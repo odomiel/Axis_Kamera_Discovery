@@ -27,7 +27,7 @@ import axis_kamera_discovery_vapix as vapix
 
 # Versionsschema: JJ.MM.TT, bei mehreren Releases am selben Tag b1, b2, ...
 # (wird von bump_version.py gepflegt)
-__version__ = "26.06.28b1"
+__version__ = "26.06.28b2"
 
 FIELD_NAMES = [
     "Name",
@@ -114,13 +114,15 @@ def discover_axis_cameras(show_in_console=True, timeout=10):
 
     return discovery.services
 
-def export_to_text_file(axis_cameras, output_file):
+def export_to_text_file(axis_cameras, output_file, columns=None):
+    if columns is None:
+        columns = FIELD_NAMES
     if axis_cameras:
         table = PrettyTable()
-        table.field_names = FIELD_NAMES
+        table.field_names = columns
 
         for camera in axis_cameras:
-            table.add_row([camera.get(field, "") for field in FIELD_NAMES])
+            table.add_row([camera.get(field, "") for field in columns])
 
         with open(output_file, 'w') as file:
             file.write(str(table))
@@ -128,25 +130,34 @@ def export_to_text_file(axis_cameras, output_file):
     else:
         print("No Axis Cameras Found.")
 
-def export_to_csv(axis_cameras, output_file):
+def export_to_csv(axis_cameras, output_file, columns=None):
+    if columns is None:
+        columns = FIELD_NAMES
     if axis_cameras:
         with open(output_file, 'w', newline='', encoding='utf-8') as file:
-            writer = csv.DictWriter(file, fieldnames=FIELD_NAMES)
+            writer = csv.DictWriter(file, fieldnames=columns)
             writer.writeheader()
             for camera in axis_cameras:
-                writer.writerow({field: camera.get(field, "") for field in FIELD_NAMES})
+                writer.writerow({field: camera.get(field, "") for field in columns})
         print(f"Axis Cameras Found. Exported to {output_file}")
     else:
         print("No Axis Cameras Found.")
 
-def export_results(axis_cameras, output_file, fmt=None):
-    """Exportiert je nach Format/Dateiendung als CSV oder Texttabelle."""
+def export_results(axis_cameras, output_file, fmt=None, columns=None):
+    """Exportiert je nach Format/Dateiendung als CSV oder Texttabelle.
+    
+    Args:
+        axis_cameras: Liste der zu exportierenden Kameras
+        output_file: Ausgabedatei-Pfad
+        fmt: Format ('csv' oder 'txt'), wird aus Dateiendung abgeleitet falls None
+        columns: Liste der zu exportierenden Spalten, standardmaessig FIELD_NAMES
+    """
     if fmt is None:
         fmt = "csv" if output_file.lower().endswith(".csv") else "txt"
     if fmt == "csv":
-        export_to_csv(axis_cameras, output_file)
+        export_to_csv(axis_cameras, output_file, columns)
     else:
-        export_to_text_file(axis_cameras, output_file)
+        export_to_text_file(axis_cameras, output_file, columns)
 
 def get_first_ip(camera):
     """Erste erreichbare IP einer Kamera: bevorzugt konfiguriert, sonst Zeroconf."""

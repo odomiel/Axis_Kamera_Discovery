@@ -748,7 +748,9 @@ class AxisDiscoveryGUI(tk.Tk):
         if not path:
             return
         # Format anhand der Dateiendung (csv -> CSV, sonst Texttabelle)
-        export_results(self.cameras, path)
+        # Exportiert nur die aktuell sichtbaren Spalten
+        visible_columns = self.tree["displaycolumns"]
+        export_results(self.cameras, path, columns=visible_columns)
         self.status_var.set(f"Exportiert nach {path}")
 
 
