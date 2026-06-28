@@ -40,6 +40,7 @@ Python 3.13 inklusive **Tcl/Tk 9** sowie alle Abhängigkeiten mitbringt und dami
 | Firmware-Update (Mehrfachauswahl) | „Kamera Einstellungen" | `firmware` |
 | ADM-Konfigurationsdatei anwenden | „Kamera Einstellungen" | `config` |
 | Dark Mode (heller/dunkler Modus) | Einstellungen → Checkbox „Dark Mode" | – |
+| Sprache (Deutsch/Englisch) | Einstellungen → Radiobuttons | – |
 | Version anzeigen | im Fenstertitel | `--version/-v` |
 
 ---
@@ -157,7 +158,9 @@ Bedienung:
     abgewählte Spalten werden ausgeblendet. Die Auswahl wird in `settings.json`
     gespeichert (mindestens eine Spalte bleibt sichtbar).
   - **Dark Mode** – Checkbox; angehakt schaltet die Oberfläche auf den dunklen
-    Modus um, ohne Haken gilt der helle Modus. Die Einstellung bleibt über
+    Modus um, ohne Haken gilt der helle Modus.
+  - **Sprache** – Radiobuttons für „Deutsch" und „Englisch"; die Auswahl wird
+    in `settings.json` gespeichert und beim nächsten Start wiederhergestellt. Die Einstellung bleibt über
     Neustarts erhalten – sie wird in der gemeinsamen Einstellungsdatei
     `~/.config/axis_kamera_discovery/settings.json` (bzw. `$XDG_CONFIG_HOME`) abgelegt,
     in der auch künftige Einstellungen gespeichert werden.
@@ -294,6 +297,8 @@ axis_IP_Utility/
 
 | Version | Änderungen |
 |---|---|
+| 26.06.28b4 | Sprachauswahl (Deutsch/Englisch) implementiert |
+| 26.06.28b3 | Dokumentation aktualisiert |
 | 26.06.28b2 | Export orientiert sich an eingeblendeten Spalten (nur GUI); Disclaimer-Hinweis in Toolbar |
 | 26.06.28b1 | Disclaimer-Hinweis in Toolbar hinzugefügt |
 | 26.06.28 | Fix: Einstellungen-Dropdown zeigt keine Artefakte mehr an (0,0) |
