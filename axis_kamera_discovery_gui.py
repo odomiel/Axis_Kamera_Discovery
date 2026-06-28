@@ -73,6 +73,180 @@ DEFAULT_SETTINGS = {
     "autorefresh": False,    # Auto-Refresh aktiv
     "refresh_interval": 30,  # "alle (s)"
     "hidden_columns": [],    # ausgeblendete Tabellenspalten
+    "language": "de",         # Sprache: "de" oder "en"
+}
+
+# ===================================================================
+# Uebersetzungen / Internationalisierung (i18n)
+# ===================================================================
+# Dictionary-basiertes Uebersetzungssystem. _() gibt den Text in der aktuellen
+# Sprache zurueck (Default: Deutsch).
+#
+#Usage: _("text_key") oder self._("text_key") in Methoden
+
+TRANSLATIONS = {
+    "de": {
+        # GUI-Titel und Fenster
+        "window_title": "Axis Kamera Discovery",
+        
+        # Toolbar
+        "btn_search": "Suchen",
+        "label_duration": "Dauer (s):",
+        "label_every": "alle (s):",
+        "btn_autorefresh": "Auto-Refresh",
+        "btn_export": "Exportieren...",
+        "btn_camera_settings": "Kamera Einstellungen",
+        "btn_settings": "Einstellungen",
+        
+        # Einstellungen-Menü
+        "menu_dark_mode": "Dark Mode",
+        "menu_columns": "Spalten...",
+        "menu_language": "Sprache",
+        "menu_language_de": "Deutsch",
+        "menu_language_en": "Englisch",
+        "menu_info": "Info",
+        "menu_help": "Hilfe",
+        "menu_licenses": "Lizenzen",
+        
+        # Disclaimer
+        "disclaimer": "Nutzung des Programms auf eigene Gefahr",
+        
+        # Spalten-Dialog
+        "columns_dialog_title": "Spalten",
+        "columns_dialog_label": "Sichtbare Spalten:",
+        "btn_close": "Schliessen",
+        
+        # Info-Dialog
+        "info_title": "Info",
+        
+        # Hilfe-Dialog
+        "help_title": "Hilfe",
+        
+        # Lizenzen-Dialog
+        "licenses_title": "Lizenzen",
+        
+        # Kamera Einstellungen Dialog
+        "camera_settings_title": "Kamera Einstellungen",
+        "camera_settings_cameras_selected": "{} Kamera(s) ausgewaehlt",
+        "camera_settings_credentials": "Zugangsdaten",
+        "camera_settings_user": "Benutzer:",
+        "camera_settings_password": "Passwort:",
+        "camera_settings_connection": "Verbindung:",
+        "camera_settings_port": "Port (optional):",
+        "camera_settings_timeout": "Timeout (s):",
+        "camera_settings_test_connection": "Verbindung testen",
+        "camera_settings_ip_tab": "IP-Adresse",
+        "camera_settings_users_tab": "Benutzer",
+        "camera_settings_onvif_tab": "ONVIF-Benutzer",
+        "camera_settings_firmware_tab": "Firmware",
+        "camera_settings_config_tab": "Konfiguration",
+        
+        # Status
+        "status_searching": "Suche laeuft...",
+        "status_searching_with_timeout": "Suche laeuft ({} s)...",
+        "status_found": "{} Kamera(s) gefunden",
+        "status_exported": "Exportiert nach {}",
+        "status_no_cameras": "Keine Kameras gefunden",
+        "status_error": "Fehler bei der Suche.",
+        "status_no_axis_cameras": "Keine Axis-Kameras gefunden.",
+        "msg_error": "Fehler",
+        "msg_search_error": "Fehler bei der Suche",
+        
+        # Export-Dialog
+        "export_dialog_title": "Ergebnisse speichern",
+        "filetype_csv": "CSV-Datei",
+        "filetype_txt": "Textdatei",
+        "filetype_all": "Alle Dateien",
+        
+        # Spaltenüberschriften (aus FIELD_NAMES)
+        "col_Name": "Name",
+        "col_IP Adresse: Zeroconfig": "IP Adresse: Zeroconfig",
+        "col_IP Adresse: Konfiguriert": "IP Adresse: Konfiguriert",
+        "col_Port": "Port",
+        "col_Hostname": "Hostname",
+        "col_MAC-Adresse/Seriennummer": "MAC-Adresse/Seriennummer",
+    },
+    "en": {
+        # GUI-Titel und Fenster
+        "window_title": "Axis Camera Discovery",
+        
+        # Toolbar
+        "btn_search": "Search",
+        "label_duration": "Duration (s):",
+        "label_every": "every (s):",
+        "btn_autorefresh": "Auto-Refresh",
+        "btn_export": "Export...",
+        "btn_camera_settings": "Camera Settings",
+        "btn_settings": "Settings",
+        
+        # Einstellungen-Menü
+        "menu_dark_mode": "Dark Mode",
+        "menu_columns": "Columns...",
+        "menu_language": "Language",
+        "menu_language_de": "German",
+        "menu_language_en": "English",
+        "menu_info": "Info",
+        "menu_help": "Help",
+        "menu_licenses": "Licenses",
+        
+        # Disclaimer
+        "disclaimer": "Use at your own risk",
+        
+        # Spalten-Dialog
+        "columns_dialog_title": "Columns",
+        "columns_dialog_label": "Visible columns:",
+        "btn_close": "Close",
+        
+        # Info-Dialog
+        "info_title": "Info",
+        
+        # Hilfe-Dialog
+        "help_title": "Help",
+        
+        # Lizenzen-Dialog
+        "licenses_title": "Licenses",
+        
+        # Kamera Einstellungen Dialog
+        "camera_settings_title": "Camera Settings",
+        "camera_settings_cameras_selected": "{} camera(s) selected",
+        "camera_settings_credentials": "Credentials",
+        "camera_settings_user": "User:",
+        "camera_settings_password": "Password:",
+        "camera_settings_connection": "Connection:",
+        "camera_settings_port": "Port (optional):",
+        "camera_settings_timeout": "Timeout (s):",
+        "camera_settings_test_connection": "Test Connection",
+        "camera_settings_ip_tab": "IP Address",
+        "camera_settings_users_tab": "Users",
+        "camera_settings_onvif_tab": "ONVIF Users",
+        "camera_settings_firmware_tab": "Firmware",
+        "camera_settings_config_tab": "Configuration",
+        
+        # Status
+        "status_searching": "Searching...",
+        "status_searching_with_timeout": "Searching ({} s)...",
+        "status_found": "{} camera(s) found",
+        "status_exported": "Exported to {}",
+        "status_no_cameras": "No cameras found",
+        "status_error": "Search error.",
+        "status_no_axis_cameras": "No Axis cameras found.",
+        "msg_error": "Error",
+        "msg_search_error": "Search Error",
+        
+        # Export-Dialog
+        "export_dialog_title": "Save Results",
+        "filetype_csv": "CSV File",
+        "filetype_txt": "Text File",
+        "filetype_all": "All Files",
+        
+        # Spaltenüberschriften (aus FIELD_NAMES)
+        "col_Name": "Name",
+        "col_IP Adresse: Zeroconfig": "IP Address: Zeroconf",
+        "col_IP Adresse: Konfiguriert": "IP Address: Configured",
+        "col_Port": "Port",
+        "col_Hostname": "Hostname",
+        "col_MAC-Adresse/Seriennummer": "MAC Address/Serial",
+    }
 }
 
 # Farbpaletten fuer hellen und dunklen Modus. Die Schluessel sind in beiden
@@ -125,6 +299,10 @@ class AxisDiscoveryGUI(tk.Tk):
         self._style = ttk.Style(self)
         self._style.theme_use("clam")
         self.dark_mode_var = tk.BooleanVar(value=bool(self.get_setting("dark_mode")))
+        self.language_var = tk.StringVar(value=self.get_setting("language") or "de")
+        
+        # Sprachwechsel-Callback
+        self.language_var.trace_add("write", self._on_language_change)
 
         # Fonts fuer die automatische Spaltenbreiten-Messung
         self._cell_font = tkfont.nametofont("TkDefaultFont")
@@ -146,41 +324,117 @@ class AxisDiscoveryGUI(tk.Tk):
         if self.autorefresh_var.get():
             self.after(400, self.start_search)
 
+    # ------------------------------------------------------- i18n / Uebersetzungen
+    def _(self, key, **kwargs):
+        """Uebersetzt einen Text-Schluessel in die aktuelle Sprache.
+        
+        Args:
+            key: Schluessel im TRANSLATIONS-Dictionary
+            **kwargs: Format-Argumente fuer str.format() (z. B. _("status_found", count=5))
+        
+        Returns:
+            Uebersetzter Text, oder der Schluessel selbst falls nicht gefunden
+        """
+        lang = self.language_var.get()
+        text = TRANSLATIONS.get(lang, {}).get(key, key)
+        if kwargs:
+            try:
+                text = text.format(**kwargs)
+            except (KeyError, ValueError):
+                pass  # Formatierung fehlgeschlagen, Originaltext zurueckgeben
+        return text
+
+    def _on_language_change(self, *args):
+        """Callback beim Aendern der Sprache – aktualisiert alle UI-Texte."""
+        self.set_setting("language", self.language_var.get())
+        self._update_all_texts()
+
+    def _update_all_texts(self):
+        """Aktualisiert alle UI-Texte nach Sprachwechsel."""
+        # Fenster-Titel
+        self.title(self._("window_title") + f" {__version__}")
+        
+        # Toolbar
+        self.search_btn.config(text=self._("btn_search"))
+        self.duration_label.config(text=self._("label_duration"))
+        self.autorefresh_cb.config(text=self._("btn_autorefresh"))
+        self.every_label.config(text=self._("label_every"))
+        self.export_btn.config(text=self._("btn_export"))
+        self.camera_settings_btn.config(text=self._("btn_camera_settings"))
+        self.settings_btn.config(text=self._("btn_settings"))
+        self.disclaimer_btn.config(text=self._("disclaimer"))
+        
+        # Statusbar
+        self._update_status_text()
+        
+        # Tabellenüberschriften
+        self._update_table_headers()
+
+    def _update_status_text(self):
+        """Aktualisiert den Status-Text in der Statusleiste."""
+        if hasattr(self, "status_var"):
+            current = self.status_var.get()
+            # Einfache Heuristik um Status-Typ zu erkennen
+            if "Suche laeuft" in current or "Searching" in current:
+                self.status_var.set(self._("status_searching"))
+            elif "Kamera" in current and "gefunden" in current:
+                # Extrahiere Anzahl
+                import re
+                match = re.search(r'(\d+)', current)
+                if match:
+                    count = match.group(1)
+                    self.status_var.set(self._("status_found", count=int(count)))
+            elif "Exportiert" in current or "Exported" in current:
+                self.status_var.set(self._("status_exported", path="..."))
+            elif "Keine" in current or "No" in current:
+                self.status_var.set(self._("status_no_cameras"))
+
+    def _update_table_headers(self):
+        """Aktualisiert die Tabellenüberschriften nach Sprachwechsel."""
+        if hasattr(self, "tree"):
+            for col in COLUMNS:
+                col_key = f"col_{col}"
+                self.tree.heading(col, text=self._(col_key))
+
     # ---------------------------------------------------------------- UI
     def _build_toolbar(self):
         bar = ttk.Frame(self, padding=8)
         bar.pack(side=tk.TOP, fill=tk.X)
 
-        self.search_btn = ttk.Button(bar, text="Suchen", command=self.start_search)
+        self.search_btn = ttk.Button(bar, text=self._("btn_search"), command=self.start_search)
         self.search_btn.pack(side=tk.LEFT)
 
-        ttk.Label(bar, text="Dauer (s):").pack(side=tk.LEFT, padx=(12, 4))
+        self.duration_label = ttk.Label(bar, text=self._("label_duration"))
+        self.duration_label.pack(side=tk.LEFT, padx=(12, 4))
         self.timeout_var = tk.IntVar(value=int(self.get_setting("search_duration")))
         ttk.Spinbox(bar, from_=1, to=60, width=4, textvariable=self.timeout_var).pack(
             side=tk.LEFT
         )
 
         self.autorefresh_var = tk.BooleanVar(value=bool(self.get_setting("autorefresh")))
-        ttk.Checkbutton(
+        self.autorefresh_cb = ttk.Checkbutton(
             bar,
-            text="Auto-Refresh",
+            text=self._("btn_autorefresh"),
             variable=self.autorefresh_var,
             command=self._on_autorefresh_toggle,
-        ).pack(side=tk.LEFT, padx=(16, 4))
+        )
+        self.autorefresh_cb.pack(side=tk.LEFT, padx=(16, 4))
 
-        ttk.Label(bar, text="alle (s):").pack(side=tk.LEFT, padx=(0, 4))
+        self.every_label = ttk.Label(bar, text=self._("label_every"))
+        self.every_label.pack(side=tk.LEFT, padx=(0, 4))
         self.interval_var = tk.IntVar(value=int(self.get_setting("refresh_interval")))
         ttk.Spinbox(bar, from_=5, to=3600, width=5, textvariable=self.interval_var).pack(
             side=tk.LEFT
         )
 
         # Disclaimer-Hinweis in Rot (wie Button, aber ohne Funktion)
-        ttk.Button(
+        self.disclaimer_btn = ttk.Button(
             bar,
-            text="Nutzung des Programms auf eigene Gefahr",
+            text=self._("disclaimer"),
             style="Disclaimer.TButton",
             state=tk.DISABLED,
-        ).pack(side=tk.LEFT, padx=(16, 4))
+        )
+        self.disclaimer_btn.pack(side=tk.LEFT, padx=(16, 4))
 
         # Aenderungen an Dauer/Intervall dauerhaft speichern
         self.timeout_var.trace_add("write", self._persist_toolbar_settings)
@@ -243,22 +497,24 @@ class AxisDiscoveryGUI(tk.Tk):
         """Kleiner Dialog mit einer Checkbox je Spalte (sichtbar/ausgeblendet)."""
         palette = DARK_COLORS if self.dark_mode_var.get() else LIGHT_COLORS
         win = tk.Toplevel(self)
-        win.title("Spalten")
+        win.title(self._("columns_dialog_title"))
         win.transient(self)
         win.resizable(False, False)
         win.configure(bg=palette["bg"])
         frame = ttk.Frame(win, padding=10)
         frame.pack(fill=tk.BOTH, expand=True)
-        ttk.Label(frame, text="Sichtbare Spalten:").pack(anchor=tk.W, pady=(0, 6))
+        ttk.Label(frame, text=self._("columns_dialog_label")).pack(anchor=tk.W, pady=(0, 6))
 
         hidden = set(self.get_setting("hidden_columns") or [])
         self._col_vars = {}
         for col in COLUMNS:
             var = tk.BooleanVar(value=col not in hidden)
             self._col_vars[col] = var
-            ttk.Checkbutton(frame, text=col, variable=var,
+            # Uebersetzte Spaltenname verwenden
+            col_key = f"col_{col}"
+            ttk.Checkbutton(frame, text=self._(col_key), variable=var,
                             command=self._on_columns_changed).pack(anchor=tk.W)
-        ttk.Button(frame, text="Schliessen", command=win.destroy).pack(anchor=tk.E, pady=(8, 0))
+        ttk.Button(frame, text=self._("btn_close"), command=win.destroy).pack(anchor=tk.E, pady=(8, 0))
 
     def _on_columns_changed(self):
         visible = [c for c, v in self._col_vars.items() if v.get()]
@@ -283,7 +539,7 @@ class AxisDiscoveryGUI(tk.Tk):
             self.tree.column(col, width=min(max(width + 24, 60), 600))
 
     def _build_statusbar(self):
-        self.status_var = tk.StringVar(value="Bereit.")
+        self.status_var = tk.StringVar(value=self._("status_no_cameras"))
         ttk.Label(
             self, textvariable=self.status_var, relief=tk.SUNKEN, anchor=tk.W, padding=4
         ).pack(side=tk.BOTTOM, fill=tk.X)
@@ -327,7 +583,7 @@ class AxisDiscoveryGUI(tk.Tk):
         self.cameras = []
 
         timeout = self.timeout_var.get()
-        self.status_var.set(f"Suche laeuft ({timeout} s)...")
+        self.status_var.set(self._("status_searching_with_timeout", timeout=timeout))
         self.progress.start(12)
 
         thread = threading.Thread(target=self._run_discovery, args=(timeout,), daemon=True)
@@ -356,8 +612,8 @@ class AxisDiscoveryGUI(tk.Tk):
         self.search_btn.config(state=tk.NORMAL)
 
         if status == "error":
-            self.status_var.set("Fehler bei der Suche.")
-            messagebox.showerror("Fehler", payload)
+            self.status_var.set(self._("status_error"))
+            messagebox.showerror(self._("msg_error"), payload)
             return
 
         self.cameras = payload
@@ -367,9 +623,9 @@ class AxisDiscoveryGUI(tk.Tk):
 
         if self.cameras:
             self.export_btn.config(state=tk.NORMAL)
-            self.status_var.set(f"{len(self.cameras)} Kamera(s) gefunden.")
+            self.status_var.set(self._("status_found", count=len(self.cameras)))
         else:
-            self.status_var.set("Keine Axis-Kameras gefunden.")
+            self.status_var.set(self._("status_no_axis_cameras"))
 
         self._schedule_refresh()  # naechsten Auto-Refresh planen (falls aktiviert)
 
@@ -431,21 +687,51 @@ class AxisDiscoveryGUI(tk.Tk):
         # Dark-Mode-Umschalter: Haken an -> dunkel, Haken aus -> hell.
         ttk.Checkbutton(
             frame,
-            text="Dark Mode",
+            text=self._("menu_dark_mode"),
             variable=self.dark_mode_var,
             command=self._toggle_dark_mode,
         ).pack(fill=tk.X, padx=4, pady=2)
         ttk.Separator(frame, orient="horizontal").pack(fill=tk.X)
 
-        for label, command in (
-            ("Spalten...", self._show_columns_dialog),
-            ("Info", self._show_info),
-            ("Hilfe", self._show_help),
-            ("Lizenzen", self._show_licenses),
+        # Sprachauswahl mit Radiobuttons
+        ttk.Label(frame, text=self._("menu_language"), font=("TkDefaultFont", 10, "bold")).pack(
+            anchor=tk.W, padx=4, pady=(2, 0)
+        )
+        lang_frame = ttk.Frame(frame)
+        lang_frame.pack(fill=tk.X, padx=4)
+        
+        self.lang_var = tk.StringVar(value=self.language_var.get())
+        
+        ttk.Radiobutton(
+            lang_frame,
+            text=self._("menu_language_de"),
+            variable=self.lang_var,
+            value="de",
+            command=lambda: self.language_var.set("de"),
+        ).pack(anchor=tk.W, padx=(20, 0))
+        ttk.Radiobutton(
+            lang_frame,
+            text=self._("menu_language_en"),
+            variable=self.lang_var,
+            value="en",
+            command=lambda: self.language_var.set("en"),
+        ).pack(anchor=tk.W, padx=(20, 0))
+        
+        # Synchronisiere lang_var mit language_var
+        self.lang_var.trace_add("write", lambda *a: self.language_var.set(self.lang_var.get()))
+        self.language_var.trace_add("write", lambda *a: self.lang_var.set(self.language_var.get()))
+        
+        ttk.Separator(frame, orient="horizontal").pack(fill=tk.X)
+
+        for label_key, command in (
+            ("menu_columns", self._show_columns_dialog),
+            ("menu_info", self._show_info),
+            ("menu_help", self._show_help),
+            ("menu_licenses", self._show_licenses),
         ):
             ttk.Button(
                 frame,
-                text=label,
+                text=self._(label_key),
                 command=lambda c=command: self._choose_setting(c),
             ).pack(fill=tk.X)  # fuellt die volle Breite des Dropdowns
 
@@ -736,13 +1022,13 @@ class AxisDiscoveryGUI(tk.Tk):
         if not self.cameras:
             return
         path = filedialog.asksaveasfilename(
-            title="Ergebnisse speichern",
+            title=self._("export_dialog_title"),
             defaultextension=".csv",
             initialfile="axis_cameras.csv",
             filetypes=[
-                ("CSV-Datei", "*.csv"),
-                ("Textdatei", "*.txt"),
-                ("Alle Dateien", "*.*"),
+                (self._("filetype_csv"), "*.csv"),
+                (self._("filetype_txt"), "*.txt"),
+                (self._("filetype_all"), "*.*"),
             ],
         )
         if not path:
@@ -751,7 +1037,7 @@ class AxisDiscoveryGUI(tk.Tk):
         # Exportiert nur die aktuell sichtbaren Spalten
         visible_columns = self.tree["displaycolumns"]
         export_results(self.cameras, path, columns=visible_columns)
-        self.status_var.set(f"Exportiert nach {path}")
+        self.status_var.set(self._("status_exported", path=path))
 
 
 class CameraSettingsDialog(tk.Toplevel):
