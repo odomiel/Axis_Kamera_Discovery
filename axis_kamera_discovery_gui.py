@@ -174,6 +174,14 @@ class AxisDiscoveryGUI(tk.Tk):
             side=tk.LEFT
         )
 
+        # Disclaimer-Hinweis in Rot (wie Button, aber ohne Funktion)
+        ttk.Button(
+            bar,
+            text="Nutzung des Programms auf eigene Gefahr",
+            style="Disclaimer.TButton",
+            state=tk.DISABLED,
+        ).pack(side=tk.LEFT, padx=(16, 4))
+
         # Aenderungen an Dauer/Intervall dauerhaft speichern
         self.timeout_var.trace_add("write", self._persist_toolbar_settings)
         self.interval_var.trace_add("write", self._persist_toolbar_settings)
@@ -545,6 +553,14 @@ class AxisDiscoveryGUI(tk.Tk):
             "TButton",
             background=[("active", c["active_bg"]), ("disabled", c["bg"])],
             foreground=[("disabled", c["disabled_fg"])],
+        )
+
+        # Disclaimer-Button: roter Text, sieht aus wie Button aber ohne Funktion
+        s.configure("Disclaimer.TButton", background=c["field_bg"], foreground="#ff0000")
+        s.map(
+            "Disclaimer.TButton",
+            background=[("active", c["active_bg"]), ("disabled", c["bg"])],
+            foreground=[("disabled", "#ff0000")],
         )
 
         s.configure(
