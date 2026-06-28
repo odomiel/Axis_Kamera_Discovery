@@ -297,6 +297,7 @@ axis_IP_Utility/
 
 | Version | Änderungen |
 |---|---|
+| 26.06.28b8 | Refactor: Sprachmenü mit Untermenü für Deutsch/Englisch; SESSION.md aktualisiert |
 | 26.06.28b7 | Fix: Spracheinstellung wird nach Neustart beachtet (Einstellungen/Kamera Einstellungen-Buttons) |
 | 26.06.28b5 | – |
 | 26.06.28b4 | Sprachauswahl (Deutsch/Englisch) implementiert |
