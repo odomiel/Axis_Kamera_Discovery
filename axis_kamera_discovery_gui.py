@@ -143,9 +143,9 @@ TRANSLATIONS = {
         
         # Status
         "status_searching": "Suche laeuft...",
-        "status_searching_with_timeout": "Suche laeuft ({} s)...",
-        "status_found": "{} Kamera(s) gefunden",
-        "status_exported": "Exportiert nach {}",
+        "status_searching_with_timeout": "Suche laeuft ({timeout} s)...",
+        "status_found": "{count} Kamera(s) gefunden",
+        "status_exported": "Exportiert nach {path}",
         "status_no_cameras": "Keine Kameras gefunden",
         "status_error": "Fehler bei der Suche.",
         "status_no_axis_cameras": "Keine Axis-Kameras gefunden.",
@@ -224,9 +224,9 @@ TRANSLATIONS = {
         
         # Status
         "status_searching": "Searching...",
-        "status_searching_with_timeout": "Searching ({} s)...",
-        "status_found": "{} camera(s) found",
-        "status_exported": "Exported to {}",
+        "status_searching_with_timeout": "Searching ({timeout} s)...",
+        "status_found": "{count} camera(s) found",
+        "status_exported": "Exported to {path}",
         "status_no_cameras": "No cameras found",
         "status_error": "Search error.",
         "status_no_axis_cameras": "No Axis cameras found.",
