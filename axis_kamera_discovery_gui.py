@@ -46,6 +46,8 @@ from axis_kamera_discovery_cli import (
 import axis_kamera_discovery_vapix as vapix
 
 COLUMNS = FIELD_NAMES
+# Treeview-Spalten inkl. leerer Endlos-Spalte für bessere Optik
+TREE_COLUMNS = list(COLUMNS) + [""]
 
 # Speicherort fuer benutzerdefinierte Einstellungen (z. B. Dark Mode).
 # Windows: %APPDATA%\Axis_Kamera_Discovery ; sonst XDG ($XDG_CONFIG_HOME) bzw. ~/.config
@@ -280,7 +282,7 @@ class AxisDiscoveryGUI(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title(f"Axis_Kamera_Discovery {__version__}")
-        self.geometry("1100x550")
+        self.geometry("1250x550")
         self.minsize(800, 400)
 
         self.cameras = []
@@ -400,9 +402,10 @@ class AxisDiscoveryGUI(tk.Tk):
     def _update_table_headers(self):
         """Aktualisiert die Tabellenüberschriften nach Sprachwechsel."""
         if hasattr(self, "tree"):
-            for col in COLUMNS:
-                col_key = f"col_{col}"
-                self.tree.heading(col, text=self._(col_key))
+            for col in TREE_COLUMNS:
+                if col:  # Leere Spalte hat keine Überschrift
+                    col_key = f"col_{col}"
+                    self.tree.heading(col, text=self._(col_key))
 
     # ---------------------------------------------------------------- UI
     def _build_toolbar(self):
@@ -472,12 +475,18 @@ class AxisDiscoveryGUI(tk.Tk):
         frame = ttk.Frame(self)
         frame.pack(fill=tk.BOTH, expand=True, padx=8, pady=(0, 8))
 
-        self.tree = ttk.Treeview(frame, columns=COLUMNS, show="headings")
-        for col in COLUMNS:
-            # Klick auf die Ueberschrift sortiert nach dieser Spalte
-            self.tree.heading(col, text=col, command=lambda c=col: self._sort_by(c))
-            # stretch=NO: die per _autosize_columns gemessenen Breiten bleiben verbindlich
-            self.tree.column(col, width=180, anchor=tk.W, stretch=tk.NO)
+        # Füge leere Endlos-Spalte für bessere Optik hinzu
+        tree_columns = list(COLUMNS) + [""]
+        self.tree = ttk.Treeview(frame, columns=tree_columns, show="headings")
+        for i, col in enumerate(tree_columns):
+            if col:  # Normale Spalte
+                # Klick auf die Ueberschrift sortiert nach dieser Spalte
+                self.tree.heading(col, text=col, command=lambda c=col: self._sort_by(c))
+                # stretch=NO: die per _autosize_columns gemessenen Breiten bleiben verbindlich
+                self.tree.column(col, width=180, anchor=tk.W, stretch=tk.NO)
+            else:  # Leere Endlos-Spalte
+                self.tree.heading(col, text="", command=lambda: None)
+                self.tree.column(col, width=100, anchor=tk.W, stretch=tk.YES)
 
         vsb = ttk.Scrollbar(frame, orient="vertical", command=self.tree.yview)
         hsb = ttk.Scrollbar(frame, orient="horizontal", command=self.tree.xview)
@@ -497,9 +506,13 @@ class AxisDiscoveryGUI(tk.Tk):
     def _apply_column_visibility(self):
         """Setzt die sichtbaren Spalten gemaess gespeicherter Auswahl."""
         hidden = set(self.get_setting("hidden_columns") or [])
-        visible = [c for c in COLUMNS if c not in hidden]
+        # Leere Spalte immer anzeigen, Daten-Spalten gemäss Einstellung
+        visible = [c for c in TREE_COLUMNS if c and c not in hidden]
+        # Leere Spalte hinzufügen
+        if TREE_COLUMNS and not TREE_COLUMNS[-1]:
+            visible.append(TREE_COLUMNS[-1])
         # Mindestens eine Spalte sichtbar lassen
-        self.tree["displaycolumns"] = visible if visible else list(COLUMNS)
+        self.tree["displaycolumns"] = visible if visible else list(TREE_COLUMNS)
 
     def _show_columns_dialog(self):
         """Kleiner Dialog mit einer Checkbox je Spalte (sichtbar/ausgeblendet)."""
@@ -537,7 +550,9 @@ class AxisDiscoveryGUI(tk.Tk):
 
     def _autosize_columns(self):
         """Passt jede Spaltenbreite an den breitesten Inhalt (inkl. Ueberschrift) an."""
-        for col in COLUMNS:
+        for col in TREE_COLUMNS:
+            if not col:  # Leere Spalte überspringen (hat stretch=YES)
+                continue
             header = self.tree.heading(col, "text")
             width = self._heading_font.measure(header)
             for iid in self.tree.get_children(""):
@@ -574,9 +589,11 @@ class AxisDiscoveryGUI(tk.Tk):
         self._sort_state[col] = not reverse  # naechster Klick: andere Richtung
 
         # Pfeil nur in der aktiven Spalte anzeigen
-        for c in COLUMNS:
+        for c in TREE_COLUMNS:
+            if not c:  # Leere Spalte hat keine Überschrift mit Pfeil
+                continue
             arrow = ("  ▲" if not reverse else "  ▼") if c == col else ""
-            self.tree.heading(c, text=c + arrow)
+            self.tree.heading(c, text=self._(f"col_{c}") + arrow)
 
     # ----------------------------------------------------------- Suche
     def start_search(self):
@@ -626,7 +643,9 @@ class AxisDiscoveryGUI(tk.Tk):
 
         self.cameras = payload
         for cam in self.cameras:
-            self.tree.insert("", tk.END, values=[cam.get(c, "") for c in COLUMNS])
+            # Werte für Daten-Spalten + leere Zelle für Endlos-Spalte
+            values = [cam.get(c, "") for c in COLUMNS] + [""]
+            self.tree.insert("", tk.END, values=values)
         self._autosize_columns()  # Breiten an die neuen Inhalte anpassen
 
         if self.cameras:
@@ -1006,7 +1025,8 @@ class AxisDiscoveryGUI(tk.Tk):
                 "Bitte zuerst eine oder mehrere Kameras in der Liste auswaehlen.",
             )
             return
-        cams = [dict(zip(COLUMNS, self.tree.item(iid, "values"))) for iid in selection]
+        # Werte aus Treeview (inkl. leere Endlos-Spalte) -> nur Daten-Spalten verwenden
+        cams = [dict(zip(COLUMNS, self.tree.item(iid, "values")[:len(COLUMNS)])) for iid in selection]
         palette = DARK_COLORS if self.dark_mode_var.get() else LIGHT_COLORS
         CameraSettingsDialog(self, cams, palette)
 
@@ -1015,7 +1035,7 @@ class AxisDiscoveryGUI(tk.Tk):
         selection = self.tree.selection()
         if not selection:
             return
-        values = self.tree.item(selection[0], "values")
+        values = self.tree.item(selection[0], "values")[:len(COLUMNS)]  # Leere Endlos-Spalte ausschließen
         # gleiche Logik wie das CLI: erste IP aus dem Adressfeld
         first_ip = get_first_ip(dict(zip(COLUMNS, values)))
         if first_ip:
@@ -1037,8 +1057,8 @@ class AxisDiscoveryGUI(tk.Tk):
         if not path:
             return
         # Format anhand der Dateiendung (csv -> CSV, sonst Texttabelle)
-        # Exportiert nur die aktuell sichtbaren Spalten
-        visible_columns = self.tree["displaycolumns"]
+        # Exportiert nur die aktuell sichtbaren Spalten (leere Endlos-Spalte ausschließen)
+        visible_columns = [c for c in self.tree["displaycolumns"] if c]
         export_results(self.cameras, path, columns=visible_columns)
         self.status_var.set(self._("status_exported", path=path))
 
