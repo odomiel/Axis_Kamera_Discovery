@@ -416,6 +416,7 @@ class AxisDiscoveryGUI(tk.Tk):
         popup = tk.Toplevel(self)
         popup.overrideredirect(True)        # randloses Fenster (wie ein Menue)
         popup.transient(self)
+        popup.withdraw()  # unsichtbar erstellen, um Artefakte an (0,0) zu vermeiden
         frame = ttk.Frame(popup, relief="solid", borderwidth=1)
         frame.pack(fill=tk.BOTH, expand=True)
 
@@ -452,6 +453,7 @@ class AxisDiscoveryGUI(tk.Tk):
         x = btn.winfo_rootx() + btn.winfo_width() - width
         y = btn.winfo_rooty() + btn.winfo_height()
         popup.geometry(f"{width}x{height}+{x}+{y}")
+        popup.deiconify()  # jetzt sichtbar machen
 
     def _choose_setting(self, command):
         # erst Dropdown schliessen, dann die Aktion ausfuehren
