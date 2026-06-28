@@ -32,6 +32,7 @@ Python 3.13 inklusive **Tcl/Tk 9** sowie alle Abhängigkeiten mitbringt und dami
 | Ergebnis-Tabelle anzeigen | immer | `--show/-s` |
 | Export als Texttabelle | Dialog (`.txt`) | `-o datei.txt` |
 | Export als CSV | Dialog (`.csv`) | `-o datei.csv` / `--format csv` |
+| Export (nur sichtbare Spalten) | immer (GUI: nur eingeblendete Spalten) | immer (CLI: alle Spalten) |
 | Wiederholte Suche (Auto-Refresh) | Checkbox + Intervall | `--watch/-w SEKUNDEN` |
 | Kamera-Weboberfläche im Browser öffnen | Doppelklick auf Zeile | `--open` |
 | Kamera-IP ändern (DHCP/fest, Mehrfachauswahl) | „Kamera Einstellungen" | `set-ip` / `set-dhcp` |
@@ -92,7 +93,8 @@ Bedienung:
 - **Suchen** – startet die Suche im Hintergrund (Fenster bleibt bedienbar).
 - **Dauer (s)** – Suchdauer (1–60 s, Standard 10).
 - **Auto-Refresh** + **alle (s)** – wiederholt die Suche automatisch im
-  eingestellten Intervall (5–3600 s). Auto-Refresh-Status, Intervall und
+  eingestellten Intervall (5–3600 s).
+- **Hinweis in Rot** – "Nutzung des Programms auf eigene Gefahr" (zwischen Auto-Refresh und Progressbar). Auto-Refresh-Status, Intervall und
   Such-Dauer werden gespeichert (`settings.json`) und beim nächsten Start wieder
   hergestellt; war Auto-Refresh aktiv, läuft die Suche automatisch weiter.
 - **Spaltenbreiten** passen sich nach jeder Suche automatisch an den breitesten
@@ -103,7 +105,8 @@ Bedienung:
 - **Doppelklick** auf eine Zeile – öffnet `http://<IP>` (Weboberfläche der
   Kamera) im Browser.
 - **Exportieren…** – speichert die Ergebnisse als CSV oder Texttabelle
-  (Format folgt der gewählten Dateiendung).
+  (Format folgt der gewählten Dateiendung). **Nur die aktuell eingeblendeten
+  Spalten werden exportiert** (über "Spalten…" einstellbar).
 - **Kamera Einstellungen** (Button links neben „Einstellungen") – ändert
   Einstellungen an den in der Liste **markierten** Kameras (Mehrfachauswahl
   möglich). Öffnet einen Dialog mit Zugangsdaten (Benutzer/Passwort,
@@ -284,6 +287,17 @@ axis_IP_Utility/
 > Hinweis: `.tk9build/`, `*.AppImage` und `__pycache__/` sind per `.gitignore`
 > vom Repository ausgeschlossen. Der Build erzeugt `AppRun` und den
 > `.desktop`-Eintrag selbst.
+
+---
+
+## Changelog
+
+| Version | Änderungen |
+|---|---|
+| 26.06.28b2 | Export orientiert sich an eingeblendeten Spalten (nur GUI); Disclaimer-Hinweis in Toolbar |
+| 26.06.28b1 | Disclaimer-Hinweis in Toolbar hinzugefügt |
+| 26.06.28 | Fix: Einstellungen-Dropdown zeigt keine Artefakte mehr an (0,0) |
+| 26.06.21b29 | Windows-.exe vorbereiten (PyInstaller) |
 
 ---
 
