@@ -17,3 +17,4 @@ dist/
 AxisDeviceManagerKonfigurationsdateien/
 # SSH Deploy-Keys
 deploy_key/
+python_export.json
