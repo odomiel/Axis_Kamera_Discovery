@@ -280,8 +280,8 @@ class AxisDiscoveryGUI(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title(f"Axis_Kamera_Discovery {__version__}")
-        self.geometry("1000x500")
-        self.minsize(700, 350)
+        self.geometry("1100x550")
+        self.minsize(800, 400)
 
         self.cameras = []
         self._result_queue = queue.Queue()
