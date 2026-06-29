@@ -22,12 +22,13 @@ from prettytable import PrettyTable
 import argparse
 import getpass
 import os
+import re
 
 import axis_kamera_discovery_vapix as vapix
 
 # Versionsschema: JJ.MM.TT, bei mehreren Releases am selben Tag b1, b2, ...
 # (wird von bump_version.py gepflegt)
-__version__ = "26.06.28b9"
+__version__ = "26.06.29"
 
 FIELD_NAMES = [
     "Name",
@@ -261,6 +262,39 @@ def cmd_config(args):
     return _run_over_ips(args.ips, lambda ip: vapix.apply_adm_config(
         ip, config=cfg, with_profiles=not args.no_profiles, **k))
 
+def cmd_config_export(args):
+    if len(args.ips) != 1:
+        print("[FEHLER] config-export erwartet genau eine IP-Adresse.")
+        return 1
+    ip = args.ips[0]
+    k = _conn_kwargs(args)
+    k["timeout"] = max(30, args.conn_timeout)
+    try:
+        cfg = vapix.read_device_config(ip, **k)
+    except vapix.VapixError as exc:
+        print(f"[FEHLER] {ip}: {exc}")
+        return 1
+    selected = None
+    if args.grep:
+        try:
+            rx = re.compile(args.grep, re.IGNORECASE)
+        except re.error as exc:
+            print(f"[FEHLER] Ungueltiges Suchmuster: {exc}")
+            return 1
+        selected = {n for n in cfg["parameters"] if rx.search(n)}
+        if not selected:
+            print(f"[FEHLER] Kein Parameter passt zu '{args.grep}'.")
+            return 1
+    try:
+        n = vapix.write_adm_config(args.output, cfg, selected_params=selected,
+                                   with_profiles=not args.no_profiles)
+    except vapix.VapixError as exc:
+        print(f"[FEHLER] {exc}")
+        return 1
+    extra = "" if args.no_profiles else f" + {len(cfg['profiles'])} Stream-Profil(e)"
+    print(f"[OK]     {ip}: {n} Parameter{extra} -> {args.output}")
+    return 0
+
 def main():
     parser = argparse.ArgumentParser(
         description='Axis_Kamera_Discovery - Suche und Konfiguration von Axis-Kameras.')
@@ -280,7 +314,8 @@ def main():
     # --- Unterbefehle zur Kamera-Konfiguration ---
     sub = parser.add_subparsers(dest='command', metavar='BEFEHL',
                                 help='Kamera-Konfiguration (set-ip, set-dhcp, user-add, '
-                                     'user-passwd, onvif-add, onvif-passwd, firmware, config)')
+                                     'user-passwd, onvif-add, onvif-passwd, firmware, '
+                                     'config, config-export)')
     # gemeinsame Verbindungs-/Auth-Optionen
     conn = argparse.ArgumentParser(add_help=False)
     conn.add_argument('ips', nargs='+', help='Ziel-IP(s) der Kamera(s)')
@@ -336,6 +371,15 @@ def main():
     sp.add_argument('--no-profiles', dest='no_profiles', action='store_true',
                     help='Stream-Profile nicht uebernehmen')
     sp.set_defaults(func=cmd_config)
+
+    sp = sub.add_parser('config-export', parents=[conn],
+                        help='Konfiguration einer Kamera als ADM-.cfg speichern')
+    sp.add_argument('--output', '-o', required=True, help='Zieldatei (.cfg)')
+    sp.add_argument('--grep', default=None,
+                    help='Nur Parameter, deren Name auf dieses Regex passt (sonst alle)')
+    sp.add_argument('--no-profiles', dest='no_profiles', action='store_true',
+                    help='Stream-Profile nicht exportieren')
+    sp.set_defaults(func=cmd_config_export)
 
     args = parser.parse_args()
 

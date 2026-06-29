@@ -1293,6 +1293,23 @@ class CameraSettingsDialog(tk.Toplevel):
             wraplength=560, justify=tk.LEFT,
         ).pack(anchor=tk.W, pady=(8, 0))
 
+        ttk.Separator(tab_cfg, orient=tk.HORIZONTAL).pack(fill=tk.X, pady=(12, 8))
+        ttk.Label(tab_cfg, text="Konfiguration aus Kamera auslesen:",
+                  font=("TkDefaultFont", 9, "bold")).pack(anchor=tk.W)
+        self.export_cfg_btn = ttk.Button(
+            tab_cfg, text="Aus Kamera auslesen und speichern...",
+            command=self._read_config)
+        self.export_cfg_btn.pack(anchor=tk.W, pady=(4, 0))
+        ttk.Label(
+            tab_cfg,
+            text="Liest die komplette Parameterliste der ERSTEN markierten Kamera. "
+            "Anschliessend laesst sich auswaehlen und durchsuchen, welche Parameter "
+            "in die ADM-.cfg geschrieben werden. Tipp: ein vollstaendiger Export "
+            "enthaelt auch geraetespezifische/nur-lesbare Werte (z.B. Seriennummer) "
+            "- fuer die Uebertragung auf andere Kameras nur passende Parameter waehlen.",
+            wraplength=560, justify=tk.LEFT,
+        ).pack(anchor=tk.W, pady=(4, 0))
+
         # --- Buttons ---
         btns = ttk.Frame(outer)
         btns.pack(fill=tk.X, pady=(6, 4))
@@ -1352,6 +1369,7 @@ class CameraSettingsDialog(tk.Toplevel):
         state = tk.DISABLED if busy else tk.NORMAL
         self.test_btn.config(state=state)
         self.apply_btn.config(state=state)
+        self.export_cfg_btn.config(state=state)
 
     # ------------------------------------------------- Verbindung testen
     def _test_connection(self):
@@ -1683,6 +1701,54 @@ class CameraSettingsDialog(tk.Toplevel):
                 self._queue.put((cname, False, str(exc)))
         self._queue.put(None)
 
+    # ------------------------ Konfiguration aus Kamera auslesen
+    def _read_config(self):
+        if self._working:
+            return
+        if not self.cameras:
+            messagebox.showerror("Keine Kamera", "Keine Kamera ausgewaehlt.", parent=self)
+            return
+        cam = self.cameras[0]
+        ip = get_first_ip(cam)
+        name = cam.get("Name", ip)
+        if not ip:
+            messagebox.showerror("Keine IP",
+                                 f"Fuer '{name}' ist keine IP-Adresse bekannt.", parent=self)
+            return
+        self._clear_log()
+        self._set_busy(True)
+        if len(self.cameras) > 1:
+            self._log(f"Hinweis: Es wird nur die erste markierte Kamera ausgelesen ({name}).")
+        self._log(f"Lese Konfiguration von {name} ({ip}) - bitte warten...")
+        kwargs = self._conn_kwargs()
+        kwargs["timeout"] = max(30, kwargs["timeout"])
+        self._read_q = queue.Queue()
+        threading.Thread(target=self._worker_read_config,
+                         args=(ip, name, kwargs), daemon=True).start()
+        self.after(150, self._poll_read)
+
+    def _worker_read_config(self, ip, name, kwargs):
+        try:
+            cfg = vapix.read_device_config(ip, **kwargs)
+            self._read_q.put(("ok", name, cfg))
+        except vapix.VapixError as exc:
+            self._read_q.put(("err", name, str(exc)))
+
+    def _poll_read(self):
+        try:
+            kind, name, payload = self._read_q.get_nowait()
+        except queue.Empty:
+            self.after(150, self._poll_read)
+            return
+        self._set_busy(False)
+        if kind == "err":
+            self._log(f"  [FEHLER] {name}: {payload}")
+            return
+        cfg = payload
+        self._log(f"  [OK] {name}: {len(cfg['parameters'])} Parameter, "
+                  f"{len(cfg['profiles'])} Stream-Profil(e) gelesen")
+        ParameterSelectDialog(self, cfg, name, self._palette)
+
     def _poll(self):
         try:
             while True:
@@ -1695,6 +1761,165 @@ class CameraSettingsDialog(tk.Toplevel):
                 self._log(f"  [{'OK' if ok else 'FEHLER'}] {name}: {msg}")
         except queue.Empty:
             self.after(150, self._poll)
+
+
+class ParameterSelectDialog(tk.Toplevel):
+    """Auswahl- und Suchdialog fuer den Konfigurations-Export.
+
+    Zeigt die ausgelesene Parameterliste einer Kamera, laesst die zu
+    speichernden Parameter per Klick-Haken (an-/abwaehlen) markieren und ueber
+    ein Suchfeld filtern, und schreibt die Auswahl ueber vapix.write_adm_config
+    als ADM-.cfg. Die Auswahl bleibt beim Filtern erhalten (separat in
+    self._selected gehalten).
+    """
+
+    CHECK = "X"
+
+    def __init__(self, master, config, cam_name, palette):
+        super().__init__(master)
+        self.title("Parameter auswaehlen und speichern")
+        self.geometry("680x680")
+        self.minsize(560, 480)
+        self.transient(master)
+        self.configure(bg=palette["bg"])
+        self._palette = palette
+        self._config = config
+        self._cam_name = cam_name
+        self._all_names = sorted(config.get("parameters", {}))
+        self._selected = set(self._all_names)  # Standard: alles ausgewaehlt
+        self._build_ui()
+        self._refilter()
+
+    def _build_ui(self):
+        outer = ttk.Frame(self, padding=10)
+        outer.pack(fill=tk.BOTH, expand=True)
+        ttk.Label(
+            outer,
+            text=f"{self._cam_name} - Modell {self._config.get('model') or '?'}, "
+                 f"FW {self._config.get('firmware') or '?'}",
+            font=("TkDefaultFont", 10, "bold"),
+        ).pack(anchor=tk.W)
+        ttk.Label(outer, text=f"{len(self._all_names)} Parameter gelesen. "
+                  "Haken anklicken = in die .cfg uebernehmen.").pack(anchor=tk.W,
+                                                                     pady=(0, 6))
+
+        sf = ttk.Frame(outer)
+        sf.pack(fill=tk.X)
+        ttk.Label(sf, text="Suche:").pack(side=tk.LEFT)
+        self._search_var = tk.StringVar()
+        self._search_var.trace_add("write", lambda *_: self._refilter())
+        ttk.Entry(sf, textvariable=self._search_var).pack(
+            side=tk.LEFT, fill=tk.X, expand=True, padx=(4, 0))
+
+        tf = ttk.Frame(outer)
+        tf.pack(fill=tk.BOTH, expand=True, pady=(6, 0))
+        self.tree = ttk.Treeview(tf, columns=("chk", "name", "value"),
+                                 show="headings", selectmode="none")
+        self.tree.heading("chk", text="")
+        self.tree.heading("name", text="Parameter")
+        self.tree.heading("value", text="Wert")
+        self.tree.column("chk", width=32, anchor=tk.CENTER, stretch=tk.NO)
+        self.tree.column("name", width=340, stretch=tk.NO)
+        self.tree.column("value", width=260)
+        vsb = ttk.Scrollbar(tf, orient=tk.VERTICAL, command=self.tree.yview)
+        self.tree.configure(yscrollcommand=vsb.set)
+        self.tree.grid(row=0, column=0, sticky="nsew")
+        vsb.grid(row=0, column=1, sticky="ns")
+        tf.rowconfigure(0, weight=1)
+        tf.columnconfigure(0, weight=1)
+        self.tree.bind("<Button-1>", self._on_click)
+
+        cf = ttk.Frame(outer)
+        cf.pack(fill=tk.X, pady=(6, 0))
+        self._count_var = tk.StringVar()
+        ttk.Label(cf, textvariable=self._count_var).pack(side=tk.LEFT)
+        ttk.Button(cf, text="Alle (gefiltert)",
+                   command=lambda: self._set_filtered(True)).pack(side=tk.RIGHT)
+        ttk.Button(cf, text="Keine (gefiltert)",
+                   command=lambda: self._set_filtered(False)).pack(side=tk.RIGHT, padx=(0, 4))
+
+        self._profiles_var = tk.BooleanVar(value=bool(self._config.get("profiles")))
+        ttk.Checkbutton(
+            outer,
+            text=f"Stream-Profile einschliessen ({len(self._config.get('profiles', []))})",
+            variable=self._profiles_var,
+        ).pack(anchor=tk.W, pady=(6, 0))
+
+        bf = ttk.Frame(outer)
+        bf.pack(fill=tk.X, pady=(8, 0))
+        ttk.Button(bf, text="Speichern...", command=self._save).pack(side=tk.LEFT)
+        ttk.Button(bf, text="Abbrechen", command=self.destroy).pack(side=tk.RIGHT)
+
+    def _filtered_names(self):
+        term = self._search_var.get().strip().lower()
+        if not term:
+            return self._all_names
+        params = self._config["parameters"]
+        return [n for n in self._all_names
+                if term in n.lower() or term in params[n].lower()]
+
+    def _refilter(self):
+        self.tree.delete(*self.tree.get_children())
+        params = self._config["parameters"]
+        for name in self._filtered_names():
+            value = params[name]
+            if len(value) > 90:
+                value = value[:87] + "..."
+            glyph = self.CHECK if name in self._selected else ""
+            self.tree.insert("", tk.END, iid=name, values=(glyph, name, value))
+        self._update_count()
+
+    def _update_count(self):
+        self._count_var.set(
+            f"{len(self._selected)} von {len(self._all_names)} ausgewaehlt")
+
+    def _on_click(self, event):
+        row = self.tree.identify_row(event.y)
+        if not row:
+            return
+        if row in self._selected:
+            self._selected.discard(row)
+            self.tree.set(row, "chk", "")
+        else:
+            self._selected.add(row)
+            self.tree.set(row, "chk", self.CHECK)
+        self._update_count()
+
+    def _set_filtered(self, on):
+        for name in self._filtered_names():
+            if on:
+                self._selected.add(name)
+            else:
+                self._selected.discard(name)
+        self._refilter()
+
+    def _save(self):
+        if not self._selected:
+            messagebox.showerror("Nichts ausgewaehlt",
+                                 "Bitte mindestens einen Parameter auswaehlen.",
+                                 parent=self)
+            return
+        default = (self._config.get("model") or "konfiguration").replace(" ", "_") + ".cfg"
+        path = filedialog.asksaveasfilename(
+            title="ADM-Konfiguration speichern", parent=self,
+            defaultextension=".cfg", initialfile=default,
+            filetypes=[("ADM-Konfiguration", "*.cfg"), ("Alle Dateien", "*.*")],
+        )
+        if not path:
+            return
+        with_profiles = self._profiles_var.get()
+        try:
+            n = vapix.write_adm_config(path, self._config,
+                                       selected_params=self._selected,
+                                       with_profiles=with_profiles)
+        except vapix.VapixError as exc:
+            messagebox.showerror("Fehler beim Speichern", str(exc), parent=self)
+            return
+        extra = (f" + {len(self._config.get('profiles', []))} Stream-Profil(e)"
+                 if with_profiles else "")
+        messagebox.showinfo("Gespeichert",
+                            f"{n} Parameter{extra} gespeichert:\n{path}", parent=self)
+        self.destroy()
 
 
 def main():

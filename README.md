@@ -39,6 +39,7 @@ Python 3.13 inklusive **Tcl/Tk 9** sowie alle Abhängigkeiten mitbringt und dami
 | Benutzer/ONVIF-Benutzer anlegen oder Passwort ändern | „Kamera Einstellungen" | `user-add`/`user-passwd`/`onvif-add`/`onvif-passwd` |
 | Firmware-Update (Mehrfachauswahl) | „Kamera Einstellungen" | `firmware` |
 | ADM-Konfigurationsdatei anwenden | „Kamera Einstellungen" | `config` |
+| Konfiguration auslesen & als ADM-`.cfg` speichern | „Kamera Einstellungen" | `config-export` |
 | Dark Mode (heller/dunkler Modus) | Einstellungen → Checkbox „Dark Mode" | – |
 | Sprache (Deutsch/Englisch) | Einstellungen → Radiobuttons | – |
 | Version anzeigen | im Fenstertitel | `--version/-v` |
@@ -150,6 +151,18 @@ Bedienung:
     übernommen (einheitlich über `param.cgi`): gleichnamige vorhandene Profile
     werden **überschrieben**, neue angelegt. Die Datei sollte zum Modell passen.
 
+    Im selben Reiter lässt sich umgekehrt die **Konfiguration einer Kamera
+    auslesen und als ADM-`.cfg` speichern**: „Aus Kamera auslesen und
+    speichern…" liest die komplette Parameterliste der **ersten markierten**
+    Kamera. Anschließend öffnet sich ein Auswahl-Dialog, in dem die zu
+    speichernden Parameter per Häkchen an-/abgewählt und über ein **Suchfeld**
+    gefiltert werden können („Alle/Keine (gefiltert)" wirkt auf die aktuell
+    angezeigten Treffer); optional werden die **Stream-Profile** mitgespeichert.
+    ⚠️ Ein vollständiger Export enthält auch geräte­spezifische bzw. nur lesbare
+    Werte (z. B. Seriennummer/MAC) – für die Übertragung auf **andere** Kameras
+    nur passende Parameter auswählen. Die erzeugte Datei ist wieder über
+    „Konfiguration" anwendbar.
+
   Die Aufrufe laufen über die Axis-VAPIX-API bzw. den ONVIF-Dienst (HTTPS mit
   selbstsignierten Zertifikaten wird unterstützt); das Ergebnis wird je Kamera
   angezeigt.
@@ -236,6 +249,7 @@ wird interaktiv gefragt), `--scheme {auto,https,http}`, `--port`, `--conn-timeou
 | `onvif-passwd` | ONVIF-Passwort ändern | `--name`, `--new-password`, `--level` |
 | `firmware` | Firmware aufspielen | `--file` (.bin), `--factory-default` |
 | `config` | ADM-Konfiguration anwenden | `--file` (.cfg), `--no-profiles` |
+| `config-export` | Konfiguration auslesen & als ADM-`.cfg` speichern | `--output`/`-o` (.cfg, Pflicht), `--grep` (Namens-Regex), `--no-profiles` |
 
 ```bash
 # IP zweier Kameras (Passwort wird abgefragt)
@@ -249,6 +263,11 @@ python3 axis_kamera_discovery_cli.py user-add 192.168.0.90 --name root --new-pas
 
 # ADM-Konfiguration anwenden (inkl. Stream-Profile)
 ./Axis_Kamera_Discovery-x86_64.AppImage cli config 192.168.0.50 --file Konfig.cfg -p pw
+
+# Konfiguration einer Kamera auslesen und als .cfg speichern
+./Axis_Kamera_Discovery-x86_64.AppImage cli config-export 192.168.0.50 -o Konfig.cfg -p pw
+# nur Netzwerk-Parameter exportieren (Namens-Regex), ohne Stream-Profile
+./Axis_Kamera_Discovery-x86_64.AppImage cli config-export 192.168.0.50 -o Net.cfg -p pw --grep '^Network\.' --no-profiles
 ```
 
 ---

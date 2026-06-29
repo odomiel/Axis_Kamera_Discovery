@@ -713,3 +713,93 @@ def apply_adm_config(ip, username, password, config, scheme="auto", port=None,
         msg += (f"; Profile: {created} angelegt, {updated} ueberschrieben, "
                 f"{failed} fehlgeschlagen")
     return msg
+
+
+# ---------------------------------------------------------------------
+# Konfiguration AUSLESEN und als ADM-.cfg speichern (Umkehrung von oben)
+# ---------------------------------------------------------------------
+
+def _stream_profiles_from_params(full_params):
+    """Baut die Stream-Profil-Liste aus dem vollstaendigen param.cgi-Baum.
+
+    'full_params' ist {root.Gruppe.Name: Wert}. Liefert je StreamProfile.S#
+    ein Dict {name, description, parameters} -- gleiches Format wie
+    parse_adm_config()['profiles'].
+    """
+    sids = {}
+    for key, value in full_params.items():
+        m = re.match(r"root\.StreamProfile\.(S\d+)\.(Name|Description|Parameters)$", key)
+        if m:
+            sids.setdefault(m.group(1), {})[m.group(2)] = value
+    profiles = []
+    for sid in sorted(sids):
+        d = sids[sid]
+        name = (d.get("Name") or "").strip()
+        if name:
+            profiles.append({
+                "name": name,
+                "description": d.get("Description", ""),
+                "parameters": d.get("Parameters", ""),
+            })
+    return profiles
+
+
+def read_device_config(ip, username, password, scheme="auto", port=None, timeout=30):
+    """Liest die komplette Geraetekonfiguration (param.cgi?action=list).
+
+    Liefert ein Dict im selben Format wie parse_adm_config() (model, firmware,
+    parameters, profiles). Die Parameternamen sind ohne 'root.'-Praefix
+    gespeichert -- genau so, wie param.cgi?action=update sie erwartet und die
+    .cfg-Datei sie ablegt, sodass write_adm_config()/parse_adm_config()/
+    apply_adm_config() einen sauberen Round-Trip ergeben.
+    """
+    text = _request_auto(ip, username, password,
+                         "/axis-cgi/param.cgi?action=list", scheme, port, timeout)
+    full = _parse_param_list(text)
+    if not full:
+        raise VapixError("Keine Parameter erhalten (leere Antwort von param.cgi).")
+    params = {}
+    for key, value in full.items():
+        if key.startswith("root."):
+            params[key[len("root."):]] = value
+    return {
+        "model": full.get("root.Brand.ProdShortName", ""),
+        "firmware": full.get("root.Properties.Firmware.Version", ""),
+        "parameters": params,
+        "profiles": _stream_profiles_from_params(full),
+    }
+
+
+def write_adm_config(path, config, selected_params=None, with_profiles=True):
+    """Schreibt eine ADM-.cfg (AcmDeviceParameterExport) aus einer Konfiguration.
+
+    'config' ist das Dict aus read_device_config()/parse_adm_config(). Ist
+    'selected_params' (eine Menge von Namen) gesetzt, werden nur diese
+    Parameter exportiert, sonst alle. 'with_profiles' steuert die
+    Stream-Profile. Liefert die Anzahl geschriebener Parameter.
+    """
+    params = config.get("parameters", {})
+    names = [n for n in sorted(params)
+             if selected_params is None or n in selected_params]
+    root = ET.Element("AcmDeviceParameterExport")
+    ET.SubElement(root, "Model").text = config.get("model", "") or ""
+    ET.SubElement(root, "FirmwareVersion").text = config.get("firmware", "") or ""
+    plist = ET.SubElement(root, "ParameterList")
+    for name in names:
+        p = ET.SubElement(plist, "Parameter")
+        ET.SubElement(p, "Name").text = name
+        ET.SubElement(p, "Value").text = params[name]
+    splist = ET.SubElement(root, "StreamProfileList")
+    if with_profiles:
+        for prof in config.get("profiles", []):
+            sp = ET.SubElement(splist, "StreamProfile")
+            ET.SubElement(sp, "Name").text = prof.get("name", "")
+            ET.SubElement(sp, "Description").text = prof.get("description", "")
+            ET.SubElement(sp, "Parameters").text = prof.get("parameters", "")
+    tree = ET.ElementTree(root)
+    ET.indent(tree, space="  ")
+    try:
+        tree.write(path, encoding="utf-8", xml_declaration=True)
+    except OSError as exc:
+        raise VapixError(f"Datei nicht schreibbar: {exc}")
+    return len(names)
