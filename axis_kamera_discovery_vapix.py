@@ -22,6 +22,7 @@ gesprochen, weil Axis-Geraete in der Regel selbstsignierte Zertifikate nutzen.
 Authentifizierung per HTTP-Digest (mit Basic als Rueckfall).
 """
 
+import csv
 import json
 import os
 import re
@@ -410,6 +411,60 @@ def set_onvif_user_password(ip, username, password, target_user, new_password,
     _check_onvif_response(
         _onvif_post_auto(ip, username, password, inner, scheme, port, timeout))
     return f"ONVIF-Passwort von '{target_user}' geaendert"
+
+
+def parse_user_list(path, onvif=False):
+    """Liest eine Benutzerliste fuer den Stapel-Import aus einer Textdatei.
+
+    Format: eine Zeile je Benutzer, kommagetrennt (CSV -- Passwoerter mit Komma
+    in Anfuehrungszeichen setzen):
+
+        Name,Passwort[,Rolle]
+
+    Leerzeilen und mit '#' beginnende Zeilen werden uebersprungen. Fehlt die
+    Rolle/Stufe, gilt der niedrigste Rang (regulaer 'viewer', ONVIF 'User').
+    Gueltige Rollen (regulaer): administrator/operator/viewer; Stufen (ONVIF):
+    Administrator/Operator/User -- Gross-/Kleinschreibung egal. Liefert eine
+    Liste von Dicts {name, password, role}. Wirft VapixError bei Datei- oder
+    Formatfehlern (mit Zeilennummern), damit nichts Halbfertiges angelegt wird.
+    """
+    try:
+        with open(path, newline="", encoding="utf-8-sig") as f:
+            rows = list(csv.reader(f))
+    except OSError as exc:
+        raise VapixError(f"Datei nicht lesbar: {exc}")
+    if onvif:
+        valid = {lvl.lower(): lvl for lvl in ONVIF_LEVELS}
+        default = "User"
+    else:
+        valid = {role: role for role in USER_ROLES}
+        default = "viewer"
+    users = []
+    errors = []
+    for num, row in enumerate(rows, 1):
+        if not row:
+            continue
+        name = row[0].strip()
+        if not name or name.startswith("#"):
+            continue
+        if len(row) < 2 or not row[1]:
+            errors.append(f"Zeile {num}: Passwort fehlt")
+            continue
+        password = row[1]
+        role_raw = row[2].strip() if len(row) >= 3 else ""
+        if role_raw:
+            role = valid.get(role_raw.lower())
+            if role is None:
+                errors.append(f"Zeile {num}: ungueltige Rolle/Stufe '{role_raw}'")
+                continue
+        else:
+            role = default
+        users.append({"name": name, "password": password, "role": role})
+    if errors:
+        raise VapixError("; ".join(errors))
+    if not users:
+        raise VapixError("Keine Benutzer in der Datei gefunden.")
+    return users
 
 
 # =====================================================================

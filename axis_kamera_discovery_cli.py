@@ -28,7 +28,7 @@ import axis_kamera_discovery_vapix as vapix
 
 # Versionsschema: JJ.MM.TT, bei mehreren Releases am selben Tag b1, b2, ...
 # (wird von bump_version.py gepflegt)
-__version__ = "26.06.29"
+__version__ = "26.06.29b1"
 
 FIELD_NAMES = [
     "Name",
@@ -240,6 +240,43 @@ def cmd_onvif_passwd(args):
     return _run_over_ips(args.ips, lambda ip: vapix.set_onvif_user_password(
         ip, target_user=args.name, new_password=args.new_password, level=args.level, **k))
 
+def _run_user_import(args, onvif):
+    if not os.path.isfile(args.file):
+        print(f"[FEHLER] Datei nicht gefunden: {args.file}")
+        return 1
+    try:
+        users = vapix.parse_user_list(args.file, onvif=onvif)
+    except vapix.VapixError as exc:
+        print(f"[FEHLER] {exc}")
+        return 1
+    kind = "ONVIF-Benutzer" if onvif else "Benutzer"
+    print(f"{len(users)} {kind} aus {args.file} geladen.")
+    k = _conn_kwargs(args)
+    failed = 0
+    for ip in args.ips:
+        for u in users:
+            try:
+                if onvif:
+                    msg = vapix.add_onvif_user(ip, new_user=u["name"],
+                                               new_password=u["password"],
+                                               level=u["role"], **k)
+                else:
+                    msg = vapix.add_or_set_user(ip, new_user=u["name"],
+                                                new_password=u["password"],
+                                                role=u["role"],
+                                                factory=getattr(args, "factory", False), **k)
+                print(f"[OK]     {ip} / {u['name']}: {msg}")
+            except vapix.VapixError as exc:
+                print(f"[FEHLER] {ip} / {u['name']}: {exc}")
+                failed += 1
+    return 1 if failed else 0
+
+def cmd_user_import(args):
+    return _run_user_import(args, onvif=False)
+
+def cmd_onvif_import(args):
+    return _run_user_import(args, onvif=True)
+
 def cmd_firmware(args):
     if not os.path.isfile(args.file):
         print(f"[FEHLER] Datei nicht gefunden: {args.file}")
@@ -314,8 +351,8 @@ def main():
     # --- Unterbefehle zur Kamera-Konfiguration ---
     sub = parser.add_subparsers(dest='command', metavar='BEFEHL',
                                 help='Kamera-Konfiguration (set-ip, set-dhcp, user-add, '
-                                     'user-passwd, onvif-add, onvif-passwd, firmware, '
-                                     'config, config-export)')
+                                     'user-passwd, user-import, onvif-add, onvif-passwd, '
+                                     'onvif-import, firmware, config, config-export)')
     # gemeinsame Verbindungs-/Auth-Optionen
     conn = argparse.ArgumentParser(add_help=False)
     conn.add_argument('ips', nargs='+', help='Ziel-IP(s) der Kamera(s)')
@@ -349,6 +386,13 @@ def main():
     sp.add_argument('--new-password', dest='new_password', required=True)
     sp.set_defaults(func=cmd_user_passwd)
 
+    sp = sub.add_parser('user-import', parents=[conn],
+                        help='Benutzer aus einer Textdatei anlegen (Name,Passwort[,Rolle])')
+    sp.add_argument('--file', required=True, help='Benutzerliste (.txt/.csv)')
+    sp.add_argument('--factory', action='store_true',
+                    help='Auslieferungszustand: ohne Anmeldung/Standard-Zugangsdaten, als Administrator')
+    sp.set_defaults(func=cmd_user_import)
+
     sp = sub.add_parser('onvif-add', parents=[conn], help='ONVIF-Benutzer anlegen')
     sp.add_argument('--name', required=True)
     sp.add_argument('--new-password', dest='new_password', required=True)
@@ -360,6 +404,11 @@ def main():
     sp.add_argument('--new-password', dest='new_password', required=True)
     sp.add_argument('--level', choices=list(vapix.ONVIF_LEVELS), default='Administrator')
     sp.set_defaults(func=cmd_onvif_passwd)
+
+    sp = sub.add_parser('onvif-import', parents=[conn],
+                        help='ONVIF-Benutzer aus einer Textdatei anlegen (Name,Passwort[,Stufe])')
+    sp.add_argument('--file', required=True, help='Benutzerliste (.txt/.csv)')
+    sp.set_defaults(func=cmd_onvif_import)
 
     sp = sub.add_parser('firmware', parents=[conn], help='Firmware (.bin) aufspielen')
     sp.add_argument('--file', required=True, help='Firmware-Datei (.bin)')

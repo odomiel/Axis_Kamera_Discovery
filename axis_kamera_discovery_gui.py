@@ -1222,6 +1222,23 @@ class CameraSettingsDialog(tk.Toplevel):
             wraplength=560, justify=tk.LEFT,
         ).pack(anchor=tk.W, pady=(2, 0))
 
+        ttk.Separator(tab_user, orient=tk.HORIZONTAL).pack(fill=tk.X, pady=(10, 6))
+        ttk.Label(tab_user, text="Stapel-Import aus Textdatei (mehrere Benutzer anlegen):",
+                  font=("TkDefaultFont", 9, "bold")).pack(anchor=tk.W)
+        self.import_user_btn = ttk.Button(
+            tab_user, text="Benutzerliste waehlen und anlegen...",
+            command=lambda: self._import_users(onvif=False))
+        self.import_user_btn.pack(anchor=tk.W, pady=(4, 0))
+        ttk.Label(
+            tab_user,
+            text="Eine Zeile je Benutzer: Name,Passwort,Rolle - Rolle optional "
+            "(Standard: viewer), gueltig: administrator/operator/viewer. Passwoerter "
+            "mit Komma in \"...\" setzen; Zeilen mit '#' sind Kommentare. Der oben "
+            "gewaehlte 'Auslieferungszustand' gilt auch fuer den Import (legt als "
+            "Administrator an).",
+            wraplength=560, justify=tk.LEFT,
+        ).pack(anchor=tk.W, pady=(4, 0))
+
         # ===== Reiter: ONVIF-Benutzer =====
         tab_onvif = ttk.Frame(self.nb, padding=8)
         self.nb.add(tab_onvif, text="ONVIF-Benutzer")
@@ -1244,6 +1261,22 @@ class CameraSettingsDialog(tk.Toplevel):
             of, textvariable=self.onv_level_var, width=17, state="readonly",
             values=vapix.ONVIF_LEVELS,
         ).grid(row=2, column=1, sticky=tk.W, padx=4, pady=2)
+
+        ttk.Separator(tab_onvif, orient=tk.HORIZONTAL).pack(fill=tk.X, pady=(10, 6))
+        ttk.Label(tab_onvif,
+                  text="Stapel-Import aus Textdatei (mehrere ONVIF-Benutzer anlegen):",
+                  font=("TkDefaultFont", 9, "bold")).pack(anchor=tk.W)
+        self.import_onvif_btn = ttk.Button(
+            tab_onvif, text="Benutzerliste waehlen und anlegen...",
+            command=lambda: self._import_users(onvif=True))
+        self.import_onvif_btn.pack(anchor=tk.W, pady=(4, 0))
+        ttk.Label(
+            tab_onvif,
+            text="Eine Zeile je Benutzer: Name,Passwort,Stufe - Stufe optional "
+            "(Standard: User), gueltig: Administrator/Operator/User. Passwoerter "
+            "mit Komma in \"...\" setzen; Zeilen mit '#' sind Kommentare.",
+            wraplength=560, justify=tk.LEFT,
+        ).pack(anchor=tk.W, pady=(4, 0))
 
         # ===== Reiter: Firmware =====
         tab_fw = ttk.Frame(self.nb, padding=8)
@@ -1370,6 +1403,8 @@ class CameraSettingsDialog(tk.Toplevel):
         self.test_btn.config(state=state)
         self.apply_btn.config(state=state)
         self.export_cfg_btn.config(state=state)
+        self.import_user_btn.config(state=state)
+        self.import_onvif_btn.config(state=state)
 
     # ------------------------------------------------- Verbindung testen
     def _test_connection(self):
@@ -1590,6 +1625,62 @@ class CameraSettingsDialog(tk.Toplevel):
                 self._queue.put((cname, True, msg))
             except vapix.VapixError as exc:
                 self._queue.put((cname, False, str(exc)))
+        self._queue.put(None)
+
+    # ----------------------------- Stapel-Import aus Textdatei
+    def _import_users(self, onvif):
+        if self._working:
+            return
+        path = filedialog.askopenfilename(
+            title="Benutzerliste waehlen", parent=self,
+            filetypes=[("Textdatei", "*.txt"), ("CSV-Datei", "*.csv"),
+                       ("Alle Dateien", "*.*")],
+        )
+        if not path:
+            return
+        try:
+            users = vapix.parse_user_list(path, onvif=onvif)
+        except vapix.VapixError as exc:
+            messagebox.showerror("Datei-Fehler", str(exc), parent=self)
+            return
+        kind = "ONVIF-Benutzer" if onvif else "Benutzer"
+        preview = "\n".join(f"  {u['name']} ({u['role']})" for u in users[:12])
+        if len(users) > 12:
+            preview += f"\n  ... ({len(users) - 12} weitere)"
+        confirm = (f"{len(users)} {kind} aus der Datei auf {len(self.cameras)} "
+                   f"Kamera(s) anlegen?\n\n{preview}")
+        if not messagebox.askyesno("Stapel-Import bestaetigen", confirm, parent=self):
+            return
+        self._clear_log()
+        self._set_busy(True)
+        factory = self.factory_var.get() and not onvif
+        self._log(f"Importiere {len(users)} {kind} auf {len(self.cameras)} Kamera(s)...")
+        kwargs = self._conn_kwargs()
+        threading.Thread(target=self._worker_import_users,
+                         args=(onvif, users, factory, kwargs), daemon=True).start()
+        self.after(150, self._poll)
+
+    def _worker_import_users(self, onvif, users, factory, kwargs):
+        for cam in self.cameras:
+            ip = get_first_ip(cam)
+            cname = cam.get("Name", ip)
+            if not ip:
+                self._queue.put((cname, False, "keine IP-Adresse bekannt"))
+                continue
+            for u in users:
+                label = f"{cname} / {u['name']}"
+                try:
+                    if onvif:
+                        msg = vapix.add_onvif_user(
+                            ip, new_user=u["name"], new_password=u["password"],
+                            level=u["role"], **kwargs)
+                    else:
+                        msg = vapix.add_or_set_user(
+                            ip, new_user=u["name"], new_password=u["password"],
+                            role=u["role"], factory=factory, **kwargs)
+                    self._queue.put((label, True, msg))
+                except vapix.VapixError as exc:
+                    self._queue.put((label, False, str(exc)))
         self._queue.put(None)
 
     # --------------------------------------------------------- Firmware

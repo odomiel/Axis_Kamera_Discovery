@@ -37,6 +37,7 @@ Python 3.13 inklusive **Tcl/Tk 9** sowie alle Abhängigkeiten mitbringt und dami
 | Kamera-Weboberfläche im Browser öffnen | Doppelklick auf Zeile | `--open` |
 | Kamera-IP ändern (DHCP/fest, Mehrfachauswahl) | „Kamera Einstellungen" | `set-ip` / `set-dhcp` |
 | Benutzer/ONVIF-Benutzer anlegen oder Passwort ändern | „Kamera Einstellungen" | `user-add`/`user-passwd`/`onvif-add`/`onvif-passwd` |
+| Benutzer/ONVIF-Benutzer aus Textdatei importieren (Stapel) | „Kamera Einstellungen" | `user-import`/`onvif-import` |
 | Firmware-Update (Mehrfachauswahl) | „Kamera Einstellungen" | `firmware` |
 | ADM-Konfigurationsdatei anwenden | „Kamera Einstellungen" | `config` |
 | Konfiguration auslesen & als ADM-`.cfg` speichern | „Kamera Einstellungen" | `config-export` |
@@ -135,8 +136,20 @@ Bedienung:
       wie von AXIS OS gefordert).
     - **Ältere Kameras** (z. B. M7001, antworten auf `root/pass`): da `root`
       bereits existiert, wird stattdessen automatisch dessen Passwort gesetzt.
+
+    Über *Benutzerliste wählen und anlegen…* lassen sich außerdem **mehrere
+    Benutzer auf einmal aus einer Textdatei importieren**. Eine Zeile je
+    Benutzer: `Name,Passwort,Rolle` – die Rolle ist optional (Standard
+    `viewer`), gültig sind `administrator`/`operator`/`viewer`. Passwörter mit
+    Komma in `"…"` setzen, Zeilen mit `#` sind Kommentare. Die angehakte Option
+    *Auslieferungszustand* gilt auch für den Import (legt dann als Administrator
+    an). Jeder Benutzer wird auf allen markierten Kameras angelegt; das Ergebnis
+    wird je Kamera/Benutzer protokolliert.
   - **ONVIF-Benutzer** – ONVIF-Benutzer *anlegen* (Stufe
-    Administrator/Operator/User) oder *Passwort ändern*.
+    Administrator/Operator/User) oder *Passwort ändern*. Auch hier ist über
+    *Benutzerliste wählen und anlegen…* ein **Stapel-Import aus einer Textdatei**
+    möglich (`Name,Passwort,Stufe`; Stufe optional, Standard `User`; gültig
+    `Administrator`/`Operator`/`User`).
 
   - **Firmware** – spielt eine Firmware-Datei (`.bin`) auf die markierten
     Kameras (moderne JSON-API `firmwaremanagement.cgi`, mit Rückfall auf das
@@ -245,8 +258,10 @@ wird interaktiv gefragt), `--scheme {auto,https,http}`, `--port`, `--conn-timeou
 | `set-dhcp` | auf DHCP umstellen | – |
 | `user-add` | Benutzer anlegen | `--name`, `--new-password`, `--role`, `--factory` |
 | `user-passwd` | Benutzer-Passwort ändern | `--name`, `--new-password` |
+| `user-import` | Benutzer aus Textdatei anlegen | `--file` (Name,Passwort[,Rolle]), `--factory` |
 | `onvif-add` | ONVIF-Benutzer anlegen | `--name`, `--new-password`, `--level` |
 | `onvif-passwd` | ONVIF-Passwort ändern | `--name`, `--new-password`, `--level` |
+| `onvif-import` | ONVIF-Benutzer aus Textdatei anlegen | `--file` (Name,Passwort[,Stufe]) |
 | `firmware` | Firmware aufspielen | `--file` (.bin), `--factory-default` |
 | `config` | ADM-Konfiguration anwenden | `--file` (.cfg), `--no-profiles` |
 | `config-export` | Konfiguration auslesen & als ADM-`.cfg` speichern | `--output`/`-o` (.cfg, Pflicht), `--grep` (Namens-Regex), `--no-profiles` |
@@ -257,6 +272,11 @@ python3 axis_kamera_discovery_cli.py set-ip 192.168.0.90 --new-ip 192.168.0.50 -
 
 # Erstbenutzer auf werksneuer Kamera (ohne Anmeldung / Standard-Zugangsdaten)
 python3 axis_kamera_discovery_cli.py user-add 192.168.0.90 --name root --new-password 'Geheim123' --factory
+
+# Mehrere Benutzer aus einer Textdatei anlegen (Name,Passwort[,Rolle] je Zeile)
+python3 axis_kamera_discovery_cli.py user-import 192.168.0.50 192.168.0.51 --file benutzer.txt -p pw
+# ONVIF-Benutzer als Stapel (Name,Passwort[,Stufe])
+python3 axis_kamera_discovery_cli.py onvif-import 192.168.0.50 --file onvif.txt -p pw
 
 # Firmware auf mehrere Kameras gleichen Modells
 ./Axis_Kamera_Discovery-x86_64.AppImage cli firmware 192.168.0.50 192.168.0.51 --file fw.bin -u root -p pw
