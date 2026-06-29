@@ -336,6 +336,8 @@ axis_IP_Utility/
 
 | Version | Änderungen |
 |---|---|
+| 26.06.29b1 | Stapel-Import: reguläre Benutzer und ONVIF-Benutzer aus einer Textdatei anlegen (GUI-Buttons + CLI `user-import`/`onvif-import`) |
+| 26.06.29 | Konfiguration einer Kamera auslesen und als ADM-`.cfg` speichern – mit Parameter-Auswahl und Suche (GUI) bzw. CLI `config-export` |
 | 26.06.28b9 | UI: Fensterbreite auf 1250x550 + leere Endlos-Spalte; Bug #11 (Kamera-Suche) behoben |
 | 26.06.28b8 | Refactor: Sprachmenü mit Untermenü für Deutsch/Englisch; SESSION.md aktualisiert |
 | 26.06.28b7 | Fix: Spracheinstellung wird nach Neustart beachtet (Einstellungen/Kamera Einstellungen-Buttons) |
