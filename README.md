@@ -161,13 +161,14 @@ Bedienung:
     Device Manager an. Nach der Auswahl zeigt der Dialog Modell, Firmware und
     Anzahl der enthaltenen Parameter/Profile (und ob eine **Bewegungserkennung
     (VMD4)** enthalten ist). Die enthaltenen Parameter werden per `param.cgi`
-    gesetzt; optional werden auch die **Stream-Profile** übernommen (einheitlich
-    über `param.cgi`): gleichnamige vorhandene Profile werden **überschrieben**,
-    neue angelegt. Schreibgeschützte `Properties.*`-Parameter werden dabei
-    automatisch übersprungen (neuere Firmware wies sonst den gesamten Batch ab).
-    Enthält die Datei eine **Bewegungserkennung (VMD4)**, wird diese über die
-    VMD4-Steuer-API mit angewendet (die VMD-Anwendung wird bei Bedarf zuvor
-    gestartet). Die Datei sollte zum Modell passen.
+    gesetzt; per Häkchen lassen sich zusätzlich die **Stream-Profile** übernehmen
+    (einheitlich über `param.cgi`): gleichnamige vorhandene Profile werden
+    **überschrieben**, neue angelegt. Schreibgeschützte `Properties.*`-Parameter
+    werden dabei automatisch übersprungen (neuere Firmware wies sonst den gesamten
+    Batch ab). Enthält die Datei eine **Bewegungserkennung (VMD4)**, kann diese –
+    ebenfalls per Häkchen – über die VMD4-Steuer-API mit angewendet werden (die
+    VMD-Anwendung wird bei Bedarf zuvor gestartet). Die Datei sollte zum Modell
+    passen.
 
     Im selben Reiter lässt sich umgekehrt die **Konfiguration einer Kamera
     auslesen und als ADM-`.cfg` speichern**: „Aus Kamera auslesen und
@@ -269,7 +270,7 @@ wird interaktiv gefragt), `--scheme {auto,https,http}`, `--port`, `--conn-timeou
 | `onvif-passwd` | ONVIF-Passwort ändern | `--name`, `--new-password`, `--level` |
 | `onvif-import` | ONVIF-Benutzer aus Textdatei anlegen | `--file` (Name,Passwort[,Stufe]) |
 | `firmware` | Firmware aufspielen | `--file` (.bin), `--factory-default` |
-| `config` | ADM-Konfiguration anwenden | `--file` (.cfg), `--no-profiles` |
+| `config` | ADM-Konfiguration anwenden | `--file` (.cfg), `--no-profiles`, `--no-vmd4` |
 | `config-export` | Konfiguration auslesen & als ADM-`.cfg` speichern | `--output`/`-o` (.cfg, Pflicht), `--grep` (Namens-Regex), `--no-profiles`, `--no-vmd4` |
 
 ```bash
@@ -342,6 +343,7 @@ axis_IP_Utility/
 
 | Version | Änderungen |
 |---|---|
+| 26.07.11b1 | Konfiguration anwenden: eigenes Häkchen „Bewegungserkennung (VMD4) mit übernehmen" (analog zu den Stream-Profilen); CLI `config --no-vmd4` |
 | 26.07.11 | Konfiguration: **Bewegungserkennung (VMD4)** wird beim Auslesen mit exportiert und beim Anwenden mit übernommen (eigene VMD4-Steuer-API, GUI-Schalter + CLI `--no-vmd4`); schreibgeschützte `Properties.*`-Parameter werden beim Anwenden übersprungen (neuere Firmware wies sonst den gesamten Batch ab) |
 | 26.07.10 | Windows: Einstellungen (`settings.json`) werden portabel neben der EXE gespeichert statt in `%APPDATA%` |
 | 26.06.29b1 | Stapel-Import: reguläre Benutzer und ONVIF-Benutzer aus einer Textdatei anlegen (GUI-Buttons + CLI `user-import`/`onvif-import`) |

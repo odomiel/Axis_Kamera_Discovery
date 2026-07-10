@@ -28,7 +28,7 @@ import axis_kamera_discovery_vapix as vapix
 
 # Versionsschema: JJ.MM.TT, bei mehreren Releases am selben Tag b1, b2, ...
 # (wird von bump_version.py gepflegt)
-__version__ = "26.07.11"
+__version__ = "26.07.11b1"
 
 FIELD_NAMES = [
     "Name",
@@ -292,12 +292,15 @@ def cmd_config(args):
     except vapix.VapixError as exc:
         print(f"[FEHLER] {exc}")
         return 1
+    vmd4_note = ", Bewegungserkennung (VMD4)" if cfg.get("vmd4") is not None else ""
     print(f"Konfiguration: Modell {cfg['model'] or '?'}, FW {cfg['firmware'] or '?'}, "
-          f"{len(cfg['parameters'])} Parameter, {len(cfg['profiles'])} Stream-Profil(e)")
+          f"{len(cfg['parameters'])} Parameter, {len(cfg['profiles'])} "
+          f"Stream-Profil(e){vmd4_note}")
     k = _conn_kwargs(args)
     k["timeout"] = max(30, args.conn_timeout)
     return _run_over_ips(args.ips, lambda ip: vapix.apply_adm_config(
-        ip, config=cfg, with_profiles=not args.no_profiles, **k))
+        ip, config=cfg, with_profiles=not args.no_profiles,
+        with_vmd4=not args.no_vmd4, **k))
 
 def cmd_config_export(args):
     if len(args.ips) != 1:
@@ -422,6 +425,8 @@ def main():
     sp.add_argument('--file', required=True, help='Axis-Device-Manager-Konfiguration (.cfg)')
     sp.add_argument('--no-profiles', dest='no_profiles', action='store_true',
                     help='Stream-Profile nicht uebernehmen')
+    sp.add_argument('--no-vmd4', dest='no_vmd4', action='store_true',
+                    help='Bewegungserkennung (VMD4) nicht uebernehmen')
     sp.set_defaults(func=cmd_config)
 
     sp = sub.add_parser('config-export', parents=[conn],

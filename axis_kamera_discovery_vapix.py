@@ -973,11 +973,13 @@ def read_vmd4_config(ip, username, password, scheme="auto", port=None, timeout=3
 
 
 def apply_adm_config(ip, username, password, config, scheme="auto", port=None,
-                     timeout=30, with_profiles=True):
+                     timeout=30, with_profiles=True, with_vmd4=True):
     """Wendet eine geparste ADM-Konfiguration an (Parameter, optional Profile,
     optional Bewegungserkennung/VMD4).
 
-    'config' ist das Dict aus parse_adm_config(). Liefert eine Ergebnis-Meldung.
+    'config' ist das Dict aus parse_adm_config(). 'with_profiles' steuert die
+    Stream-Profile, 'with_vmd4' die Bewegungserkennung (nur angewendet, wenn die
+    Konfiguration ueberhaupt eine enthaelt). Liefert eine Ergebnis-Meldung.
     Schlaegt die VMD4-Uebernahme fehl, wird VapixError geworfen (die Meldung nennt
     zusaetzlich, was zuvor bereits erfolgreich angewendet wurde).
     """
@@ -990,7 +992,7 @@ def apply_adm_config(ip, username, password, config, scheme="auto", port=None,
             ip, username, password, config["profiles"], sc, port, timeout)
         msg += (f"; Profile: {created} angelegt, {updated} ueberschrieben, "
                 f"{failed} fehlgeschlagen")
-    if config.get("vmd4") is not None:
+    if with_vmd4 and config.get("vmd4") is not None:
         try:
             apply_vmd4_config(ip, username, password, config["vmd4"], sc, port, timeout)
             msg += "; Bewegungserkennung (VMD4) angewendet"

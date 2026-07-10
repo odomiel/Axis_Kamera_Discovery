@@ -1320,6 +1320,9 @@ class CameraSettingsDialog(tk.Toplevel):
         self.cfg_profiles_var = tk.BooleanVar(value=True)
         ttk.Checkbutton(tab_cfg, text="Stream-Profile mit uebernehmen",
                         variable=self.cfg_profiles_var).pack(anchor=tk.W, pady=(6, 0))
+        self.cfg_vmd4_var = tk.BooleanVar(value=True)
+        ttk.Checkbutton(tab_cfg, text="Bewegungserkennung (VMD4) mit uebernehmen",
+                        variable=self.cfg_vmd4_var).pack(anchor=tk.W, pady=(2, 0))
         ttk.Label(
             tab_cfg,
             text="Wendet die Parameter aus der Axis-Device-Manager-Konfiguration "
@@ -1781,11 +1784,13 @@ class CameraSettingsDialog(tk.Toplevel):
         conn["timeout"] = max(30, conn["timeout"])
         cfg = self._cfg
         with_profiles = self.cfg_profiles_var.get()
-        threading.Thread(target=self._worker_config, args=(cfg, with_profiles, conn),
+        with_vmd4 = self.cfg_vmd4_var.get()
+        threading.Thread(target=self._worker_config,
+                         args=(cfg, with_profiles, with_vmd4, conn),
                          daemon=True).start()
         self.after(150, self._poll)
 
-    def _worker_config(self, cfg, with_profiles, kwargs):
+    def _worker_config(self, cfg, with_profiles, with_vmd4, kwargs):
         for cam in self.cameras:
             ip = get_first_ip(cam)
             cname = cam.get("Name", ip)
@@ -1794,7 +1799,7 @@ class CameraSettingsDialog(tk.Toplevel):
                 continue
             try:
                 msg = vapix.apply_adm_config(ip, config=cfg, with_profiles=with_profiles,
-                                             **kwargs)
+                                             with_vmd4=with_vmd4, **kwargs)
                 self._queue.put((cname, True, msg))
             except vapix.VapixError as exc:
                 self._queue.put((cname, False, str(exc)))
