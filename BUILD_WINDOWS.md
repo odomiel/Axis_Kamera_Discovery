@@ -4,8 +4,10 @@ Die Windows-Version ist **funktionsgleich** zur Linux-Version – es werden
 dieselben Python-Module gebündelt. Statt eines AppImage entstehen zwei
 eigenständige One-File-Programme:
 
-- `Axis_Kamera_Discovery.exe` – grafische Oberfläche (ohne Konsolenfenster)
-- `Axis_Kamera_Discovery_cli.exe` – Kommandozeile (mit allen Unterbefehlen)
+Die Dateinamen enthalten die Versionsnummer (z. B. bei 26.07.10):
+
+- `Axis_Kamera_Discovery_26.07.10.exe` – grafische Oberfläche (ohne Konsolenfenster)
+- `Axis_Kamera_Discovery_cli_26.07.10.exe` – Kommandozeile (mit allen Unterbefehlen)
 
 > Unterschied zum Linux-AppImage nur beim Start: Dort wählt *eine* Datei per
 > Argument GUI/CLI; unter Windows gibt es dafür zwei Exes. Der Funktionsumfang

@@ -1,16 +1,25 @@
 # -*- mode: python ; coding: utf-8 -*-
 #
 # PyInstaller-Spec fuer Axis_Kamera_Discovery (Windows-.exe).
-# Erzeugt zwei eigenstaendige One-File-Programme in dist\:
-#   Axis_Kamera_Discovery.exe      - GUI (ohne Konsolenfenster)
-#   Axis_Kamera_Discovery_cli.exe  - CLI (Konsolenanwendung)
+# Erzeugt zwei eigenstaendige One-File-Programme in dist\ (mit Versionsnummer
+# im Dateinamen, z. B. bei 26.07.10):
+#   Axis_Kamera_Discovery_26.07.10.exe      - GUI (ohne Konsolenfenster)
+#   Axis_Kamera_Discovery_cli_26.07.10.exe  - CLI (Konsolenanwendung)
 #
 # Bauen (auf Windows):  pyinstaller --noconfirm Axis_Kamera_Discovery.spec
 #
 # Funktionsgleich zur Linux-Version: dieselben .py-Module werden gebuendelt.
 # Unter Linux wird stattdessen das AppImage via build_appimage.sh erzeugt.
 
+import re
+
 from PyInstaller.utils.hooks import collect_submodules
+
+# Versionsnummer aus dem CLI-Modul lesen (einzige Quelle, gepflegt von
+# bump_version.py) und an die EXE-Namen anhaengen -> z. B.
+#   Axis_Kamera_Discovery_26.07.10.exe
+with open("axis_kamera_discovery_cli.py", encoding="utf-8") as _f:
+    VERSION = re.search(r'__version__\s*=\s*["\']([^"\']+)["\']', _f.read()).group(1)
 
 # README/Lizenzen mit ins Bundle (GUI zeigt sie unter "Hilfe"/"Lizenzen";
 # zur Laufzeit ueber sys._MEIPASS gefunden).
@@ -56,5 +65,5 @@ def _exe(entry, name, console):
     )
 
 
-gui_exe = _exe("axis_kamera_discovery_gui.py", "Axis_Kamera_Discovery", console=False)
-cli_exe = _exe("axis_kamera_discovery_cli.py", "Axis_Kamera_Discovery_cli", console=True)
+gui_exe = _exe("axis_kamera_discovery_gui.py", f"Axis_Kamera_Discovery_{VERSION}", console=False)
+cli_exe = _exe("axis_kamera_discovery_cli.py", f"Axis_Kamera_Discovery_cli_{VERSION}", console=True)
