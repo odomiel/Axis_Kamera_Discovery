@@ -50,12 +50,15 @@ COLUMNS = FIELD_NAMES
 TREE_COLUMNS = list(COLUMNS) + [""]
 
 # Speicherort fuer benutzerdefinierte Einstellungen (z. B. Dark Mode).
-# Windows: %APPDATA%\Axis_Kamera_Discovery ; sonst XDG ($XDG_CONFIG_HOME) bzw. ~/.config
+# Windows: portabel neben der EXE (bzw. neben dem Skript im Quellbetrieb);
+#          sonst XDG ($XDG_CONFIG_HOME) bzw. ~/.config
 if os.name == "nt":
-    CONFIG_DIR = os.path.join(
-        os.environ.get("APPDATA") or os.path.expanduser("~"),
-        "Axis_Kamera_Discovery",
-    )
+    # Als PyInstaller-EXE zeigt sys.executable auf die .exe -> Konfig daneben
+    # ablegen (portabler Betrieb). Im Quellbetrieb neben das Skript.
+    if getattr(sys, "frozen", False):
+        CONFIG_DIR = os.path.dirname(os.path.abspath(sys.executable))
+    else:
+        CONFIG_DIR = os.path.dirname(os.path.abspath(__file__))
 else:
     CONFIG_DIR = os.path.join(
         os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config"),

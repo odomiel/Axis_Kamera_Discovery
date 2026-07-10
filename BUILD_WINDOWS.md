@@ -48,8 +48,10 @@ Ergebnis liegt als Artefakt `Axis_Kamera_Discovery-windows` (die `.exe`-Dateien)
 - **SmartScreen**: Unsignierte Exes lösen beim ersten Start eine Warnung aus
   („Weitere Informationen" → „Trotzdem ausführen"). Optional per Code-Signing
   vermeiden.
-- **Einstellungen** liegen unter Windows in
-  `%APPDATA%\Axis_Kamera_Discovery\settings.json` (unter Linux unverändert in
-  `~/.config/axis_kamera_discovery/`).
+- **Einstellungen** werden unter Windows **portabel** neben der EXE abgelegt
+  (`settings.json` im selben Verzeichnis wie die `.exe`; im Quellbetrieb neben
+  dem Skript). So bleibt die Konfiguration bei einem mitgeführten Programmordner
+  (z. B. USB-Stick) erhalten. Unter Linux unverändert in
+  `~/.config/axis_kamera_discovery/`.
 - **Tcl/Tk**: Windows-Python bringt Tk 8.6 mit; alle genutzten Widgets und das
   `clam`-Theme (Dark Mode) funktionieren damit.
