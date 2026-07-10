@@ -1325,7 +1325,9 @@ class CameraSettingsDialog(tk.Toplevel):
             text="Wendet die Parameter aus der Axis-Device-Manager-Konfiguration "
             "(param.cgi) auf die markierten Kameras an; optional auch die "
             "Stream-Profile (gleichnamige vorhandene Profile werden ueberschrieben, "
-            "neue angelegt). Die Konfiguration sollte zum Modell passen.",
+            "neue angelegt). Enthaelt die Datei eine Bewegungserkennung (VMD4), "
+            "wird diese automatisch mit angewendet (die VMD-Anwendung wird bei "
+            "Bedarf gestartet). Die Konfiguration sollte zum Modell passen.",
             wraplength=560, justify=tk.LEFT,
         ).pack(anchor=tk.W, pady=(8, 0))
 
@@ -1746,10 +1748,13 @@ class CameraSettingsDialog(tk.Toplevel):
         self.cfg_path_var.set(path)
         try:
             self._cfg = vapix.parse_adm_config(path)
+            vmd4_note = (" | Bewegungserkennung (VMD4)"
+                         if self._cfg.get("vmd4") is not None else "")
             self.cfg_info_var.set(
                 f"Modell: {self._cfg['model'] or '?'} | Firmware: "
                 f"{self._cfg['firmware'] or '?'} | {len(self._cfg['parameters'])} "
                 f"Parameter, {len(self._cfg['profiles'])} Stream-Profil(e)"
+                f"{vmd4_note}"
             )
         except vapix.VapixError as exc:
             self._cfg = None
@@ -1839,8 +1844,10 @@ class CameraSettingsDialog(tk.Toplevel):
             self._log(f"  [FEHLER] {name}: {payload}")
             return
         cfg = payload
+        vmd4_note = (", Bewegungserkennung (VMD4)"
+                     if cfg.get("vmd4") is not None else "")
         self._log(f"  [OK] {name}: {len(cfg['parameters'])} Parameter, "
-                  f"{len(cfg['profiles'])} Stream-Profil(e) gelesen")
+                  f"{len(cfg['profiles'])} Stream-Profil(e){vmd4_note} gelesen")
         ParameterSelectDialog(self, cfg, name, self._palette)
 
     def _poll(self):
@@ -1939,6 +1946,18 @@ class ParameterSelectDialog(tk.Toplevel):
             variable=self._profiles_var,
         ).pack(anchor=tk.W, pady=(6, 0))
 
+        has_vmd4 = self._config.get("vmd4") is not None
+        self._vmd4_var = tk.BooleanVar(value=has_vmd4)
+        cb_vmd4 = ttk.Checkbutton(
+            outer,
+            text="Bewegungserkennung (VMD4) einschliessen"
+                 + ("" if has_vmd4 else " (nicht vorhanden)"),
+            variable=self._vmd4_var,
+        )
+        if not has_vmd4:
+            cb_vmd4.state(["disabled"])
+        cb_vmd4.pack(anchor=tk.W, pady=(2, 0))
+
         bf = ttk.Frame(outer)
         bf.pack(fill=tk.X, pady=(8, 0))
         ttk.Button(bf, text="Speichern...", command=self._save).pack(side=tk.LEFT)
@@ -2002,15 +2021,19 @@ class ParameterSelectDialog(tk.Toplevel):
         if not path:
             return
         with_profiles = self._profiles_var.get()
+        with_vmd4 = self._vmd4_var.get()
         try:
             n = vapix.write_adm_config(path, self._config,
                                        selected_params=self._selected,
-                                       with_profiles=with_profiles)
+                                       with_profiles=with_profiles,
+                                       with_vmd4=with_vmd4)
         except vapix.VapixError as exc:
             messagebox.showerror("Fehler beim Speichern", str(exc), parent=self)
             return
         extra = (f" + {len(self._config.get('profiles', []))} Stream-Profil(e)"
                  if with_profiles else "")
+        if with_vmd4 and self._config.get("vmd4") is not None:
+            extra += " + Bewegungserkennung (VMD4)"
         messagebox.showinfo("Gespeichert",
                             f"{n} Parameter{extra} gespeichert:\n{path}", parent=self)
         self.destroy()

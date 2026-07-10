@@ -28,7 +28,7 @@ import axis_kamera_discovery_vapix as vapix
 
 # Versionsschema: JJ.MM.TT, bei mehreren Releases am selben Tag b1, b2, ...
 # (wird von bump_version.py gepflegt)
-__version__ = "26.07.10"
+__version__ = "26.07.11"
 
 FIELD_NAMES = [
     "Name",
@@ -324,11 +324,14 @@ def cmd_config_export(args):
             return 1
     try:
         n = vapix.write_adm_config(args.output, cfg, selected_params=selected,
-                                   with_profiles=not args.no_profiles)
+                                   with_profiles=not args.no_profiles,
+                                   with_vmd4=not args.no_vmd4)
     except vapix.VapixError as exc:
         print(f"[FEHLER] {exc}")
         return 1
     extra = "" if args.no_profiles else f" + {len(cfg['profiles'])} Stream-Profil(e)"
+    if not args.no_vmd4 and cfg.get("vmd4") is not None:
+        extra += " + Bewegungserkennung (VMD4)"
     print(f"[OK]     {ip}: {n} Parameter{extra} -> {args.output}")
     return 0
 
@@ -428,6 +431,8 @@ def main():
                     help='Nur Parameter, deren Name auf dieses Regex passt (sonst alle)')
     sp.add_argument('--no-profiles', dest='no_profiles', action='store_true',
                     help='Stream-Profile nicht exportieren')
+    sp.add_argument('--no-vmd4', dest='no_vmd4', action='store_true',
+                    help='Bewegungserkennung (VMD4) nicht exportieren')
     sp.set_defaults(func=cmd_config_export)
 
     args = parser.parse_args()

@@ -159,10 +159,15 @@ Bedienung:
 
   - **Konfiguration** – wendet eine Konfigurationsdatei (`.cfg`) aus dem Axis
     Device Manager an. Nach der Auswahl zeigt der Dialog Modell, Firmware und
-    Anzahl der enthaltenen Parameter/Profile. Die enthaltenen Parameter werden
-    per `param.cgi` gesetzt; optional werden auch die **Stream-Profile**
-    übernommen (einheitlich über `param.cgi`): gleichnamige vorhandene Profile
-    werden **überschrieben**, neue angelegt. Die Datei sollte zum Modell passen.
+    Anzahl der enthaltenen Parameter/Profile (und ob eine **Bewegungserkennung
+    (VMD4)** enthalten ist). Die enthaltenen Parameter werden per `param.cgi`
+    gesetzt; optional werden auch die **Stream-Profile** übernommen (einheitlich
+    über `param.cgi`): gleichnamige vorhandene Profile werden **überschrieben**,
+    neue angelegt. Schreibgeschützte `Properties.*`-Parameter werden dabei
+    automatisch übersprungen (neuere Firmware wies sonst den gesamten Batch ab).
+    Enthält die Datei eine **Bewegungserkennung (VMD4)**, wird diese über die
+    VMD4-Steuer-API mit angewendet (die VMD-Anwendung wird bei Bedarf zuvor
+    gestartet). Die Datei sollte zum Modell passen.
 
     Im selben Reiter lässt sich umgekehrt die **Konfiguration einer Kamera
     auslesen und als ADM-`.cfg` speichern**: „Aus Kamera auslesen und
@@ -170,7 +175,8 @@ Bedienung:
     Kamera. Anschließend öffnet sich ein Auswahl-Dialog, in dem die zu
     speichernden Parameter per Häkchen an-/abgewählt und über ein **Suchfeld**
     gefiltert werden können („Alle/Keine (gefiltert)" wirkt auf die aktuell
-    angezeigten Treffer); optional werden die **Stream-Profile** mitgespeichert.
+    angezeigten Treffer); optional werden die **Stream-Profile** und – falls auf
+    der Kamera vorhanden – die **Bewegungserkennung (VMD4)** mitgespeichert.
     ⚠️ Ein vollständiger Export enthält auch geräte­spezifische bzw. nur lesbare
     Werte (z. B. Seriennummer/MAC) – für die Übertragung auf **andere** Kameras
     nur passende Parameter auswählen. Die erzeugte Datei ist wieder über
@@ -264,7 +270,7 @@ wird interaktiv gefragt), `--scheme {auto,https,http}`, `--port`, `--conn-timeou
 | `onvif-import` | ONVIF-Benutzer aus Textdatei anlegen | `--file` (Name,Passwort[,Stufe]) |
 | `firmware` | Firmware aufspielen | `--file` (.bin), `--factory-default` |
 | `config` | ADM-Konfiguration anwenden | `--file` (.cfg), `--no-profiles` |
-| `config-export` | Konfiguration auslesen & als ADM-`.cfg` speichern | `--output`/`-o` (.cfg, Pflicht), `--grep` (Namens-Regex), `--no-profiles` |
+| `config-export` | Konfiguration auslesen & als ADM-`.cfg` speichern | `--output`/`-o` (.cfg, Pflicht), `--grep` (Namens-Regex), `--no-profiles`, `--no-vmd4` |
 
 ```bash
 # IP zweier Kameras (Passwort wird abgefragt)
@@ -336,6 +342,7 @@ axis_IP_Utility/
 
 | Version | Änderungen |
 |---|---|
+| 26.07.11 | Konfiguration: **Bewegungserkennung (VMD4)** wird beim Auslesen mit exportiert und beim Anwenden mit übernommen (eigene VMD4-Steuer-API, GUI-Schalter + CLI `--no-vmd4`); schreibgeschützte `Properties.*`-Parameter werden beim Anwenden übersprungen (neuere Firmware wies sonst den gesamten Batch ab) |
 | 26.07.10 | Windows: Einstellungen (`settings.json`) werden portabel neben der EXE gespeichert statt in `%APPDATA%` |
 | 26.06.29b1 | Stapel-Import: reguläre Benutzer und ONVIF-Benutzer aus einer Textdatei anlegen (GUI-Buttons + CLI `user-import`/`onvif-import`) |
 | 26.06.29 | Konfiguration einer Kamera auslesen und als ADM-`.cfg` speichern – mit Parameter-Auswahl und Suche (GUI) bzw. CLI `config-export` |
