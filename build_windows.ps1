@@ -7,7 +7,7 @@
 #   - Axis_Kamera_Discovery.exe      (GUI, ohne Konsolenfenster)
 #   - Axis_Kamera_Discovery_cli.exe  (CLI, mit Konsolenfenster)
 #
-# Voraussetzung: Python 3.13 (mit Tkinter für GUI)
+# Voraussetzung: Python 3.14 (mit Tkinter für GUI)
 # =============================================================================
 
 <#PSScriptInfo
@@ -31,11 +31,13 @@ $SpecFile = "Axis_Kamera_Discovery.spec"
 $DistDir = "dist"
 $BuildDir = "build"
 
-# Standard-Pfade für Python 3.13
+$PythonVersion = "3.14"
+
+# Standard-Pfade für Python 3.14
 $DefaultPythonPaths = @(
-    "${env:ProgramFiles}\Python313\python.exe",
-    "${env:LocalAppData}\Programs\Python\Python313\python.exe",
-    "${env:USERPROFILE}\AppData\Local\Programs\Python\Python313\python.exe"
+    "${env:ProgramFiles}\Python314\python.exe",
+    "${env:LocalAppData}\Programs\Python\Python314\python.exe",
+    "${env:USERPROFILE}\AppData\Local\Programs\Python\Python314\python.exe"
 )
 
 # =============================================================================
@@ -66,24 +68,36 @@ function Write-Info {
 
 function Find-Python {
     param([string]$CustomPath)
-    
+
     if (-not [string]::IsNullOrEmpty($CustomPath) -and (Test-Path $CustomPath)) {
         return $CustomPath
     }
-    
+
+    # Python-Launcher: waehlt die geforderte Version auch dann zuverlaessig aus,
+    # wenn mehrere Versionen installiert sind (das python.exe im PATH ist oft eine
+    # aeltere -- damit entstuende eine .exe gegen die falsche Python-Version).
+    $py = Get-Command py -ErrorAction SilentlyContinue
+    if ($py) {
+        $launched = & py "-$PythonVersion" -c "import sys; print(sys.executable)" 2>$null
+        if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrEmpty($launched) -and (Test-Path $launched)) {
+            return $launched
+        }
+    }
+
     # Suche in Standardpfaden
     foreach ($path in $DefaultPythonPaths) {
         if (Test-Path $path) {
             return $path
         }
     }
-    
-    # Suche in PATH
+
+    # Suche in PATH (nur brauchbar, wenn es die geforderte Version ist -- das
+    # prueft der Aufrufer per Test-PythonVersion)
     $pythonInPath = Get-Command python -ErrorAction SilentlyContinue
     if ($pythonInPath) {
         return $pythonInPath.Source
     }
-    
+
     return $null
 }
 
@@ -110,19 +124,6 @@ function Test-PythonVersion {
     }
 }
 
-function Get-PyInstallerPath {
-    param([string]$PythonExe)
-    
-    $pythonDir = [System.IO.Path]::GetDirectoryName($PythonExe)
-    $scriptsDir = [System.IO.Path]::Combine($pythonDir, "Scripts")
-    $pyinstallerPath = [System.IO.Path]::Combine($scriptsDir, "pyinstaller.exe")
-    
-    if (Test-Path $pyinstallerPath) {
-        return $pyinstallerPath
-    }
-    
-    return "pyinstaller"
-}
 
 # =============================================================================
 # Hauptskript
@@ -134,21 +135,24 @@ Write-Header "Axis_Kamera_Discovery - Windows Build"
 Set-Location $ProjectDir
 
 # 1. Python finden
-Write-Info "Suche nach Python 3.13..."
+Write-Info "Suche nach Python $PythonVersion..."
 $pythonExe = Find-Python $PythonPath
 
 if (-not $pythonExe) {
-    Write-ErrorMsg "Python 3.13 nicht gefunden!"
-    Write-Info "Bitte installieren: https://www.python.org/downloads/release/python-31314/"
+    Write-ErrorMsg "Python $PythonVersion nicht gefunden!"
+    Write-Info "Bitte installieren: https://www.python.org/downloads/"
     Write-Info "Oder geben Sie den Pfad mit -PythonPath an."
     exit 1
 }
 
-if (-not (Test-PythonVersion $pythonExe "3.13")) {
+if (-not (Test-PythonVersion $pythonExe $PythonVersion)) {
+    Write-Info "PyInstaller baut die .exe immer fuer genau diesen Interpreter."
+    Write-Info "Installieren Sie Python $PythonVersion oder geben Sie ihn mit -PythonPath an."
     exit 1
 }
 
 Write-Step "Python gefunden: $pythonExe"
+& $pythonExe --version | ForEach-Object { Write-Info $_ }
 
 # 2. Optional: Bereiche bereinigen
 if ($Clean) {
@@ -175,13 +179,13 @@ if ($LASTEXITCODE -ne 0) {
 Write-Step "Abhängigkeiten installiert"
 
 # 4. PyInstaller ausfuehren
+# Aufruf ueber "-m PyInstaller" statt ueber pyinstaller.exe: nur so ist garantiert,
+# dass mit dem oben ausgewaehlten Interpreter gebaut wird und nicht mit einem
+# anderen aus dem PATH.
 Write-Info "Starte Build mit PyInstaller..."
-$pyinstallerExe = Get-PyInstallerPath $pythonExe
+Write-Info "Fuehre aus: $pythonExe -m PyInstaller --noconfirm $SpecFile"
 
-$buildCommand = "$pyinstallerExe --noconfirm $SpecFile"
-Write-Info "Führe aus: $buildCommand"
-
-Invoke-Expression $buildCommand
+& $pythonExe -m PyInstaller --noconfirm $SpecFile
 
 if ($LASTEXITCODE -ne 0) {
     Write-ErrorMsg "Build fehlgeschlagen (Exit-Code: $LASTEXITCODE)"
@@ -193,23 +197,26 @@ Write-Step "Build erfolgreich"
 # 5. Ergebnis anzeigen
 Write-Header "Build abgeschlossen"
 
-$guiExePath = "$DistDir\Axis_Kamera_Discovery.exe"
-$cliExePath = "$DistDir\Axis_Kamera_Discovery_cli.exe"
+# Die Spec haengt die Versionsnummer an die Dateinamen an
+# (Axis_Kamera_Discovery_<version>.exe) -- daher per Muster suchen.
+$cliExe = Get-ChildItem -Path $DistDir -Filter "Axis_Kamera_Discovery_cli_*.exe" -ErrorAction SilentlyContinue |
+          Select-Object -First 1
+$guiExe = Get-ChildItem -Path $DistDir -Filter "Axis_Kamera_Discovery_*.exe" -ErrorAction SilentlyContinue |
+          Where-Object { $_.Name -notlike "Axis_Kamera_Discovery_cli_*" } |
+          Select-Object -First 1
 
-if (Test-Path $guiExePath) {
-    $guiSize = (Get-Item $guiExePath).Length / 1MB
-    $guiSizeRounded = [math]::Round($guiSize, 2)
-    Write-Step "Axis_Kamera_Discovery.exe erstellt ($guiSizeRounded MB)"
+if ($guiExe) {
+    $guiSizeRounded = [math]::Round($guiExe.Length / 1MB, 2)
+    Write-Step "$($guiExe.Name) erstellt ($guiSizeRounded MB)"
 } else {
-    Write-ErrorMsg "Axis_Kamera_Discovery.exe nicht gefunden"
+    Write-ErrorMsg "GUI-Exe nicht gefunden"
 }
 
-if (Test-Path $cliExePath) {
-    $cliSize = (Get-Item $cliExePath).Length / 1MB
-    $cliSizeRounded = [math]::Round($cliSize, 2)
-    Write-Step "Axis_Kamera_Discovery_cli.exe erstellt ($cliSizeRounded MB)"
+if ($cliExe) {
+    $cliSizeRounded = [math]::Round($cliExe.Length / 1MB, 2)
+    Write-Step "$($cliExe.Name) erstellt ($cliSizeRounded MB)"
 } else {
-    Write-ErrorMsg "Axis_Kamera_Discovery_cli.exe nicht gefunden"
+    Write-ErrorMsg "CLI-Exe nicht gefunden"
 }
 
 Write-Host "`n  Die Executables liegen in: $ProjectDir\$DistDir\`n" -ForegroundColor Yellow

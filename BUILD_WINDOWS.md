@@ -36,6 +36,17 @@ PyInstaller schreibt die verwendete Version zu Beginn ins Log
 (`INFO: Python: 3.14.x`) – dort lässt sich prüfen, ob wirklich 3.14 gebaut wurde.
 Die fertigen Exes liegen danach in `dist\`.
 
+Bequemer geht es mit dem mitgelieferten Skript, das Python 3.14 selbst sucht
+(über den `py`-Launcher), die Abhängigkeiten installiert und den Build startet:
+
+```powershell
+.\build_windows.ps1              # optional: -Clean, -ForceReinstall
+.\build_windows.ps1 -PythonPath "C:\Pfad\zu\Python314\python.exe"
+```
+
+Findet es kein Python 3.14, bricht es mit einer Meldung ab, statt still mit einer
+älteren Version zu bauen.
+
 > Der Build nimmt **nicht** die Version aus `windows-build.yml` – die gilt nur
 > für den CI-Runner. Lokal zählt allein das aufgerufene Python.
 
