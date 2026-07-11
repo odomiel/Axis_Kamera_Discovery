@@ -18,7 +18,7 @@ Das Projekt enthält zwei Oberflächen mit **identischem Funktionsumfang**:
 - **CLI** (`axis_kamera_discovery_cli.py`) – Kommandozeilen-Werkzeug
 
 Beide lassen sich als **eigenständiges AppImage** bündeln, das ein komplettes
-Python 3.13 inklusive **Tcl/Tk 9** sowie alle Abhängigkeiten mitbringt und damit
+Python 3.14 inklusive **Tcl/Tk 9** sowie alle Abhängigkeiten mitbringt und damit
 **unabhängig von der System-Installation** läuft.
 
 ---
@@ -54,14 +54,14 @@ Python 3.13 inklusive **Tcl/Tk 9** sowie alle Abhängigkeiten mitbringt und dami
   `prettytable` sowie Tkinter (`python3-tk`).
 - **AppImage selbst bauen:** C-Compiler (`gcc`/`make`), X11- und
   Xft-/fontconfig-/freetype-Dev-Header sowie Internetzugang. Tcl 9, Tk 9 und
-  Python 3.13 werden aus dem Quellcode kompiliert (dauert einige Minuten).
+  Python 3.14 werden aus dem Quellcode kompiliert (dauert einige Minuten).
 
 ---
 
 ## Schnellstart (AppImage)
 
 ```bash
-# Bauen (Tcl/Tk 9 + Python 3.13 aus Quellcode)
+# Bauen (Tcl/Tk 9 + Python 3.14 aus Quellcode)
 ./build_appimage.sh
 
 # GUI starten (oder im Dateimanager doppelklicken)
@@ -325,7 +325,7 @@ axis_IP_Utility/
 ├── axis_kamera_discovery_cli.py        # Discovery-Kernlogik + CLI
 ├── axis_kamera_discovery_gui.py        # Tkinter-GUI (nutzt die Kernlogik)
 ├── bump_version.py              # Versionsverwaltung (JJ.MM.TT + bN)
-├── build_appimage.sh            # Build (Tcl/Tk 9 + Python 3.13 aus Quellcode)
+├── build_appimage.sh            # Build (Tcl/Tk 9 + Python 3.14 aus Quellcode)
 ├── appimage/Axis_Kamera_Discovery/
 │   └── Axis_Kamera_Discovery.png        # Icon für das AppImage
 ├── THIRD_PARTY_LICENSES.md      # Lizenzen der gebündelten Komponenten
@@ -343,6 +343,7 @@ axis_IP_Utility/
 
 | Version | Änderungen |
 |---|---|
+| 26.07.11b3 | AppImage und Windows-Build auf **Python 3.14** umgestellt (vorher 3.13) |
 | 26.07.11b2 | Abhängigkeiten aktualisiert: Tcl/Tk 9.0.4, libffi 3.7.1, zeroconf 0.150.0, prettytable 3.18.0, wcwidth 0.8.2 |
 | 26.07.11b1 | Konfiguration anwenden: eigenes Häkchen „Bewegungserkennung (VMD4) mit übernehmen" (analog zu den Stream-Profilen); CLI `config --no-vmd4` |
 | 26.07.11 | Konfiguration: **Bewegungserkennung (VMD4)** wird beim Auslesen mit exportiert und beim Anwenden mit übernommen (eigene VMD4-Steuer-API, GUI-Schalter + CLI `--no-vmd4`); schreibgeschützte `Properties.*`-Parameter werden beim Anwenden übersprungen (neuere Firmware wies sonst den gesamten Batch ab) |

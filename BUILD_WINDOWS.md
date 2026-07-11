@@ -15,7 +15,7 @@ Die Dateinamen enthalten die Versionsnummer (z. B. bei 26.07.10):
 
 ## Lokal bauen (auf einem Windows-11-Rechner)
 
-Voraussetzung: **Python 3.13** (vom python.org-Installer – enthält Tkinter und
+Voraussetzung: **Python 3.14** (vom python.org-Installer – enthält Tkinter und
 `ssl`).
 
 ```powershell

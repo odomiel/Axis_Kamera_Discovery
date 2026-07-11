@@ -2,11 +2,11 @@
 #
 # Baut ein eigenstaendiges AppImage von Axis_Kamera_Discovery mit Tcl/Tk 9.
 #
-# Da kein Basis-Image mit Tk 9 existiert, werden Tcl 9, Tk 9 und Python 3.13
-# (erste Version mit offizieller Tcl/Tk-9-Unterstuetzung) aus dem Quellcode
-# gebaut. libffi wird ebenfalls gebaut (fuer _ctypes -> ifaddr/zeroconf),
+# Da kein Basis-Image mit Tk 9 existiert, werden Tcl 9, Tk 9 und Python 3.14
+# aus dem Quellcode gebaut (Tcl/Tk 9 wird offiziell ab Python 3.13 unterstuetzt).
+# libffi wird ebenfalls gebaut (fuer _ctypes -> ifaddr/zeroconf),
 # OpenSSL fuer das ssl-Modul (HTTPS-Zugriff auf die Kameras / VAPIX).
-# Die reinen Laufzeit-Pakete kommen als fertige cp313-Wheels (curl + entpacken),
+# Die reinen Laufzeit-Pakete kommen als fertige cp314-Wheels (curl + entpacken),
 # damit kein pip noetig ist.
 #
 set -euo pipefail
@@ -20,8 +20,8 @@ JOBS="$(nproc)"
 
 TCL_VER=9.0.4
 TK_VER=9.0.4
-PY_VER=3.13.14
-PY_XY=3.13
+PY_VER=3.14.6
+PY_XY=3.14
 FFI_VER=3.7.1
 SSL_VER=3.5.7
 
@@ -88,7 +88,7 @@ cd "$SRC/tk$TK_VER/unix"
 make -j"$JOBS" >/dev/null
 make install >/dev/null
 
-# --------------------------------------------------------------- 5. Python 3.13
+# --------------------------------------------------------------- 5. Python
 echo "==== Python $PY_VER (gegen Tcl/Tk 9) ===="
 cd "$SRC/Python-$PY_VER"
 ./configure \
@@ -112,7 +112,7 @@ echo ">> OpenSSL-Version im neuen Python:"
 "$PYBIN" -c "import ssl; print('  ', ssl.OPENSSL_VERSION)"
 
 # --------------------------------------------------------------- 6. Wheels vendoren
-echo "==== Laufzeit-Pakete (cp313-Wheels) ===="
+echo "==== Laufzeit-Pakete (cp314-Wheels) ===="
 SITE="$PREFIX/lib/python$PY_XY/site-packages"
 mkdir -p "$SITE"
 wheel() {  # wheel <pypi-paket> <filter>
@@ -130,7 +130,9 @@ for f in d['releases'][v]:
     curl -fsSL "$url" -o "$BUILD/$pkg.whl"
     "$PYBIN" -m zipfile -e "$BUILD/$pkg.whl" "$SITE/"
 }
-wheel zeroconf    "'cp313' in n and 'manylinux' in n and 'x86_64' in n"
+# 'cp314-cp314-' statt nur 'cp314': es gibt auch ein cp314t-Wheel (free-threaded
+# ABI), das zu diesem Interpreter nicht passt.
+wheel zeroconf    "'cp314-cp314-' in n and 'manylinux' in n and 'x86_64' in n"
 wheel ifaddr      "n.endswith('.whl')"
 wheel prettytable "n.endswith('.whl')"
 # wcwidth (Abhaengigkeit von prettytable)
