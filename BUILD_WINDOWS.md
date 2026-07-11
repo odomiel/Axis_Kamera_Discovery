@@ -18,12 +18,26 @@ Die Dateinamen enthalten die Versionsnummer (z. B. bei 26.07.10):
 Voraussetzung: **Python 3.14** (vom python.org-Installer – enthält Tkinter und
 `ssl`).
 
+PyInstaller baut die `.exe` immer für **genau den Interpreter, mit dem es
+aufgerufen wird**. Sind mehrere Python-Versionen installiert, greifen die blanken
+Befehle `pip` / `pyinstaller` auf das erstbeste Python im `PATH` zu – dann
+entsteht trotz aller Einstellungen im Projekt eine `.exe` gegen die alte Version.
+Deshalb den Interpreter über den Python-Launcher `py` explizit wählen:
+
 ```powershell
-pip install pyinstaller zeroconf prettytable ifaddr
-pyinstaller --noconfirm Axis_Kamera_Discovery.spec
+py -0p                 # zeigt alle installierten Versionen und ihre Pfade
+py -3.14 -V            # muss "Python 3.14.x" ausgeben
+
+py -3.14 -m pip install pyinstaller zeroconf prettytable ifaddr
+py -3.14 -m PyInstaller --noconfirm Axis_Kamera_Discovery.spec
 ```
 
+PyInstaller schreibt die verwendete Version zu Beginn ins Log
+(`INFO: Python: 3.14.x`) – dort lässt sich prüfen, ob wirklich 3.14 gebaut wurde.
 Die fertigen Exes liegen danach in `dist\`.
+
+> Der Build nimmt **nicht** die Version aus `windows-build.yml` – die gilt nur
+> für den CI-Runner. Lokal zählt allein das aufgerufene Python.
 
 Aus dem Quellcode starten (ohne Build) geht ebenso:
 
