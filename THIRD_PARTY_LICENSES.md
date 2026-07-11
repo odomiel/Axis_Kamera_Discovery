@@ -11,14 +11,14 @@ betroffen.
 | Komponente | Version | Lizenz |
 |---|---|---|
 | CPython | 3.13.14 | PSF License Agreement |
-| Tcl | 9.0.3 | Tcl/Tk License (BSD-artig) |
-| Tk | 9.0.3 | Tcl/Tk License (BSD-artig) |
-| libffi | 3.6.0 | libffi License (MIT-artig) |
+| Tcl | 9.0.4 | Tcl/Tk License (BSD-artig) |
+| Tk | 9.0.4 | Tcl/Tk License (BSD-artig) |
+| libffi | 3.7.1 | libffi License (MIT-artig) |
 | OpenSSL | 3.5.7 | Apache License 2.0 |
-| zeroconf | 0.149.16 | **LGPL-2.1-or-later** |
+| zeroconf | 0.150.0 | **LGPL-2.1-or-later** |
 | ifaddr | 0.2.0 | MIT |
-| prettytable | 3.17.0 | BSD-3-Clause |
-| wcwidth | 0.8.1 | MIT |
+| prettytable | 3.18.0 | BSD-3-Clause |
+| wcwidth | 0.8.2 | MIT |
 
 > **Hinweis zu zeroconf (LGPL-2.1-or-later):** Alle übrigen Komponenten sind
 > permissiv lizenziert. `zeroconf` steht unter der LGPL (schwaches Copyleft).
@@ -40,7 +40,7 @@ Vollständiger Text: https://docs.python.org/3/license.html
 
 ---
 
-## Tcl 9.0.3 und Tk 9.0.3
+## Tcl 9.0.4 und Tk 9.0.4
 
 This software is copyrighted by the Regents of the University of
 California, Sun Microsystems, Inc., Scriptics Corporation, ActiveState
@@ -73,7 +73,7 @@ MODIFICATIONS.
 
 ---
 
-## libffi 3.6.0
+## libffi 3.7.1
 
 libffi - Copyright (c) 1996-2024  Anthony Green, Red Hat, Inc and others.
 See source files for details.
@@ -113,7 +113,7 @@ für HTTPS-Verbindungen zu den Kameras (VAPIX-API) genutzt.
 
 ---
 
-## zeroconf 0.149.16
+## zeroconf 0.150.0
 
 Copyright © 2003 Paul Scott-Murphy, 2014 William McBrine, Jakub Stasiak und
 weitere Mitwirkende.
@@ -150,7 +150,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ---
 
-## prettytable 3.17.0
+## prettytable 3.18.0
 
 Copyright © 2009 Luke Maurits und weitere Mitwirkende.
 
@@ -164,7 +164,7 @@ Quellcode: https://github.com/prettytable/prettytable
 
 ---
 
-## wcwidth 0.8.1
+## wcwidth 0.8.2
 
 Copyright © Jeff Quast.
 

@@ -18,11 +18,11 @@ APPDIR="$BUILD/AppDir"
 PREFIX="$APPDIR/usr"
 JOBS="$(nproc)"
 
-TCL_VER=9.0.3
-TK_VER=9.0.3
+TCL_VER=9.0.4
+TK_VER=9.0.4
 PY_VER=3.13.14
 PY_XY=3.13
-FFI_VER=3.6.0
+FFI_VER=3.7.1
 SSL_VER=3.5.7
 
 mkdir -p "$SRC"
@@ -35,15 +35,18 @@ dl() {  # dl <url> <zieldatei>
 }
 
 # --------------------------------------------------------------- 1. Quellen
-dl "https://downloads.sourceforge.net/project/tcl/Tcl/$TCL_VER/tcl$TCL_VER-src.tar.gz" "$SRC/tcl.tar.gz"
-dl "https://downloads.sourceforge.net/project/tcl/Tcl/$TK_VER/tk$TK_VER-src.tar.gz"    "$SRC/tk.tar.gz"
-dl "https://www.python.org/ftp/python/$PY_VER/Python-$PY_VER.tgz"                       "$SRC/python.tgz"
-dl "https://github.com/libffi/libffi/releases/download/v$FFI_VER/libffi-$FFI_VER.tar.gz" "$SRC/libffi.tar.gz"
-dl "https://github.com/openssl/openssl/releases/download/openssl-$SSL_VER/openssl-$SSL_VER.tar.gz" "$SRC/openssl.tar.gz"
+# Die Dateinamen tragen die Version, sonst wuerde der Cache-Treffer in dl()
+# nach einem Versionswechsel den alten Tarball weiterverwenden.
+dl "https://downloads.sourceforge.net/project/tcl/Tcl/$TCL_VER/tcl$TCL_VER-src.tar.gz" "$SRC/tcl-$TCL_VER.tar.gz"
+dl "https://downloads.sourceforge.net/project/tcl/Tcl/$TK_VER/tk$TK_VER-src.tar.gz"    "$SRC/tk-$TK_VER.tar.gz"
+dl "https://www.python.org/ftp/python/$PY_VER/Python-$PY_VER.tgz"                       "$SRC/python-$PY_VER.tgz"
+dl "https://github.com/libffi/libffi/releases/download/v$FFI_VER/libffi-$FFI_VER.tar.gz" "$SRC/libffi-$FFI_VER.tar.gz"
+dl "https://github.com/openssl/openssl/releases/download/openssl-$SSL_VER/openssl-$SSL_VER.tar.gz" "$SRC/openssl-$SSL_VER.tar.gz"
 
 cd "$SRC"
 rm -rf "tcl$TCL_VER" "tk$TK_VER" "Python-$PY_VER" "libffi-$FFI_VER" "openssl-$SSL_VER"
-tar xf tcl.tar.gz; tar xf tk.tar.gz; tar xf python.tgz; tar xf libffi.tar.gz; tar xf openssl.tar.gz
+tar xf "tcl-$TCL_VER.tar.gz"; tar xf "tk-$TK_VER.tar.gz"; tar xf "python-$PY_VER.tgz"
+tar xf "libffi-$FFI_VER.tar.gz"; tar xf "openssl-$SSL_VER.tar.gz"
 
 export PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig"
 export LD_LIBRARY_PATH="$PREFIX/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
@@ -70,8 +73,10 @@ make install_sw >/dev/null
 echo "==== Tcl $TCL_VER ===="
 cd "$SRC/tcl$TCL_VER/unix"
 ./configure --prefix="$PREFIX" --enable-shared --enable-64bit >/dev/null
-make -j"$JOBS" >/dev/null
-make install >/dev/null
+# Die mitgelieferten Pakete (tdbc, thread) werden mit dem gerade gebauten tclsh
+# konfiguriert; das findet libtcl9.0.so nur ueber das Build-Verzeichnis.
+LD_LIBRARY_PATH="$PWD:$LD_LIBRARY_PATH" make -j"$JOBS" >/dev/null
+LD_LIBRARY_PATH="$PWD:$LD_LIBRARY_PATH" make install >/dev/null
 # tclsh-Symlink fuer Tk-configure
 ln -sf "$PREFIX/bin/tclsh$TCL_VER" "$PREFIX/bin/tclsh${TCL_VER%.*}" 2>/dev/null || true
 

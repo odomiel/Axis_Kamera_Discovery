@@ -343,6 +343,7 @@ axis_IP_Utility/
 
 | Version | Änderungen |
 |---|---|
+| 26.07.11b2 | Abhängigkeiten aktualisiert: Tcl/Tk 9.0.4, libffi 3.7.1, zeroconf 0.150.0, prettytable 3.18.0, wcwidth 0.8.2 |
 | 26.07.11b1 | Konfiguration anwenden: eigenes Häkchen „Bewegungserkennung (VMD4) mit übernehmen" (analog zu den Stream-Profilen); CLI `config --no-vmd4` |
 | 26.07.11 | Konfiguration: **Bewegungserkennung (VMD4)** wird beim Auslesen mit exportiert und beim Anwenden mit übernommen (eigene VMD4-Steuer-API, GUI-Schalter + CLI `--no-vmd4`); schreibgeschützte `Properties.*`-Parameter werden beim Anwenden übersprungen (neuere Firmware wies sonst den gesamten Batch ab) |
 | 26.07.10 | Windows: Einstellungen (`settings.json`) werden portabel neben der EXE gespeichert statt in `%APPDATA%` |
