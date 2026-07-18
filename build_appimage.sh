@@ -180,8 +180,44 @@ esac
 APPRUN
 chmod +x "$APPDIR/AppRun"
 
-# Build-Reste verschlanken
-rm -rf "$PREFIX/lib/python$PY_XY/test" "$PREFIX/lib/python$PY_XY/"*/test 2>/dev/null || true
+# --------------------------------------------------------------- Verschlanken
+# Alles entfernen, was zur Laufzeit nicht gebraucht wird: die App vendort fertige
+# Wheels und kompiliert nichts nach. Das drueckt das AppImage grob von ~58 MB auf
+# ~20 MB.
+echo "==== AppDir verschlanken ===="
+PYLIB="$PREFIX/lib/python$PY_XY"
+
+# (a) Statische Bibliotheken + C-Header -- nur zum Kompilieren noetig
+#     (u. a. das 69-MB-libpython3.14.a im config-Verzeichnis).
+find "$PREFIX" -name '*.a' -delete 2>/dev/null || true
+rm -rf "$PREFIX/include" 2>/dev/null || true
+
+# (b) Handbuchseiten/Doku.
+rm -rf "$PREFIX/share/man" "$PREFIX/share/doc" 2>/dev/null || true
+
+# (c) Ungenutzte Stdlib-Teile: IDLE-IDE, pip-Bootstrap, pydoc-Daten, turtle-Demo,
+#     tkinter-Tests und alle Testsuiten.
+rm -rf "$PYLIB/idlelib" "$PYLIB/ensurepip" "$PYLIB/pydoc_data" \
+       "$PYLIB/turtledemo" "$PYLIB/tkinter/test" 2>/dev/null || true
+rm -rf "$PYLIB/test" "$PYLIB/"*/test "$PYLIB/"*/tests 2>/dev/null || true
+
+# (d) Test-/Beispiel-C-Extensions in lib-dynload.
+find "$PYLIB/lib-dynload" \( -name '_test*' -o -name '_xxtest*' \
+       -o -name 'xxlimited*' -o -name '_ctypes_test*' \) -delete 2>/dev/null || true
+
+# (e) Tcl-Erweiterungen ohne Tk-Bezug (DB-Connectivity, incrTcl, Thread-Paket).
+rm -rf "$PREFIX"/lib/itcl* "$PREFIX"/lib/tdbc* \
+       "$PREFIX"/lib/sqlite* "$PREFIX"/lib/thread* 2>/dev/null || true
+
+# (f) Debug-Symbole aus allen ELF-Objekten strippen (--strip-unneeded behaelt die
+#     dynamischen Symbole -> Laufzeit unveraendert). AUSNAHME: libtcl*/libtk* --
+#     Tcl 9 haengt seine Script-Library als zipfs an die .so an; strip wuerde
+#     diese Daten abschneiden ("Cannot find a usable init.tcl").
+find "$PREFIX" \( -name '*.so' -o -name '*.so.*' \) \
+     ! -name '*tcl*' ! -name '*tk*' \
+     -exec strip --strip-unneeded {} + 2>/dev/null || true
+strip --strip-unneeded "$PREFIX/bin/python$PY_XY" 2>/dev/null || true
+
 find "$PREFIX" -name "__pycache__" -type d -prune -exec rm -rf {} + 2>/dev/null || true
 
 # --------------------------------------------------------------- 8. AppImage packen

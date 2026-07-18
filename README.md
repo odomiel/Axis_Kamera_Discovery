@@ -344,6 +344,7 @@ axis_IP_Utility/
 
 | Version | Änderungen |
 |---|---|
+| 26.07.18b1 | AppImage deutlich verkleinert (~58 MB → ~15 MB): statische Bibliotheken (`libpython*.a`, OpenSSL-`.a`), C-Header, man-Pages, ungenutzte Stdlib-Teile (IDLE, ensurepip, pydoc, Tests) und Tcl-DB-Erweiterungen entfernt; alle `.so` gestrippt (außer Tcl/Tk – deren angehängtes zipfs darf nicht abgeschnitten werden) |
 | 26.07.18 | Oberfläche auf das moderne **Sun-Valley-Design** (`sv-ttk`, Windows-11-Look, Hell/Dunkel) umgestellt – aus dem Kamerakonfigurationsmanager übernommen; fällt ohne das Wheel auf das bisherige `clam`-Theme zurück |
 | 26.07.11b3 | AppImage und Windows-Build auf **Python 3.14** umgestellt (vorher 3.13) |
 | 26.07.11b2 | Abhängigkeiten aktualisiert: Tcl/Tk 9.0.4, libffi 3.7.1, zeroconf 0.150.0, prettytable 3.18.0, wcwidth 0.8.2 |
