@@ -254,29 +254,32 @@ TRANSLATIONS = {
     }
 }
 
-# Farbpaletten fuer hellen und dunklen Modus. Die Schluessel sind in beiden
-# Paletten identisch, sodass _apply_theme dieselben Style-Optionen setzen kann.
+# Farbpaletten fuer hellen und dunklen Modus. Die Basisoptik liefert das
+# Sun-Valley-ttk-Theme (sv_ttk, Windows-11-Look); diese Paletten sind auf dessen
+# Flaechen abgestimmt und faerben nur, was ttk-Themes nicht erfassen: klassische
+# tk-Widgets (tk.Text/Listbox/Menu) und die Hintergruende eigener Toplevels.
+# Ohne sv_ttk dienen sie zusaetzlich dem clam-Rueckfall (_apply_clam_theme).
 LIGHT_COLORS = {
-    "bg": "#f0f0f0",          # Fensterhintergrund
+    "bg": "#fafafa",          # Fensterhintergrund (Sun Valley hell)
     "fg": "#1a1a1a",          # Text
     "field_bg": "#ffffff",    # Eingabefelder/Buttons
-    "select_bg": "#0a64a4",   # markierte Zeile
-    "select_fg": "#ffffff",
-    "heading_bg": "#e1e1e1",  # Tabellenkopf/Scrollbar
-    "active_bg": "#d0d0d0",   # Hover/aktiv
+    "select_bg": "#cfe3ff",   # markierte Zeile (heller Akzent)
+    "select_fg": "#1a1a1a",
+    "heading_bg": "#efefef",  # Tabellenkopf/Scrollbar
+    "active_bg": "#e0e0e0",   # Hover/aktiv
     "tree_bg": "#ffffff",     # Tabellenflaeche
-    "disabled_fg": "#9a9a9a",
+    "disabled_fg": "#a0a0a0",
 }
 
 DARK_COLORS = {
-    "bg": "#2b2b2b",
-    "fg": "#e6e6e6",
-    "field_bg": "#3c3f41",
-    "select_bg": "#2f5b82",
+    "bg": "#1c1c1c",          # Fensterhintergrund (Sun Valley dunkel)
+    "fg": "#fafafa",
+    "field_bg": "#2b2b2b",
+    "select_bg": "#2f5d8a",
     "select_fg": "#ffffff",
-    "heading_bg": "#3c3f41",
-    "active_bg": "#4a4d4f",
-    "tree_bg": "#313335",
+    "heading_bg": "#2b2b2b",
+    "active_bg": "#333333",
+    "tree_bg": "#1c1c1c",
     "disabled_fg": "#6f6f6f",
 }
 
@@ -299,10 +302,14 @@ class AxisDiscoveryGUI(tk.Tk):
         # Gespeicherte Einstellungen laden (Dark Mode bleibt ueber Neustarts erhalten)
         self._config = self._load_config()
 
-        # "clam" ist das einzige mitgelieferte ttk-Theme, das alle Farben
-        # zuverlaessig uebernimmt; darauf baut der Dark/Light-Wechsel auf.
+        # Basisoptik: modernes Sun-Valley-Theme (sv_ttk) -- angewandt in
+        # _apply_theme. Fehlt das Wheel (z. B. Quellbetrieb), dient "clam" als
+        # Rueckfall fuer den Dark/Light-Wechsel.
         self._style = ttk.Style(self)
-        self._style.theme_use("clam")
+        try:
+            self._style.theme_use("clam")
+        except tk.TclError:
+            pass
         self.dark_mode_var = tk.BooleanVar(value=bool(self.get_setting("dark_mode")))
         self.language_var = tk.StringVar(value=self.get_setting("language") or "de")
         
@@ -839,11 +846,73 @@ class AxisDiscoveryGUI(tk.Tk):
         self._save_config()
 
     def _apply_theme(self, dark):
-        """Faerbt alle Widgets passend zum hellen oder dunklen Modus ein."""
-        c = DARK_COLORS if dark else LIGHT_COLORS
-        s = self._style
+        """Wendet das Sun-Valley-Theme an (Hell/Dunkel).
 
+        sv_ttk liefert die Basisoptik aller ttk-Widgets. Fehlt das Wheel, faellt
+        die Methode auf das bisherige clam-Styling (_apply_clam_theme) zurueck.
+        Klassische tk-Widgets (tk.Text/Listbox/Menu) und eigene Toplevels erfasst
+        kein ttk-Theme -> sie werden hier ueber option_add/Palette gefaerbt.
+        """
+        c = DARK_COLORS if dark else LIGHT_COLORS
         self.configure(bg=c["bg"])
+
+        if not self._apply_sun_valley(dark):
+            self._apply_clam_theme(c)
+
+        # Roter "Disclaimer"-Button-Text -- unabhaengig vom Basistheme, erbt den
+        # Rest vom jeweiligen TButton-Style (sv_ttk oder clam).
+        self._style.configure("Disclaimer.TButton", foreground="#ff0000")
+        self._style.map("Disclaimer.TButton", foreground=[("disabled", "#ff0000")])
+
+        # Klassische tk-Widgets (Text/Listbox/Menu) deckt kein ttk-Theme ab:
+        # Defaults fuer neu erzeugte Exemplare setzen.
+        for cls in ("Text", "Listbox"):
+            self.option_add(f"*{cls}.background", c["tree_bg"])
+            self.option_add(f"*{cls}.foreground", c["fg"])
+            self.option_add(f"*{cls}.insertBackground", c["fg"])
+            self.option_add(f"*{cls}.selectBackground", c["select_bg"])
+            self.option_add(f"*{cls}.selectForeground", c["select_fg"])
+        self.option_add("*Menu.background", c["tree_bg"])
+        self.option_add("*Menu.foreground", c["fg"])
+
+        # sv_ttk nutzt eine groessere Schrift als TkDefaultFont -> Messschriften
+        # fuer die Spaltenbreite nachziehen und ggf. neu vermessen.
+        self._refresh_measure_fonts()
+
+        # Hilfe-/Lizenzfenster sind klassische tk.Text-Widgets ohne ttk-Style
+        self._theme_text_windows(c)
+
+    def _apply_sun_valley(self, dark):
+        """Aktiviert das Sun-Valley-Theme; True bei Erfolg, False ohne sv_ttk."""
+        try:
+            import sv_ttk
+            sv_ttk.set_theme("dark" if dark else "light")
+            return True
+        except Exception:
+            return False  # kein sv_ttk -> Aufrufer nutzt den clam-Rueckfall
+
+    def _refresh_measure_fonts(self):
+        """Uebernimmt die tatsaechliche Treeview-Schrift fuer die Spaltenmessung."""
+        cell = self._style.lookup("Treeview", "font") or "TkDefaultFont"
+        head = self._style.lookup("Treeview.Heading", "font") or "TkHeadingFont"
+        try:
+            self._cell_font = tkfont.Font(font=cell)
+        except tk.TclError:
+            pass
+        try:
+            self._heading_font = tkfont.Font(font=head)
+        except tk.TclError:
+            self._heading_font = self._cell_font
+        if hasattr(self, "tree"):
+            self._autosize_columns()
+
+    def _apply_clam_theme(self, c):
+        """Rueckfall ohne sv_ttk: faerbt alle ttk-Widgets ueber das clam-Theme."""
+        s = self._style
+        try:
+            s.theme_use("clam")
+        except tk.TclError:
+            pass
 
         # Grundeinstellung fuer alle ttk-Widgets
         s.configure(
@@ -938,9 +1007,6 @@ class AxisDiscoveryGUI(tk.Tk):
         )
         s.configure("Treeview.Heading", background=c["heading_bg"], foreground=c["fg"])
         s.map("Treeview.Heading", background=[("active", c["active_bg"])])
-
-        # Hilfe-/Lizenzfenster sind klassische tk.Text-Widgets ohne ttk-Style
-        self._theme_text_windows(c)
 
     def _theme_text_windows(self, colors):
         """Faerbt offene Hilfe-/Lizenzfenster (tk.Text) mit den aktuellen Farben."""

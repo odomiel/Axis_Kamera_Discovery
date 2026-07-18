@@ -20,7 +20,7 @@ jobs:
           python-version: "3.14"
 
       - name: Abhaengigkeiten installieren
-        run: pip install pyinstaller zeroconf prettytable ifaddr
+        run: pip install pyinstaller zeroconf prettytable ifaddr sv-ttk
 
       - name: .exe bauen
         run: pyinstaller --noconfirm Axis_Kamera_Discovery.spec

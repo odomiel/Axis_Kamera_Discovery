@@ -13,7 +13,7 @@
 
 import re
 
-from PyInstaller.utils.hooks import collect_submodules
+from PyInstaller.utils.hooks import collect_data_files, collect_submodules
 
 # Versionsnummer aus dem CLI-Modul lesen (einzige Quelle, gepflegt von
 # bump_version.py) und an die EXE-Namen anhaengen -> z. B.
@@ -28,9 +28,13 @@ datas = [
     ("THIRD_PARTY_LICENSES.md", "."),
     ("LICENSE", "."),
 ]
+# sv_ttk liefert seine Tcl-Theme-Dateien als Paketdaten -> mitnehmen.
+datas += collect_data_files("sv_ttk")
 
 # zeroconf/ifaddr laden Teile dynamisch -> Submodule explizit einsammeln.
-hiddenimports = collect_submodules("zeroconf") + collect_submodules("ifaddr")
+hiddenimports = (collect_submodules("zeroconf")
+                 + collect_submodules("ifaddr")
+                 + collect_submodules("sv_ttk"))
 
 ICON = "appimage/Axis_Kamera_Discovery/Axis_Kamera_Discovery.ico"
 

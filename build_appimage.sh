@@ -137,6 +137,8 @@ wheel ifaddr      "n.endswith('.whl')"
 wheel prettytable "n.endswith('.whl')"
 # wcwidth (Abhaengigkeit von prettytable)
 wheel wcwidth     "n.endswith('.whl')"
+# Modernes Sun-Valley-Theme (reines py3-none-any-Wheel inkl. Tcl-Dateien)
+wheel sv-ttk      "n.endswith('.whl')"
 
 # --------------------------------------------------------------- 7. App + AppDir
 echo "==== AppDir zusammenstellen ===="

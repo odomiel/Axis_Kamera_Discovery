@@ -19,6 +19,7 @@ betroffen.
 | ifaddr | 0.2.0 | MIT |
 | prettytable | 3.18.0 | BSD-3-Clause |
 | wcwidth | 0.8.2 | MIT |
+| sv-ttk (Sun Valley) | 2.6.1 | MIT |
 
 > **Hinweis zu zeroconf (LGPL-2.1-or-later):** Alle übrigen Komponenten sind
 > permissiv lizenziert. `zeroconf` steht unter der LGPL (schwaches Copyleft).
@@ -170,3 +171,14 @@ Copyright © Jeff Quast.
 
 Lizenziert unter der **MIT-Lizenz** (Wortlaut wie bei *ifaddr* oben).
 Quellcode: https://github.com/jquast/wcwidth
+
+---
+
+## sv-ttk 2.6.1 (Sun Valley ttk theme)
+
+Copyright © rdbende und weitere Mitwirkende.
+
+Lizenziert unter der **MIT-Lizenz** (Wortlaut wie bei *ifaddr* oben). Quellcode:
+https://github.com/rdbende/Sun-Valley-ttk-theme bzw.
+https://github.com/rdbende/sv-ttk . Liefert das moderne Hell/Dunkel-Design der
+Oberfläche (reines Tcl-Theme, als Paketdaten gebündelt).

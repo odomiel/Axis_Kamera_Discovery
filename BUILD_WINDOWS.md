@@ -28,7 +28,7 @@ Deshalb den Interpreter über den Python-Launcher `py` explizit wählen:
 py -0p                 # zeigt alle installierten Versionen und ihre Pfade
 py -3.14 -V            # muss "Python 3.14.x" ausgeben
 
-py -3.14 -m pip install pyinstaller zeroconf prettytable ifaddr
+py -3.14 -m pip install pyinstaller zeroconf prettytable ifaddr sv-ttk
 py -3.14 -m PyInstaller --noconfirm Axis_Kamera_Discovery.spec
 ```
 
@@ -53,7 +53,7 @@ Findet es kein Python 3.14, bricht es mit einer Meldung ab, statt still mit eine
 Aus dem Quellcode starten (ohne Build) geht ebenso:
 
 ```powershell
-pip install zeroconf prettytable
+pip install zeroconf prettytable sv-ttk
 python axis_kamera_discovery_gui.py
 ```
 
@@ -81,4 +81,5 @@ Ergebnis liegt als Artefakt `Axis_Kamera_Discovery-windows` (die `.exe`-Dateien)
   (z. B. USB-Stick) erhalten. Unter Linux unverändert in
   `~/.config/axis_kamera_discovery/`.
 - **Tcl/Tk**: Windows-Python bringt Tk 8.6 mit; alle genutzten Widgets und das
-  `clam`-Theme (Dark Mode) funktionieren damit.
+  moderne **Sun-Valley-Theme** (`sv-ttk`, Hell/Dunkel) funktionieren damit.
+  Fehlt `sv-ttk`, faellt die GUI automatisch auf das `clam`-Theme zurueck.

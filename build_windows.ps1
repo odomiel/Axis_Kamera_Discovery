@@ -164,7 +164,7 @@ if ($Clean) {
 
 # 3. Abhängigkeiten installieren
 Write-Info "Installiere Abhaengigkeiten..."
-$dependencies = @("pyinstaller", "zeroconf", "prettytable", "ifaddr")
+$dependencies = @("pyinstaller", "zeroconf", "prettytable", "ifaddr", "sv-ttk")
 
 if ($ForceReinstall) {
     & $pythonExe -m pip install --force-reinstall $dependencies

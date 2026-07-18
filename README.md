@@ -191,7 +191,8 @@ Bedienung:
     abgewählte Spalten werden ausgeblendet. Die Auswahl wird in `settings.json`
     gespeichert (mindestens eine Spalte bleibt sichtbar).
   - **Dark Mode** – Checkbox; angehakt schaltet die Oberfläche auf den dunklen
-    Modus um, ohne Haken gilt der helle Modus.
+    Modus um, ohne Haken gilt der helle Modus. Die Oberfläche nutzt das moderne
+    **Sun-Valley-Design** (Windows-11-Look, Hell/Dunkel).
   - **Sprache** – Radiobuttons für „Deutsch" und „Englisch"; die Auswahl wird
     in `settings.json` gespeichert und beim nächsten Start wiederhergestellt. Die Einstellung bleibt über
     Neustarts erhalten – sie wird in der gemeinsamen Einstellungsdatei
@@ -343,6 +344,7 @@ axis_IP_Utility/
 
 | Version | Änderungen |
 |---|---|
+| 26.07.18 | Oberfläche auf das moderne **Sun-Valley-Design** (`sv-ttk`, Windows-11-Look, Hell/Dunkel) umgestellt – aus dem Kamerakonfigurationsmanager übernommen; fällt ohne das Wheel auf das bisherige `clam`-Theme zurück |
 | 26.07.11b3 | AppImage und Windows-Build auf **Python 3.14** umgestellt (vorher 3.13) |
 | 26.07.11b2 | Abhängigkeiten aktualisiert: Tcl/Tk 9.0.4, libffi 3.7.1, zeroconf 0.150.0, prettytable 3.18.0, wcwidth 0.8.2 |
 | 26.07.11b1 | Konfiguration anwenden: eigenes Häkchen „Bewegungserkennung (VMD4) mit übernehmen" (analog zu den Stream-Profilen); CLI `config --no-vmd4` |
