@@ -28,7 +28,7 @@ import axis_kamera_discovery_vapix as vapix
 
 # Versionsschema: JJ.MM.TT, bei mehreren Releases am selben Tag b1, b2, ...
 # (wird von bump_version.py gepflegt)
-__version__ = "26.07.18b1"
+__version__ = "26.07.19"
 
 FIELD_NAMES = [
     "Name",
@@ -46,15 +46,22 @@ class AxisDiscovery:
     def __init__(self):
         self.zeroconf = Zeroconf()
         self.services = []
+        self._seen = set()  # bereits erfasste mDNS-Namen (gegen Doppel-Eintraege)
 
     def on_service_state_change(self, zeroconf, service_type, name, state_change):
         if state_change is Zeroconf.StateChange.Added:
             self.add_service(zeroconf, service_type, name)
 
     def add_service(self, zeroconf, service_type, name):
+        # Doppelte Ankuendigungen desselben Dienstes ignorieren
+        if name in self._seen:
+            return
         info = zeroconf.get_service_info(service_type, name)
         if info:
-            addresses = [convert_bytearray_to_ipv4(address) for address in info.addresses]
+            self._seen.add(name)
+            # Nur IPv4-Adressen (4 Byte) -- 16-Byte-IPv6-Adressen ergaeben mit dem
+            # punktweisen Format sonst Unsinn.
+            addresses = [convert_bytearray_to_ipv4(a) for a in info.addresses if len(a) == 4]
 
             # Filtern Sie den zusätzlichen Teil aus dem Namen
             name = name.replace("._axis-video._tcp.local.", "")
@@ -63,7 +70,8 @@ class AxisDiscovery:
             name = name.rsplit(" - ", 1)[0].strip()
 
             # Konvertieren Sie Byte-Objekte in Strings für die MAC-Adresse/Seriennummer
-            mac_address = info.properties.get(b'macaddress', b'').decode('utf-8')
+            # (Wert kann fehlen oder None sein -> leerer String).
+            mac_address = (info.properties.get(b'macaddress') or b'').decode('utf-8', 'replace')
 
             # Adressen trennen: Zeroconf/Link-Local (169.254.x.x) vs. konfiguriert
             zeroconf_ips = [a for a in addresses if a.startswith("169.254.")]
@@ -125,7 +133,7 @@ def export_to_text_file(axis_cameras, output_file, columns=None):
         for camera in axis_cameras:
             table.add_row([camera.get(field, "") for field in columns])
 
-        with open(output_file, 'w') as file:
+        with open(output_file, 'w', encoding='utf-8') as file:
             file.write(str(table))
         print(f"Axis Cameras Found. Exported to {output_file}")
     else:

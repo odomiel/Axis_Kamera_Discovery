@@ -27,6 +27,7 @@ import json
 import os
 import platform
 import queue
+import re
 import sys
 import threading
 import webbrowser
@@ -361,10 +362,6 @@ class AxisDiscoveryGUI(tk.Tk):
         self.set_setting("language", self.language_var.get())
         self._update_all_texts()
 
-    def _update_language_menu(self, *args):
-        """Aktualisiert den Text des Sprach-Menübuttons nach Sprachwechsel."""
-        self.lang_menu_btn.config(text=self._("menu_language"))
-
     def _update_all_texts(self):
         """Aktualisiert alle UI-Texte nach Sprachwechsel."""
         # Fenster-Titel
@@ -380,9 +377,11 @@ class AxisDiscoveryGUI(tk.Tk):
         self.settings_btn.config(text=self._("btn_settings"))
         self.disclaimer_btn.config(text=self._("disclaimer"))
         
-        # Sprach-Menübutton
-        if hasattr(self, "lang_menu_btn"):
-            self.lang_menu_btn.config(text=self._("menu_language"))
+        # Sprach-Menübutton (nur wenn das Dropdown gerade offen ist -- der Button
+        # lebt im Popup und ist sonst bereits zerstoert)
+        btn = getattr(self, "lang_menu_btn", None)
+        if btn is not None and btn.winfo_exists():
+            btn.config(text=self._("menu_language"))
         
         # Statusbar
         self._update_status_text()
@@ -399,7 +398,6 @@ class AxisDiscoveryGUI(tk.Tk):
                 self.status_var.set(self._("status_searching"))
             elif "Kamera" in current and "gefunden" in current:
                 # Extrahiere Anzahl
-                import re
                 match = re.search(r'(\d+)', current)
                 if match:
                     count = match.group(1)
@@ -749,10 +747,7 @@ class AxisDiscoveryGUI(tk.Tk):
             command=lambda: self.language_var.set("en")
         )
         self.lang_menu_btn.configure(menu=lang_menu)
-        
-        # Aktualisiere Menü-Text wenn Sprache geändert wird
-        self.language_var.trace_add("write", self._update_language_menu)
-        
+
         ttk.Separator(frame, orient="horizontal").pack(fill=tk.X)
 
         for label_key, command in (
@@ -1548,8 +1543,13 @@ class CameraSettingsDialog(tk.Toplevel):
         self._set_busy(True)
         self._log(f"Wende Aenderung an ({len(self.cameras)} Kamera(s))...")
         kwargs = self._conn_kwargs()
+        # Tk-Variablen NUR im Haupt-Thread lesen und an den Worker uebergeben
+        # (Tkinter ist nicht thread-safe).
+        mask = self.mask_var.get().strip()
+        gateway = self.gw_var.get().strip()
         threading.Thread(
-            target=self._worker_apply, args=(mode, targets, kwargs), daemon=True
+            target=self._worker_apply, args=(mode, targets, mask, gateway, kwargs),
+            daemon=True,
         ).start()
         self.after(150, self._poll)
 
@@ -1580,9 +1580,7 @@ class CameraSettingsDialog(tk.Toplevel):
                 targets[idx] = value
         return targets
 
-    def _worker_apply(self, mode, targets, kwargs):
-        mask = self.mask_var.get().strip()
-        gateway = self.gw_var.get().strip()
+    def _worker_apply(self, mode, targets, mask, gateway, kwargs):
         for idx, cam in enumerate(self.cameras):
             ip = get_first_ip(cam)
             name = cam.get("Name", ip)

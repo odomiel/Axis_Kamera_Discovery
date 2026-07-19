@@ -44,6 +44,17 @@ class VapixError(Exception):
     """Fehler bei einem VAPIX-Aufruf (Netzwerk, Auth oder Geraeteantwort)."""
 
 
+class _SchemeUnreachable(VapixError):
+    """Das Schema (http/https) war auf Verbindungsebene nicht erreichbar.
+
+    Abgrenzung zu einem gewoehnlichen VapixError: Hat das Geraet ueberhaupt auf
+    HTTP-Ebene geantwortet (auch mit 401/404/500), ist das Schema funktionsfaehig
+    -- ein Rueckfall auf das andere Schema waere sinnlos und wuerde nur die
+    Wartezeit verdoppeln (z. B. bei falschem Passwort). Nur bei diesem Fehler
+    probieren die '*_auto'-Wrapper das zweite Schema.
+    """
+
+
 def _build_opener(host_port, username, password, auth=True):
     """Opener mit ungepruefter HTTPS-Verbindung.
 
@@ -81,9 +92,9 @@ def _request(ip, username, password, path, scheme="http", port=None, timeout=10,
             raise VapixError("Authentifizierung fehlgeschlagen (Benutzer/Passwort?).")
         raise VapixError(f"HTTP-Fehler {exc.code}: {exc.reason}")
     except urllib.error.URLError as exc:
-        raise VapixError(f"Nicht erreichbar: {exc.reason}")
+        raise _SchemeUnreachable(f"Nicht erreichbar: {exc.reason}")
     except (TimeoutError, OSError) as exc:
-        raise VapixError(f"Verbindungsfehler: {exc}")
+        raise _SchemeUnreachable(f"Verbindungsfehler: {exc}")
 
 
 def _request_auto(ip, username, password, path, scheme="auto", port=None, timeout=10, auth=True):
@@ -92,7 +103,7 @@ def _request_auto(ip, username, password, path, scheme="auto", port=None, timeou
         return _request(ip, username, password, path, scheme, port, timeout, auth)
     try:
         return _request(ip, username, password, path, "https", port, timeout, auth)
-    except VapixError:
+    except _SchemeUnreachable:
         return _request(ip, username, password, path, "http", port, timeout, auth)
 
 
@@ -116,9 +127,9 @@ def _post_form(ip, username, password, path, fields, scheme, port, timeout):
             raise VapixError("Authentifizierung fehlgeschlagen (Benutzer/Passwort?).")
         raise VapixError(f"HTTP-Fehler {exc.code}: {exc.reason}")
     except urllib.error.URLError as exc:
-        raise VapixError(f"Nicht erreichbar: {exc.reason}")
+        raise _SchemeUnreachable(f"Nicht erreichbar: {exc.reason}")
     except (TimeoutError, OSError) as exc:
-        raise VapixError(f"Verbindungsfehler: {exc}")
+        raise _SchemeUnreachable(f"Verbindungsfehler: {exc}")
 
 
 def _post_form_auto(ip, username, password, path, fields, scheme="auto", port=None, timeout=30):
@@ -127,7 +138,7 @@ def _post_form_auto(ip, username, password, path, fields, scheme="auto", port=No
         return _post_form(ip, username, password, path, fields, scheme, port, timeout)
     try:
         return _post_form(ip, username, password, path, fields, "https", port, timeout)
-    except VapixError:
+    except _SchemeUnreachable:
         return _post_form(ip, username, password, path, fields, "http", port, timeout)
 
 
@@ -181,9 +192,9 @@ def _post_json(ip, username, password, path, obj, scheme, port, timeout):
         raise VapixError(f"HTTP-Fehler {exc.code}: {exc.reason}"
                          + (f" — {detail}" if detail else ""))
     except urllib.error.URLError as exc:
-        raise VapixError(f"Nicht erreichbar: {exc.reason}")
+        raise _SchemeUnreachable(f"Nicht erreichbar: {exc.reason}")
     except (TimeoutError, OSError) as exc:
-        raise VapixError(f"Verbindungsfehler: {exc}")
+        raise _SchemeUnreachable(f"Verbindungsfehler: {exc}")
     if not text.strip():
         return {}
     try:
@@ -198,7 +209,7 @@ def _post_json_auto(ip, username, password, path, obj, scheme="auto", port=None,
         return _post_json(ip, username, password, path, obj, scheme, port, timeout)
     try:
         return _post_json(ip, username, password, path, obj, "https", port, timeout)
-    except VapixError:
+    except _SchemeUnreachable:
         return _post_json(ip, username, password, path, obj, "http", port, timeout)
 
 
@@ -289,6 +300,8 @@ def next_ip(ip_str, step=1):
         raise ValueError(f"Ungueltige IPv4-Adresse: {ip_str}")
     value = (parts[0] << 24) | (parts[1] << 16) | (parts[2] << 8) | parts[3]
     value += step
+    if not 0 <= value <= 0xFFFFFFFF:
+        raise ValueError(f"IP-Adresse ausserhalb des gueltigen Bereichs: {ip_str}+{step}")
     return ".".join(str((value >> shift) & 0xFF) for shift in (24, 16, 8, 0))
 
 
@@ -434,9 +447,9 @@ def _onvif_post(ip, username, password, inner, scheme, port, timeout):
         reason = _extract_soap_fault(detail) or f"HTTP {exc.code}: {exc.reason}"
         raise VapixError(f"ONVIF-Fehler: {reason}")
     except urllib.error.URLError as exc:
-        raise VapixError(f"Nicht erreichbar: {exc.reason}")
+        raise _SchemeUnreachable(f"Nicht erreichbar: {exc.reason}")
     except (TimeoutError, OSError) as exc:
-        raise VapixError(f"Verbindungsfehler: {exc}")
+        raise _SchemeUnreachable(f"Verbindungsfehler: {exc}")
 
 
 def _onvif_post_auto(ip, username, password, inner, scheme, port, timeout):
@@ -445,7 +458,7 @@ def _onvif_post_auto(ip, username, password, inner, scheme, port, timeout):
         return _onvif_post(ip, username, password, inner, scheme, port, timeout)
     try:
         return _onvif_post(ip, username, password, inner, "https", port, timeout)
-    except VapixError:
+    except _SchemeUnreachable:
         return _onvif_post(ip, username, password, inner, "http", port, timeout)
 
 
