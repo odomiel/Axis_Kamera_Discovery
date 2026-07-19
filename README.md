@@ -8,6 +8,7 @@ Findet **Axis-Netzwerkkameras** im lokalen Netz per Zeroconf/mDNS
 | Name | Kameratyp/Modell (ohne Seriennummer) |
 | IP Adresse: Zeroconfig | Link-Local-/Zeroconf-Adresse (`169.254.x.x`) |
 | IP Adresse: Konfiguriert | konfigurierte (reguläre) IP-Adresse |
+| IPv6 Adresse | erkannte IPv6-Adresse(n) der Kamera (z. B. `fe80::…`) |
 | Port | HTTP-Port |
 | Hostname | mDNS-Hostname |
 | MAC-Adresse/Seriennummer | MAC bzw. Seriennummer |
@@ -344,6 +345,7 @@ axis_IP_Utility/
 
 | Version | Änderungen |
 |---|---|
+| 26.07.19b1 | Neue Spalte **IPv6 Adresse**: Die mDNS-Suche erkennt jetzt auch IPv6-Adressen (`parsed_addresses`, da zeroconfs `.addresses` aus Kompatibilitätsgründen nur IPv4 liefert) und zeigt sie an; ein-/ausblendbar über „Spalten…", im Export enthalten |
 | 26.07.19 | Fehlerbehebungen aus einer Code-Prüfung: IP-Änderung las Tk-Variablen (Maske/Gateway) aus dem Hintergrund-Thread → jetzt thread-sicher im Haupt-Thread erfasst; Sprachmenü registrierte bei jedem Öffnen einen zusätzlichen Callback (Leck) → einmalig; Text-Export jetzt UTF-8 (Umlaute unter Windows); IPv6-Adressen der mDNS-Antwort werden gefiltert (statt als Zahlensalat angezeigt); doppelte Kamera-Meldungen werden entfernt und fehlende MAC-Angabe abgefangen; VAPIX-`auto`-Schema wiederholt bei einer echten HTTP-Antwort (z. B. 401 falsches Passwort) nicht mehr sinnlos über das andere Schema (halbe Wartezeit) |
 | 26.07.18b1 | AppImage deutlich verkleinert (~58 MB → ~15 MB): statische Bibliotheken (`libpython*.a`, OpenSSL-`.a`), C-Header, man-Pages, ungenutzte Stdlib-Teile (IDLE, ensurepip, pydoc, Tests) und Tcl-DB-Erweiterungen entfernt; alle `.so` gestrippt (außer Tcl/Tk – deren angehängtes zipfs darf nicht abgeschnitten werden) |
 | 26.07.18 | Oberfläche auf das moderne **Sun-Valley-Design** (`sv-ttk`, Windows-11-Look, Hell/Dunkel) umgestellt – aus dem Kamerakonfigurationsmanager übernommen; fällt ohne das Wheel auf das bisherige `clam`-Theme zurück |

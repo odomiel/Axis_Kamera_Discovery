@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from zeroconf import ServiceBrowser, Zeroconf
+from zeroconf import ServiceBrowser, Zeroconf, IPVersion
 import time
 import csv
 import webbrowser
@@ -28,19 +28,17 @@ import axis_kamera_discovery_vapix as vapix
 
 # Versionsschema: JJ.MM.TT, bei mehreren Releases am selben Tag b1, b2, ...
 # (wird von bump_version.py gepflegt)
-__version__ = "26.07.19"
+__version__ = "26.07.19b1"
 
 FIELD_NAMES = [
     "Name",
     "IP Adresse: Zeroconfig",
     "IP Adresse: Konfiguriert",
+    "IPv6 Adresse",
     "Port",
     "Hostname",
     "MAC-Adresse/Seriennummer",
 ]
-
-def convert_bytearray_to_ipv4(bytearray_address):
-    return ".".join(str(byte) for byte in bytearray_address)
 
 class AxisDiscovery:
     def __init__(self):
@@ -59,9 +57,10 @@ class AxisDiscovery:
         info = zeroconf.get_service_info(service_type, name)
         if info:
             self._seen.add(name)
-            # Nur IPv4-Adressen (4 Byte) -- 16-Byte-IPv6-Adressen ergaeben mit dem
-            # punktweisen Format sonst Unsinn.
-            addresses = [convert_bytearray_to_ipv4(a) for a in info.addresses if len(a) == 4]
+            # zeroconf liefert ueber .addresses aus Kompatibilitaetsgruenden nur
+            # IPv4 -> IPv4 und IPv6 getrennt ueber parsed_addresses() erkennen.
+            ipv4 = info.parsed_addresses(IPVersion.V4Only)
+            ipv6 = info.parsed_addresses(IPVersion.V6Only)
 
             # Filtern Sie den zusätzlichen Teil aus dem Namen
             name = name.replace("._axis-video._tcp.local.", "")
@@ -73,14 +72,15 @@ class AxisDiscovery:
             # (Wert kann fehlen oder None sein -> leerer String).
             mac_address = (info.properties.get(b'macaddress') or b'').decode('utf-8', 'replace')
 
-            # Adressen trennen: Zeroconf/Link-Local (169.254.x.x) vs. konfiguriert
-            zeroconf_ips = [a for a in addresses if a.startswith("169.254.")]
-            configured_ips = [a for a in addresses if not a.startswith("169.254.")]
+            # IPv4-Adressen trennen: Zeroconf/Link-Local (169.254.x.x) vs. konfiguriert
+            zeroconf_ips = [a for a in ipv4 if a.startswith("169.254.")]
+            configured_ips = [a for a in ipv4 if not a.startswith("169.254.")]
 
             service_info = {
                 "Name": name,
                 "IP Adresse: Zeroconfig": ', '.join(zeroconf_ips),
                 "IP Adresse: Konfiguriert": ', '.join(configured_ips),
+                "IPv6 Adresse": ', '.join(ipv6),
                 "Port": info.port,
                 "Hostname": info.server,
                 "MAC-Adresse/Seriennummer": mac_address  # Hier haben wir den String-Wert
