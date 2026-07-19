@@ -28,7 +28,7 @@ import axis_kamera_discovery_vapix as vapix
 
 # Versionsschema: JJ.MM.TT, bei mehreren Releases am selben Tag b1, b2, ...
 # (wird von bump_version.py gepflegt)
-__version__ = "26.07.19b1"
+__version__ = "26.07.19b2"
 
 FIELD_NAMES = [
     "Name",
@@ -227,6 +227,20 @@ def cmd_set_dhcp(args):
     k = _conn_kwargs(args)
     return _run_over_ips(args.ips, lambda ip: vapix.set_dhcp(ip, **k))
 
+def cmd_set_ipv6(args):
+    k = _conn_kwargs(args)
+    return _run_over_ips(args.ips, lambda ip: vapix.set_ipv6_config(
+        ip, mode=args.mode, address=args.address, router=args.router, **k))
+
+def cmd_ipv6_show(args):
+    k = _conn_kwargs(args)
+    def op(ip):
+        cfg = vapix.read_ipv6_config(ip, **k)
+        state = "aktiv" if cfg["enabled"] else "deaktiviert"
+        addrs = ", ".join(cfg["addresses"]) or "(keine)"
+        return f"IPv6 {state}; Adressen: {addrs}"
+    return _run_over_ips(args.ips, op)
+
 def cmd_user_add(args):
     k = _conn_kwargs(args)
     return _run_over_ips(args.ips, lambda ip: vapix.add_or_set_user(
@@ -364,9 +378,10 @@ def main():
 
     # --- Unterbefehle zur Kamera-Konfiguration ---
     sub = parser.add_subparsers(dest='command', metavar='BEFEHL',
-                                help='Kamera-Konfiguration (set-ip, set-dhcp, user-add, '
-                                     'user-passwd, user-import, onvif-add, onvif-passwd, '
-                                     'onvif-import, firmware, config, config-export)')
+                                help='Kamera-Konfiguration (set-ip, set-dhcp, set-ipv6, '
+                                     'ipv6-show, user-add, user-passwd, user-import, '
+                                     'onvif-add, onvif-passwd, onvif-import, firmware, '
+                                     'config, config-export)')
     # gemeinsame Verbindungs-/Auth-Optionen
     conn = argparse.ArgumentParser(add_help=False)
     conn.add_argument('ips', nargs='+', help='Ziel-IP(s) der Kamera(s)')
@@ -386,6 +401,20 @@ def main():
 
     sp = sub.add_parser('set-dhcp', parents=[conn], help='Auf DHCP umstellen')
     sp.set_defaults(func=cmd_set_dhcp)
+
+    sp = sub.add_parser('set-ipv6', parents=[conn],
+                        help='IPv6 setzen (auto/manual/off)')
+    sp.add_argument('--mode', choices=['auto', 'manual', 'off'], required=True,
+                    help='auto=SLAAC/Router-Advertisement, manual=feste Adresse, off=aus')
+    sp.add_argument('--address', default='',
+                    help='Feste IPv6-Adresse mit Praefix (nur mode=manual, z. B. 2001:db8::10/64)')
+    sp.add_argument('--router', default='',
+                    help='IPv6-Gateway (optional, nur mode=manual)')
+    sp.set_defaults(func=cmd_set_ipv6)
+
+    sp = sub.add_parser('ipv6-show', parents=[conn],
+                        help='Aktuelle IPv6-Konfiguration auslesen')
+    sp.set_defaults(func=cmd_ipv6_show)
 
     sp = sub.add_parser('user-add', parents=[conn], help='Benutzer anlegen')
     sp.add_argument('--name', required=True, help='Name des neuen Benutzers')

@@ -306,6 +306,80 @@ def next_ip(ip_str, step=1):
 
 
 # =====================================================================
+# IPv6-Netzwerkkonfiguration (Network.IPv6.* ueber param.cgi)
+# =====================================================================
+
+def _parse_bool(value):
+    """Axis-Boolean ('yes'/'no'/'on'/'off'/...) -> True/False/None (unbekannt)."""
+    if value is None:
+        return None
+    return value.strip().lower() in ("yes", "on", "true", "1", "enabled")
+
+
+def read_ipv6_config(ip, username, password, scheme="auto", port=None, timeout=10):
+    """Liest die aktuelle IPv6-Konfiguration (param.cgi, Gruppe Network.IPv6).
+
+    Liefert ein Dict:
+      {"enabled": bool, "accept_ra": bool|None, "addresses": [str, ...],
+       "params": {roh-schluessel: wert}}
+    'addresses' sammelt alle in der Gruppe gefundenen IPv6-Adressen (enthalten ':').
+    Rein lesend -- veraendert nichts an der Kamera (fuer die Erkennung).
+    """
+    text = _request_auto(ip, username, password,
+                         "/axis-cgi/param.cgi?action=list&group=Network.IPv6",
+                         scheme, port, timeout)
+    params = _parse_param_list(text)
+    addresses = []
+    for key, val in params.items():
+        if "IPAddress" in key or "Address" in key:
+            addresses.extend(a.strip() for a in re.split(r"[\s,]+", val)
+                             if ":" in a and a.strip() not in addresses)
+    return {
+        "enabled": bool(_parse_bool(params.get("root.Network.IPv6.Enabled"))),
+        "accept_ra": _parse_bool(params.get("root.Network.IPv6.AcceptRA")),
+        "addresses": addresses,
+        "params": params,
+    }
+
+
+def set_ipv6_config(ip, username, password, mode, address="", router="",
+                    scheme="auto", port=None, timeout=10):
+    """Stellt die IPv6-Konfiguration der Kamera ein (param.cgi, Network.IPv6.*).
+
+    mode:
+      - 'off':    IPv6 deaktivieren (Network.IPv6.Enabled=no).
+      - 'auto':   IPv6 aktiv, Router-Advertisements annehmen (SLAAC) --
+                  Enabled=yes, AcceptRA=yes.
+      - 'manual': IPv6 aktiv mit fester Adresse. 'address' muss die Adresse mit
+                  Praefixlaenge enthalten (z. B. '2001:db8::10/64'); 'router' ist
+                  optional. Enabled=yes, AcceptRA=no, IPAddress/DefaultRouter gesetzt.
+
+    Bewusst konservativ gehalten (nur die verbreiteten, generationsuebergreifenden
+    Parameter). Lehnt die Kamera einen Parameter ab, meldet param.cgi das als
+    Fehler -> VapixError.
+    """
+    mode = (mode or "").lower()
+    if mode == "off":
+        params = {"Network.IPv6.Enabled": "no"}
+    elif mode == "auto":
+        params = {"Network.IPv6.Enabled": "yes", "Network.IPv6.AcceptRA": "yes"}
+    elif mode == "manual":
+        if not address:
+            raise VapixError(
+                "Bitte eine IPv6-Adresse mit Praefix angeben (z. B. 2001:db8::10/64).")
+        params = {
+            "Network.IPv6.Enabled": "yes",
+            "Network.IPv6.AcceptRA": "no",
+            "Network.IPv6.IPAddress": address,
+        }
+        if router:
+            params["Network.IPv6.DefaultRouter"] = router
+    else:
+        raise VapixError(f"Unbekannter IPv6-Modus: {mode}")
+    return _update_params(ip, username, password, params, scheme, port, timeout)
+
+
+# =====================================================================
 # Benutzerverwaltung (regulaere Axis-Benutzer ueber pwdgrp.cgi)
 # =====================================================================
 

@@ -37,6 +37,7 @@ Python 3.14 inklusive **Tcl/Tk 9** sowie alle Abhängigkeiten mitbringt und dami
 | Wiederholte Suche (Auto-Refresh) | Checkbox + Intervall | `--watch/-w SEKUNDEN` |
 | Kamera-Weboberfläche im Browser öffnen | Doppelklick auf Zeile | `--open` |
 | Kamera-IP ändern (DHCP/fest, Mehrfachauswahl) | „Kamera Einstellungen" | `set-ip` / `set-dhcp` |
+| IPv6 einstellen (auto/fest/aus) & auslesen | „Kamera Einstellungen" | `set-ipv6` / `ipv6-show` |
 | Benutzer/ONVIF-Benutzer anlegen oder Passwort ändern | „Kamera Einstellungen" | `user-add`/`user-passwd`/`onvif-add`/`onvif-passwd` |
 | Benutzer/ONVIF-Benutzer aus Textdatei importieren (Stapel) | „Kamera Einstellungen" | `user-import`/`onvif-import` |
 | Firmware-Update (Mehrfachauswahl) | „Kamera Einstellungen" | `firmware` |
@@ -120,6 +121,12 @@ Bedienung:
   - **IP-Adresse** ändern in drei Varianten: *Auf DHCP umstellen*,
     *Feste IP ab Start-IP fortlaufend* (vergibt fortlaufende Adressen) oder
     *Pro Kamera einzeln* (je Kamera ein eigenes IP-Feld).
+  - **IPv6-Adresse** einstellen in drei Varianten: *Automatisch* (per
+    SLAAC/Router-Advertisement vergebene Adressen), *Feste IPv6-Adresse*
+    (manuelle Adresse mit Präfix, z. B. `2001:db8::10/64`, optional Gateway) oder
+    *IPv6 deaktivieren*. Der Knopf *Aktuelle IPv6-Konfiguration auslesen* zeigt –
+    rein lesend – den aktuellen Status und die vergebenen Adressen der markierten
+    Kamera(s) (über `param.cgi`, Gruppe `Network.IPv6`).
   - **Benutzer** – regulären Axis-Benutzer *anlegen* (mit Rolle
     Administrator/Operator/Viewer) oder *Passwort ändern*. Ist die Kamera noch
     im **Auslieferungszustand**, hilft die Checkbox *Auslieferungszustand*: Sie
@@ -265,6 +272,8 @@ wird interaktiv gefragt), `--scheme {auto,https,http}`, `--port`, `--conn-timeou
 |---|---|---|
 | `set-ip` | feste IP setzen | `--new-ip` (Pflicht), `--mask`, `--gateway` |
 | `set-dhcp` | auf DHCP umstellen | – |
+| `set-ipv6` | IPv6 einstellen | `--mode auto\|manual\|off` (Pflicht), `--address` (mit Präfix, nur `manual`), `--router` |
+| `ipv6-show` | aktuelle IPv6-Konfiguration auslesen | – |
 | `user-add` | Benutzer anlegen | `--name`, `--new-password`, `--role`, `--factory` |
 | `user-passwd` | Benutzer-Passwort ändern | `--name`, `--new-password` |
 | `user-import` | Benutzer aus Textdatei anlegen | `--file` (Name,Passwort[,Rolle]), `--factory` |
@@ -278,6 +287,10 @@ wird interaktiv gefragt), `--scheme {auto,https,http}`, `--port`, `--conn-timeou
 ```bash
 # IP zweier Kameras (Passwort wird abgefragt)
 python3 axis_kamera_discovery_cli.py set-ip 192.168.0.90 --new-ip 192.168.0.50 --gateway 192.168.0.1
+
+# IPv6: feste Adresse setzen bzw. aktuelle Konfiguration auslesen
+python3 axis_kamera_discovery_cli.py set-ipv6 192.168.0.90 --mode manual --address 2001:db8::10/64 -p pw
+python3 axis_kamera_discovery_cli.py ipv6-show 192.168.0.90 -p pw
 
 # Erstbenutzer auf werksneuer Kamera (ohne Anmeldung / Standard-Zugangsdaten)
 python3 axis_kamera_discovery_cli.py user-add 192.168.0.90 --name root --new-password 'Geheim123' --factory
@@ -345,6 +358,7 @@ axis_IP_Utility/
 
 | Version | Änderungen |
 |---|---|
+| 26.07.19b2 | Neuer Reiter **IPv6-Adresse** im Dialog „Kamera Einstellungen": IPv6 auf *automatisch* (SLAAC/Router-Advertisement), *feste Adresse* (mit Präfix + optionalem Gateway) oder *aus* stellen, plus *aktuelle IPv6-Konfiguration auslesen* (rein lesend, `param.cgi` `Network.IPv6`). Neue CLI-Unterbefehle `set-ipv6` und `ipv6-show` |
 | 26.07.19b1 | Neue Spalte **IPv6 Adresse**: Die mDNS-Suche erkennt jetzt auch IPv6-Adressen (`parsed_addresses`, da zeroconfs `.addresses` aus Kompatibilitätsgründen nur IPv4 liefert) und zeigt sie an; ein-/ausblendbar über „Spalten…", im Export enthalten |
 | 26.07.19 | Fehlerbehebungen aus einer Code-Prüfung: IP-Änderung las Tk-Variablen (Maske/Gateway) aus dem Hintergrund-Thread → jetzt thread-sicher im Haupt-Thread erfasst; Sprachmenü registrierte bei jedem Öffnen einen zusätzlichen Callback (Leck) → einmalig; Text-Export jetzt UTF-8 (Umlaute unter Windows); IPv6-Adressen der mDNS-Antwort werden gefiltert (statt als Zahlensalat angezeigt); doppelte Kamera-Meldungen werden entfernt und fehlende MAC-Angabe abgefangen; VAPIX-`auto`-Schema wiederholt bei einer echten HTTP-Antwort (z. B. 401 falsches Passwort) nicht mehr sinnlos über das andere Schema (halbe Wartezeit) |
 | 26.07.18b1 | AppImage deutlich verkleinert (~58 MB → ~15 MB): statische Bibliotheken (`libpython*.a`, OpenSSL-`.a`), C-Header, man-Pages, ungenutzte Stdlib-Teile (IDLE, ensurepip, pydoc, Tests) und Tcl-DB-Erweiterungen entfernt; alle `.so` gestrippt (außer Tcl/Tk – deren angehängtes zipfs darf nicht abgeschnitten werden) |

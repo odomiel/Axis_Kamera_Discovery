@@ -1156,6 +1156,7 @@ class CameraSettingsDialog(tk.Toplevel):
 
         self._build_ui()
         self._on_mode_change()   # passende IP-Felder anzeigen/ausblenden
+        self._on_ipv6_mode_change()  # IPv6-Felder je nach Modus anzeigen/ausblenden
         self._on_user_action()   # Rollen-Feld je nach Benutzer-Aktion schalten
 
     # ------------------------------------------------------------------ UI
@@ -1241,6 +1242,47 @@ class CameraSettingsDialog(tk.Toplevel):
             ttk.Entry(self._each_frame, textvariable=var, width=18).grid(
                 row=idx, column=1, padx=4, pady=1
             )
+
+        # ===== Reiter: IPv6-Adresse =====
+        tab_ipv6 = ttk.Frame(self.nb, padding=8)
+        self.nb.add(tab_ipv6, text="IPv6-Adresse")
+        self._ipv6_mode_var = tk.StringVar(value="auto")
+        ttk.Radiobutton(tab_ipv6, text="Automatisch (Router Advertisement / SLAAC)",
+                        value="auto", variable=self._ipv6_mode_var,
+                        command=self._on_ipv6_mode_change).pack(anchor=tk.W)
+        ttk.Radiobutton(tab_ipv6, text="Feste IPv6-Adresse", value="manual",
+                        variable=self._ipv6_mode_var,
+                        command=self._on_ipv6_mode_change).pack(anchor=tk.W)
+        ttk.Radiobutton(tab_ipv6, text="IPv6 deaktivieren", value="off",
+                        variable=self._ipv6_mode_var,
+                        command=self._on_ipv6_mode_change).pack(anchor=tk.W)
+
+        self._ipv6_addr_var = tk.StringVar()
+        self._ipv6_router_var = tk.StringVar()
+        self._ipv6_manual = ttk.Frame(tab_ipv6)
+        ttk.Label(self._ipv6_manual,
+                  text="IPv6-Adresse (mit Praefix, z. B. 2001:db8::10/64):").grid(
+            row=0, column=0, sticky=tk.W, padx=4, pady=2)
+        ttk.Entry(self._ipv6_manual, textvariable=self._ipv6_addr_var, width=40).grid(
+            row=0, column=1, padx=4, pady=2)
+        ttk.Label(self._ipv6_manual, text="Gateway (optional):").grid(
+            row=1, column=0, sticky=tk.W, padx=4, pady=2)
+        ttk.Entry(self._ipv6_manual, textvariable=self._ipv6_router_var, width=40).grid(
+            row=1, column=1, padx=4, pady=2)
+
+        self.ipv6_read_btn = ttk.Button(
+            tab_ipv6, text="Aktuelle IPv6-Konfiguration auslesen",
+            command=self._read_ipv6)
+        self.ipv6_read_btn.pack(anchor=tk.W, pady=(10, 0))
+        ttk.Label(
+            tab_ipv6,
+            text="Stellt die IPv6-Einstellungen der markierten Kamera(s) ueber "
+            "param.cgi (Network.IPv6) ein. 'Automatisch' uebernimmt per SLAAC/Router-"
+            "Advertisement vergebene Adressen; 'Feste IPv6-Adresse' setzt eine "
+            "manuelle Adresse inkl. Praefixlaenge. Die aktuell vergebenen Adressen "
+            "lassen sich zuvor auslesen (rein lesend).",
+            wraplength=560, justify=tk.LEFT,
+        ).pack(anchor=tk.W, pady=(6, 0))
 
         # ===== Reiter: Benutzer (regulaere Axis-Benutzer) =====
         tab_user = ttk.Frame(self.nb, padding=8)
@@ -1476,6 +1518,7 @@ class CameraSettingsDialog(tk.Toplevel):
         self.export_cfg_btn.config(state=state)
         self.import_user_btn.config(state=state)
         self.import_onvif_btn.config(state=state)
+        self.ipv6_read_btn.config(state=state)
 
     # ------------------------------------------------- Verbindung testen
     def _test_connection(self):
@@ -1513,17 +1556,18 @@ class CameraSettingsDialog(tk.Toplevel):
     def _apply(self):
         if self._working:
             return
-        tab = self.nb.index(self.nb.select())
-        if tab == 0:
-            self._apply_ip()
-        elif tab == 1:
-            self._apply_user(onvif=False)
-        elif tab == 2:
-            self._apply_user(onvif=True)
-        elif tab == 3:
-            self._apply_firmware()
-        else:
-            self._apply_config()
+        # Dispatch anhand des Reiter-Textes (robust gegen Reihenfolge/neue Reiter)
+        text = self.nb.tab(self.nb.select(), "text")
+        handler = {
+            "IP-Adresse": self._apply_ip,
+            "IPv6-Adresse": self._apply_ipv6,
+            "Benutzer": lambda: self._apply_user(onvif=False),
+            "ONVIF-Benutzer": lambda: self._apply_user(onvif=True),
+            "Firmware": self._apply_firmware,
+            "Konfiguration": self._apply_config,
+        }.get(text)
+        if handler:
+            handler()
 
     def _apply_ip(self):
         mode = self._mode_var.get()
@@ -1598,6 +1642,89 @@ class CameraSettingsDialog(tk.Toplevel):
                     vapix.set_static_ip(ip, new_ip=new_ip, subnet_mask=mask,
                                         gateway=gateway, **kwargs)
                     self._queue.put((name, True, f"IP gesetzt auf {new_ip}"))
+            except vapix.VapixError as exc:
+                self._queue.put((name, False, str(exc)))
+        self._queue.put(None)
+
+    # ------------------------------------------------------------- IPv6
+    def _on_ipv6_mode_change(self):
+        if self._ipv6_mode_var.get() == "manual":
+            self._ipv6_manual.pack(fill=tk.X, pady=(6, 0), before=self.ipv6_read_btn)
+        else:
+            self._ipv6_manual.pack_forget()
+
+    def _apply_ipv6(self):
+        mode = self._ipv6_mode_var.get()
+        address = self._ipv6_addr_var.get().strip()
+        router = self._ipv6_router_var.get().strip()
+        if mode == "manual" and not address:
+            messagebox.showerror(
+                "Eingabefehler",
+                "Bitte eine IPv6-Adresse mit Praefix angeben (z. B. 2001:db8::10/64).",
+                parent=self)
+            return
+        summary = {
+            "off": "IPv6 deaktivieren",
+            "auto": "IPv6 auf automatisch (SLAAC / Router Advertisement) stellen",
+            "manual": f"feste IPv6-Adresse {address} setzen",
+        }[mode]
+        if not messagebox.askyesno(
+                "Aenderung bestaetigen",
+                f"{summary}\nauf {len(self.cameras)} Kamera(s)?", parent=self):
+            return
+        self._clear_log()
+        self._set_busy(True)
+        self._log(f"Wende IPv6-Aenderung an ({len(self.cameras)} Kamera(s))...")
+        kwargs = self._conn_kwargs()
+        threading.Thread(
+            target=self._worker_ipv6, args=(mode, address, router, kwargs),
+            daemon=True,
+        ).start()
+        self.after(150, self._poll)
+
+    def _worker_ipv6(self, mode, address, router, kwargs):
+        done = {
+            "off": "IPv6 deaktiviert",
+            "auto": "IPv6 auf automatisch gesetzt",
+            "manual": f"feste IPv6-Adresse {address} gesetzt",
+        }[mode]
+        for cam in self.cameras:
+            ip = get_first_ip(cam)
+            name = cam.get("Name", ip)
+            if not ip:
+                self._queue.put((name, False, "keine IP-Adresse bekannt"))
+                continue
+            try:
+                vapix.set_ipv6_config(ip, mode=mode, address=address,
+                                      router=router, **kwargs)
+                self._queue.put((name, True, done))
+            except vapix.VapixError as exc:
+                self._queue.put((name, False, str(exc)))
+        self._queue.put(None)
+
+    def _read_ipv6(self):
+        if self._working:
+            return
+        self._clear_log()
+        self._set_busy(True)
+        self._log("Lese aktuelle IPv6-Konfiguration (rein lesend)...")
+        kwargs = self._conn_kwargs()
+        threading.Thread(
+            target=self._worker_read_ipv6, args=(kwargs,), daemon=True).start()
+        self.after(150, self._poll)
+
+    def _worker_read_ipv6(self, kwargs):
+        for cam in self.cameras:
+            ip = get_first_ip(cam)
+            name = cam.get("Name", ip)
+            if not ip:
+                self._queue.put((name, False, "keine IP-Adresse bekannt"))
+                continue
+            try:
+                cfg = vapix.read_ipv6_config(ip, **kwargs)
+                state = "aktiv" if cfg["enabled"] else "deaktiviert"
+                addrs = ", ".join(cfg["addresses"]) or "(keine)"
+                self._queue.put((name, True, f"IPv6 {state}; Adressen: {addrs}"))
             except vapix.VapixError as exc:
                 self._queue.put((name, False, str(exc)))
         self._queue.put(None)
