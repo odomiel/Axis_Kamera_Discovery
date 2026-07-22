@@ -205,7 +205,10 @@ Bedienung:
     in `settings.json` gespeichert und beim nächsten Start wiederhergestellt. Die Einstellung bleibt über
     Neustarts erhalten – sie wird in der gemeinsamen Einstellungsdatei
     `~/.config/axis_kamera_discovery/settings.json` (bzw. `$XDG_CONFIG_HOME`) abgelegt,
-    in der auch künftige Einstellungen gespeichert werden.
+    in der auch künftige Einstellungen gespeichert werden. Übersetzt ist jetzt die
+    **gesamte** Oberfläche – neben dem Hauptfenster auch der Dialog „Kamera
+    Einstellungen" (alle Reiter, Meldungen und Statustexte) sowie der Parameter-
+    Auswahldialog des Konfigurations-Exports.
   - **Info** – Programmname und Version
   - **Hilfe** – zeigt diese README in einem Fenster
   - **Lizenzen** – zeigt `THIRD_PARTY_LICENSES.md` (Lizenzen der gebündelten
@@ -358,6 +361,7 @@ axis_IP_Utility/
 
 | Version | Änderungen |
 |---|---|
+| 26.07.22 | **Vollständige englische Übersetzung**: Der Dialog „Kamera Einstellungen" (alle Reiter IP/IPv6/Benutzer/ONVIF/Firmware/Konfiguration inkl. aller Hinweise, Bestätigungsdialoge, Fehler- und Ergebnismeldungen) und der Parameter-Auswahldialog folgen jetzt der Sprachwahl im Einstellungsmenü. Der `_apply`-Dispatch nutzt statt des (übersetzten) Reiter-Textes die Widget-ID des Reiters; die Worker-Threads übersetzen über eine gecachte Sprach-Kennung (kein Tk-Zugriff aus dem Thread) |
 | 26.07.19b2 | Neuer Reiter **IPv6-Adresse** im Dialog „Kamera Einstellungen": IPv6 auf *automatisch* (SLAAC/Router-Advertisement), *feste Adresse* (mit Präfix + optionalem Gateway) oder *aus* stellen, plus *aktuelle IPv6-Konfiguration auslesen* (rein lesend, `param.cgi` `Network.IPv6`). Neue CLI-Unterbefehle `set-ipv6` und `ipv6-show` |
 | 26.07.19b1 | Neue Spalte **IPv6 Adresse**: Die mDNS-Suche erkennt jetzt auch IPv6-Adressen (`parsed_addresses`, da zeroconfs `.addresses` aus Kompatibilitätsgründen nur IPv4 liefert) und zeigt sie an; ein-/ausblendbar über „Spalten…", im Export enthalten |
 | 26.07.19 | Fehlerbehebungen aus einer Code-Prüfung: IP-Änderung las Tk-Variablen (Maske/Gateway) aus dem Hintergrund-Thread → jetzt thread-sicher im Haupt-Thread erfasst; Sprachmenü registrierte bei jedem Öffnen einen zusätzlichen Callback (Leck) → einmalig; Text-Export jetzt UTF-8 (Umlaute unter Windows); IPv6-Adressen der mDNS-Antwort werden gefiltert (statt als Zahlensalat angezeigt); doppelte Kamera-Meldungen werden entfernt und fehlende MAC-Angabe abgefangen; VAPIX-`auto`-Schema wiederholt bei einer echten HTTP-Antwort (z. B. 401 falsches Passwort) nicht mehr sinnlos über das andere Schema (halbe Wartezeit) |

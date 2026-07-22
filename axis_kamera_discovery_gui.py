@@ -124,16 +124,25 @@ TRANSLATIONS = {
         
         # Info-Dialog
         "info_title": "Info",
-        
+        "info_body": "Axis_Kamera_Discovery\nVersion {version}\n\n"
+        "Findet Axis-Kameras im lokalen Netzwerk per Zeroconf/mDNS.\n\n"
+        "Komponenten:\n{components}\n\n"
+        "Lizenz: GPL-3.0-or-later\n"
+        "Copyright (C) 2026 Mirik\n"
+        "Co-Autor: Claude Opus 4.8 (Anthropic) - KI-gestuetzte Entwicklung",
+        "cs_select_first_title": "Kamera Einstellungen",
+        "cs_select_first": "Bitte zuerst eine oder mehrere Kameras in der Liste auswaehlen.",
+
         # Hilfe-Dialog
-        "help_title": "Hilfe",
-        
+        "help_title": "Hilfe - README",
+
         # Lizenzen-Dialog
         "licenses_title": "Lizenzen",
+        "file_not_found": "{filename} wurde nicht gefunden.",
         
         # Kamera Einstellungen Dialog
         "camera_settings_title": "Kamera Einstellungen",
-        "camera_settings_cameras_selected": "{} Kamera(s) ausgewaehlt",
+        "camera_settings_cameras_selected": "{count} Kamera(s) ausgewaehlt",
         "camera_settings_credentials": "Zugangsdaten",
         "camera_settings_user": "Benutzer:",
         "camera_settings_password": "Passwort:",
@@ -142,11 +151,189 @@ TRANSLATIONS = {
         "camera_settings_timeout": "Timeout (s):",
         "camera_settings_test_connection": "Verbindung testen",
         "camera_settings_ip_tab": "IP-Adresse",
+        "camera_settings_ipv6_tab": "IPv6-Adresse",
         "camera_settings_users_tab": "Benutzer",
         "camera_settings_onvif_tab": "ONVIF-Benutzer",
         "camera_settings_firmware_tab": "Firmware",
         "camera_settings_config_tab": "Konfiguration",
-        
+        "cs_apply": "Anwenden",
+        "cs_close": "Schliessen",
+        "cs_result": "Ergebnis:",
+        # IP-Reiter
+        "cs_ip_dhcp": "Auf DHCP umstellen",
+        "cs_ip_range": "Feste IP ab Start-IP fortlaufend",
+        "cs_ip_each": "Pro Kamera einzeln",
+        "cs_subnet": "Subnetzmaske:",
+        "cs_gateway_opt": "Gateway (optional):",
+        "cs_start_ip": "Start-IP:",
+        "cs_range_hint": "(wird fortlaufend an die Kameras in Listenreihenfolge vergeben)",
+        # IPv6-Reiter
+        "cs_ipv6_auto": "Automatisch (Router Advertisement / SLAAC)",
+        "cs_ipv6_manual": "Feste IPv6-Adresse",
+        "cs_ipv6_off": "IPv6 deaktivieren",
+        "cs_ipv6_addr_label": "IPv6-Adresse (mit Praefix, z. B. 2001:db8::10/64):",
+        "cs_ipv6_read_btn": "Aktuelle IPv6-Konfiguration auslesen",
+        "cs_ipv6_help": "Stellt die IPv6-Einstellungen der markierten Kamera(s) ueber "
+        "param.cgi (Network.IPv6) ein. 'Automatisch' uebernimmt per SLAAC/Router-"
+        "Advertisement vergebene Adressen; 'Feste IPv6-Adresse' setzt eine "
+        "manuelle Adresse inkl. Praefixlaenge. Die aktuell vergebenen Adressen "
+        "lassen sich zuvor auslesen (rein lesend).",
+        # Benutzer-Reiter
+        "cs_user_add": "Benutzer anlegen",
+        "cs_user_setpw": "Passwort aendern",
+        "cs_username": "Benutzername:",
+        "cs_role": "Rolle:",
+        "cs_user_root_hint": "Hinweis: 'root' ist der uebliche Erstbenutzer (Administrator).",
+        "cs_factory_cb": "Auslieferungszustand (Standard-Zugangsdaten/ohne Anmeldung probieren; Anlegen als Administrator)",
+        "cs_factory_help": "Ersteinstellung: \"Auslieferungszustand\" anhaken und \"Benutzer "
+        "anlegen\" mit Benutzer 'root' + Passwort. Funktioniert fuer moderne "
+        "Kameras (legt den Erstadmin an) wie aeltere (z. B. M7001: setzt das "
+        "Passwort des vorhandenen 'root').",
+        "cs_import_users_title": "Stapel-Import aus Textdatei (mehrere Benutzer anlegen):",
+        "cs_import_btn": "Benutzerliste waehlen und anlegen...",
+        "cs_import_users_help": "Eine Zeile je Benutzer: Name,Passwort,Rolle - Rolle optional "
+        "(Standard: viewer), gueltig: administrator/operator/viewer. Passwoerter "
+        "mit Komma in \"...\" setzen; Zeilen mit '#' sind Kommentare. Der oben "
+        "gewaehlte 'Auslieferungszustand' gilt auch fuer den Import (legt als "
+        "Administrator an).",
+        # ONVIF-Reiter
+        "cs_onvif_add": "ONVIF-Benutzer anlegen",
+        "cs_onvif_setpw": "Passwort aendern",
+        "cs_level": "Stufe:",
+        "cs_import_onvif_title": "Stapel-Import aus Textdatei (mehrere ONVIF-Benutzer anlegen):",
+        "cs_import_onvif_help": "Eine Zeile je Benutzer: Name,Passwort,Stufe - Stufe optional "
+        "(Standard: User), gueltig: Administrator/Operator/User. Passwoerter "
+        "mit Komma in \"...\" setzen; Zeilen mit '#' sind Kommentare.",
+        # Firmware-Reiter
+        "cs_fw_file": "Firmware-Datei:",
+        "cs_browse": "Durchsuchen...",
+        "cs_fw_factory": "Werkseinstellungen beim Update (factory default)",
+        "cs_fw_help": "Achtung: Die Firmware muss zum Kameramodell passen. Sie wird auf "
+        "ALLE markierten Kameras gespielt - nur Kameras gleichen Modells "
+        "auswaehlen. Der Vorgang dauert einige Minuten; die Kamera startet "
+        "danach neu.",
+        # Konfigurations-Reiter
+        "cs_cfg_file": "ADM-Konfig (.cfg):",
+        "cs_cfg_none": "Keine Datei gewaehlt.",
+        "cs_cfg_profiles": "Stream-Profile mit uebernehmen",
+        "cs_cfg_vmd4": "Bewegungserkennung (VMD4) mit uebernehmen",
+        "cs_cfg_help": "Wendet die Parameter aus der Axis-Device-Manager-Konfiguration "
+        "(param.cgi) auf die markierten Kameras an; optional auch die "
+        "Stream-Profile (gleichnamige vorhandene Profile werden ueberschrieben, "
+        "neue angelegt). Enthaelt die Datei eine Bewegungserkennung (VMD4), "
+        "wird diese automatisch mit angewendet (die VMD-Anwendung wird bei "
+        "Bedarf gestartet). Die Konfiguration sollte zum Modell passen.",
+        "cs_cfg_export_title": "Konfiguration aus Kamera auslesen:",
+        "cs_cfg_export_btn": "Aus Kamera auslesen und speichern...",
+        "cs_cfg_export_help": "Liest die komplette Parameterliste der ERSTEN markierten Kamera. "
+        "Anschliessend laesst sich auswaehlen und durchsuchen, welche Parameter "
+        "in die ADM-.cfg geschrieben werden. Tipp: ein vollstaendiger Export "
+        "enthaelt auch geraetespezifische/nur-lesbare Werte (z.B. Seriennummer) "
+        "- fuer die Uebertragung auf andere Kameras nur passende Parameter waehlen.",
+        # Kamera-Einstellungen: Meldungen und Status
+        "cs_input_error": "Eingabefehler",
+        "cs_confirm_change": "Aenderung bestaetigen",
+        "cs_no_ip_known": "keine IP-Adresse bekannt",
+        "cs_test_conn_log": "Teste Verbindung (lesend, ohne Aenderung)...",
+        "cs_applying": "Wende Aenderung an ({count} Kamera(s))...",
+        "cs_done": "Fertig.",
+        "cs_confirm_dhcp": "Auf DHCP umstellen?",
+        "cs_confirm_set_ips": "Folgende IP-Adressen setzen?\n\n{ips}",
+        "cs_dhcp_ok": "auf DHCP umgestellt",
+        "cs_ip_set_ok": "IP gesetzt auf {ip}",
+        "cs_need_subnet": "Bitte eine Subnetzmaske angeben.",
+        "cs_need_start_ip": "Bitte eine Start-IP angeben.",
+        "cs_invalid_start_ip": "Ungueltige Start-IP: {start}",
+        "cs_need_ip_for": "Bitte fuer '{name}' eine IP angeben.",
+        "cs_need_ipv6": "Bitte eine IPv6-Adresse mit Praefix angeben (z. B. 2001:db8::10/64).",
+        "cs_ipv6_sum_off": "IPv6 deaktivieren",
+        "cs_ipv6_sum_auto": "IPv6 auf automatisch (SLAAC / Router Advertisement) stellen",
+        "cs_ipv6_sum_manual": "feste IPv6-Adresse {address} setzen",
+        "cs_ipv6_confirm": "{summary}\nauf {count} Kamera(s)?",
+        "cs_ipv6_applying": "Wende IPv6-Aenderung an ({count} Kamera(s))...",
+        "cs_ipv6_done_off": "IPv6 deaktiviert",
+        "cs_ipv6_done_auto": "IPv6 auf automatisch gesetzt",
+        "cs_ipv6_done_manual": "feste IPv6-Adresse {address} gesetzt",
+        "cs_ipv6_reading": "Lese aktuelle IPv6-Konfiguration (rein lesend)...",
+        "cs_ipv6_state_on": "aktiv",
+        "cs_ipv6_state_off": "deaktiviert",
+        "cs_ipv6_none": "(keine)",
+        "cs_ipv6_read_result": "IPv6 {state}; Adressen: {addrs}",
+        "cs_need_username": "Bitte einen Benutzernamen angeben.",
+        "cs_need_password": "Bitte ein Passwort angeben.",
+        "cs_kind_onvif": "ONVIF-Benutzer",
+        "cs_kind_user": "Benutzer",
+        "cs_verb_add": "anlegen",
+        "cs_verb_setpw": "Passwort aendern fuer",
+        "cs_user_confirm": "{kind} '{name}' {verb} auf {count} Kamera(s)?",
+        "cs_factory_no_auth": "ohne Anmeldung",
+        "cs_factory_empty": "leer",
+        "cs_factory_suffix": " [Auslieferungszustand: {label}]",
+        "cs_no_access": "kein Zugang moeglich",
+        "cs_existing_user_pw": " (vorhandener Benutzer, Passwort gesetzt)",
+        "cs_choose_user_list": "Benutzerliste waehlen",
+        "cs_ft_txt": "Textdatei",
+        "cs_ft_csv": "CSV-Datei",
+        "cs_ft_all": "Alle Dateien",
+        "cs_file_error": "Datei-Fehler",
+        "cs_more_users": "\n  ... ({count} weitere)",
+        "cs_import_confirm": "{count} {kind} aus der Datei auf {cams} Kamera(s) anlegen?\n\n{preview}",
+        "cs_import_confirm_title": "Stapel-Import bestaetigen",
+        "cs_importing": "Importiere {count} {kind} auf {cams} Kamera(s)...",
+        "cs_choose_fw": "Firmware-Datei waehlen",
+        "cs_ft_fw": "Firmware",
+        "cs_need_fw": "Bitte eine gueltige Firmware-Datei waehlen.",
+        "cs_fw_confirm": "Firmware\n  {name}\nauf {count} Kamera(s) aufspielen?\n\n"
+        "Die Firmware MUSS zum Modell passen. Der Vorgang dauert einige "
+        "Minuten, danach startet die Kamera neu.",
+        "cs_fw_confirm_title": "Firmware-Update bestaetigen",
+        "cs_fw_applying": "Spiele Firmware auf ({count} Kamera(s)) - bitte warten...",
+        "cs_choose_cfg": "ADM-Konfigurationsdatei waehlen",
+        "cs_ft_cfg": "ADM-Konfiguration",
+        "cs_cfg_vmd4_note": " | Bewegungserkennung (VMD4)",
+        "cs_cfg_info": "Modell: {model} | Firmware: {fw} | {params} Parameter, {profiles} Stream-Profil(e){vmd}",
+        "cs_cfg_parse_error": "Fehler: {exc}",
+        "cs_need_cfg": "Bitte eine gueltige ADM-Konfigurationsdatei waehlen.",
+        "cs_cfg_confirm": "Konfiguration fuer Modell '{model}'\n({params} Parameter) auf "
+        "{count} Kamera(s) anwenden?\n\nDie Konfiguration sollte zum Kameramodell passen.",
+        "cs_cfg_confirm_title": "Konfiguration anwenden",
+        "cs_cfg_applying": "Wende Konfiguration an ({count} Kamera(s))...",
+        "cs_no_camera_title": "Keine Kamera",
+        "cs_no_camera": "Keine Kamera ausgewaehlt.",
+        "cs_no_ip_title": "Keine IP",
+        "cs_no_ip_for": "Fuer '{name}' ist keine IP-Adresse bekannt.",
+        "cs_read_only_first": "Hinweis: Es wird nur die erste markierte Kamera ausgelesen ({name}).",
+        "cs_reading_cfg": "Lese Konfiguration von {name} ({ip}) - bitte warten...",
+        "cs_cfg_vmd4_note2": ", Bewegungserkennung (VMD4)",
+        "cs_log_error": "  [FEHLER] {name}: {msg}",
+        "cs_read_ok": "  [OK] {name}: {params} Parameter, {profiles} Stream-Profil(e){vmd} gelesen",
+        "cs_log_ok": "OK",
+        "cs_log_fail": "FEHLER",
+        "cs_log_line": "  [{status}] {name}: {msg}",
+        # Parameter-Auswahl-Dialog (Export)
+        "ps_title": "Parameter auswaehlen und speichern",
+        "ps_header": "{cam} - Modell {model}, FW {fw}",
+        "ps_count_read": "{count} Parameter gelesen. Haken anklicken = in die .cfg uebernehmen.",
+        "ps_search": "Suche:",
+        "ps_col_param": "Parameter",
+        "ps_col_value": "Wert",
+        "ps_all_filtered": "Alle (gefiltert)",
+        "ps_none_filtered": "Keine (gefiltert)",
+        "ps_incl_profiles": "Stream-Profile einschliessen ({count})",
+        "ps_incl_vmd4": "Bewegungserkennung (VMD4) einschliessen",
+        "ps_not_available": " (nicht vorhanden)",
+        "ps_save": "Speichern...",
+        "ps_cancel": "Abbrechen",
+        "ps_selected_count": "{sel} von {total} ausgewaehlt",
+        "ps_nothing_title": "Nichts ausgewaehlt",
+        "ps_nothing": "Bitte mindestens einen Parameter auswaehlen.",
+        "ps_save_title": "ADM-Konfiguration speichern",
+        "ps_save_error": "Fehler beim Speichern",
+        "ps_extra_profiles": " + {count} Stream-Profil(e)",
+        "ps_extra_vmd4": " + Bewegungserkennung (VMD4)",
+        "ps_saved_title": "Gespeichert",
+        "ps_saved": "{count} Parameter{extra} gespeichert:\n{path}",
+
         # Status
         "status_searching": "Suche laeuft...",
         "status_searching_with_timeout": "Suche laeuft ({timeout} s)...",
@@ -206,16 +393,25 @@ TRANSLATIONS = {
         
         # Info-Dialog
         "info_title": "Info",
-        
+        "info_body": "Axis_Kamera_Discovery\nVersion {version}\n\n"
+        "Finds Axis cameras on the local network via Zeroconf/mDNS.\n\n"
+        "Components:\n{components}\n\n"
+        "License: GPL-3.0-or-later\n"
+        "Copyright (C) 2026 Mirik\n"
+        "Co-author: Claude Opus 4.8 (Anthropic) - AI-assisted development",
+        "cs_select_first_title": "Camera Settings",
+        "cs_select_first": "Please select one or more cameras in the list first.",
+
         # Hilfe-Dialog
-        "help_title": "Help",
-        
+        "help_title": "Help - README",
+
         # Lizenzen-Dialog
         "licenses_title": "Licenses",
+        "file_not_found": "{filename} was not found.",
         
         # Kamera Einstellungen Dialog
         "camera_settings_title": "Camera Settings",
-        "camera_settings_cameras_selected": "{} camera(s) selected",
+        "camera_settings_cameras_selected": "{count} camera(s) selected",
         "camera_settings_credentials": "Credentials",
         "camera_settings_user": "User:",
         "camera_settings_password": "Password:",
@@ -224,11 +420,187 @@ TRANSLATIONS = {
         "camera_settings_timeout": "Timeout (s):",
         "camera_settings_test_connection": "Test Connection",
         "camera_settings_ip_tab": "IP Address",
+        "camera_settings_ipv6_tab": "IPv6 Address",
         "camera_settings_users_tab": "Users",
         "camera_settings_onvif_tab": "ONVIF Users",
         "camera_settings_firmware_tab": "Firmware",
         "camera_settings_config_tab": "Configuration",
-        
+        "cs_apply": "Apply",
+        "cs_close": "Close",
+        "cs_result": "Result:",
+        # IP tab
+        "cs_ip_dhcp": "Switch to DHCP",
+        "cs_ip_range": "Static IP, consecutive from start IP",
+        "cs_ip_each": "Per camera individually",
+        "cs_subnet": "Subnet mask:",
+        "cs_gateway_opt": "Gateway (optional):",
+        "cs_start_ip": "Start IP:",
+        "cs_range_hint": "(assigned consecutively to the cameras in list order)",
+        # IPv6 tab
+        "cs_ipv6_auto": "Automatic (Router Advertisement / SLAAC)",
+        "cs_ipv6_manual": "Static IPv6 address",
+        "cs_ipv6_off": "Disable IPv6",
+        "cs_ipv6_addr_label": "IPv6 address (with prefix, e.g. 2001:db8::10/64):",
+        "cs_ipv6_read_btn": "Read current IPv6 configuration",
+        "cs_ipv6_help": "Configures the IPv6 settings of the selected camera(s) via "
+        "param.cgi (Network.IPv6). 'Automatic' adopts addresses assigned via "
+        "SLAAC/Router Advertisement; 'Static IPv6 address' sets a manual address "
+        "including prefix length. The currently assigned addresses can be read "
+        "beforehand (read-only).",
+        # Users tab
+        "cs_user_add": "Create user",
+        "cs_user_setpw": "Change password",
+        "cs_username": "Username:",
+        "cs_role": "Role:",
+        "cs_user_root_hint": "Note: 'root' is the usual initial user (administrator).",
+        "cs_factory_cb": "Factory state (try default credentials/no login; create as administrator)",
+        "cs_factory_help": "Initial setup: check \"Factory state\" and \"Create user\" "
+        "with user 'root' + password. Works for modern cameras (creates the "
+        "initial admin) and older ones (e.g. M7001: sets the password of the "
+        "existing 'root').",
+        "cs_import_users_title": "Batch import from text file (create multiple users):",
+        "cs_import_btn": "Choose user list and create...",
+        "cs_import_users_help": "One line per user: name,password,role - role optional "
+        "(default: viewer), valid: administrator/operator/viewer. Enclose passwords "
+        "containing a comma in \"...\"; lines starting with '#' are comments. The "
+        "'Factory state' selected above also applies to the import (creates as "
+        "administrator).",
+        # ONVIF tab
+        "cs_onvif_add": "Create ONVIF user",
+        "cs_onvif_setpw": "Change password",
+        "cs_level": "Level:",
+        "cs_import_onvif_title": "Batch import from text file (create multiple ONVIF users):",
+        "cs_import_onvif_help": "One line per user: name,password,level - level optional "
+        "(default: User), valid: Administrator/Operator/User. Enclose passwords "
+        "containing a comma in \"...\"; lines starting with '#' are comments.",
+        # Firmware tab
+        "cs_fw_file": "Firmware file:",
+        "cs_browse": "Browse...",
+        "cs_fw_factory": "Factory default on update",
+        "cs_fw_help": "Caution: the firmware must match the camera model. It is flashed "
+        "to ALL selected cameras - only select cameras of the same model. The "
+        "process takes a few minutes; the camera reboots afterwards.",
+        # Configuration tab
+        "cs_cfg_file": "ADM config (.cfg):",
+        "cs_cfg_none": "No file selected.",
+        "cs_cfg_profiles": "Include stream profiles",
+        "cs_cfg_vmd4": "Include motion detection (VMD4)",
+        "cs_cfg_help": "Applies the parameters from the Axis Device Manager configuration "
+        "(param.cgi) to the selected cameras; optionally the stream profiles too "
+        "(existing profiles of the same name are overwritten, new ones added). If "
+        "the file contains a motion detection (VMD4), it is applied automatically "
+        "(the VMD app is started if needed). The configuration should match the model.",
+        "cs_cfg_export_title": "Read configuration from camera:",
+        "cs_cfg_export_btn": "Read from camera and save...",
+        "cs_cfg_export_help": "Reads the complete parameter list of the FIRST selected camera. "
+        "Afterwards you can select and search which parameters are written to the "
+        "ADM .cfg. Tip: a full export also contains device-specific/read-only values "
+        "(e.g. serial number) - for transfer to other cameras, select only matching "
+        "parameters.",
+        # Camera settings: messages and status
+        "cs_input_error": "Input error",
+        "cs_confirm_change": "Confirm change",
+        "cs_no_ip_known": "no IP address known",
+        "cs_test_conn_log": "Testing connection (read-only, no change)...",
+        "cs_applying": "Applying change ({count} camera(s))...",
+        "cs_done": "Done.",
+        "cs_confirm_dhcp": "Switch to DHCP?",
+        "cs_confirm_set_ips": "Set the following IP addresses?\n\n{ips}",
+        "cs_dhcp_ok": "switched to DHCP",
+        "cs_ip_set_ok": "IP set to {ip}",
+        "cs_need_subnet": "Please provide a subnet mask.",
+        "cs_need_start_ip": "Please provide a start IP.",
+        "cs_invalid_start_ip": "Invalid start IP: {start}",
+        "cs_need_ip_for": "Please provide an IP for '{name}'.",
+        "cs_need_ipv6": "Please provide an IPv6 address with prefix (e.g. 2001:db8::10/64).",
+        "cs_ipv6_sum_off": "disable IPv6",
+        "cs_ipv6_sum_auto": "set IPv6 to automatic (SLAAC / Router Advertisement)",
+        "cs_ipv6_sum_manual": "set static IPv6 address {address}",
+        "cs_ipv6_confirm": "{summary}\non {count} camera(s)?",
+        "cs_ipv6_applying": "Applying IPv6 change ({count} camera(s))...",
+        "cs_ipv6_done_off": "IPv6 disabled",
+        "cs_ipv6_done_auto": "IPv6 set to automatic",
+        "cs_ipv6_done_manual": "static IPv6 address {address} set",
+        "cs_ipv6_reading": "Reading current IPv6 configuration (read-only)...",
+        "cs_ipv6_state_on": "enabled",
+        "cs_ipv6_state_off": "disabled",
+        "cs_ipv6_none": "(none)",
+        "cs_ipv6_read_result": "IPv6 {state}; addresses: {addrs}",
+        "cs_need_username": "Please provide a username.",
+        "cs_need_password": "Please provide a password.",
+        "cs_kind_onvif": "ONVIF user",
+        "cs_kind_user": "user",
+        "cs_verb_add": "create",
+        "cs_verb_setpw": "change password for",
+        "cs_user_confirm": "{verb} {kind} '{name}' on {count} camera(s)?",
+        "cs_factory_no_auth": "no login",
+        "cs_factory_empty": "empty",
+        "cs_factory_suffix": " [factory state: {label}]",
+        "cs_no_access": "no access possible",
+        "cs_existing_user_pw": " (existing user, password set)",
+        "cs_choose_user_list": "Choose user list",
+        "cs_ft_txt": "Text file",
+        "cs_ft_csv": "CSV file",
+        "cs_ft_all": "All files",
+        "cs_file_error": "File error",
+        "cs_more_users": "\n  ... ({count} more)",
+        "cs_import_confirm": "Create {count} {kind} from the file on {cams} camera(s)?\n\n{preview}",
+        "cs_import_confirm_title": "Confirm batch import",
+        "cs_importing": "Importing {count} {kind} on {cams} camera(s)...",
+        "cs_choose_fw": "Choose firmware file",
+        "cs_ft_fw": "Firmware",
+        "cs_need_fw": "Please choose a valid firmware file.",
+        "cs_fw_confirm": "Flash firmware\n  {name}\nto {count} camera(s)?\n\n"
+        "The firmware MUST match the model. The process takes a few minutes, "
+        "after which the camera reboots.",
+        "cs_fw_confirm_title": "Confirm firmware update",
+        "cs_fw_applying": "Flashing firmware ({count} camera(s)) - please wait...",
+        "cs_choose_cfg": "Choose ADM configuration file",
+        "cs_ft_cfg": "ADM configuration",
+        "cs_cfg_vmd4_note": " | motion detection (VMD4)",
+        "cs_cfg_info": "Model: {model} | Firmware: {fw} | {params} parameters, {profiles} stream profile(s){vmd}",
+        "cs_cfg_parse_error": "Error: {exc}",
+        "cs_need_cfg": "Please choose a valid ADM configuration file.",
+        "cs_cfg_confirm": "Apply configuration for model '{model}'\n({params} parameters) to "
+        "{count} camera(s)?\n\nThe configuration should match the camera model.",
+        "cs_cfg_confirm_title": "Apply configuration",
+        "cs_cfg_applying": "Applying configuration ({count} camera(s))...",
+        "cs_no_camera_title": "No camera",
+        "cs_no_camera": "No camera selected.",
+        "cs_no_ip_title": "No IP",
+        "cs_no_ip_for": "No IP address known for '{name}'.",
+        "cs_read_only_first": "Note: only the first selected camera is read ({name}).",
+        "cs_reading_cfg": "Reading configuration from {name} ({ip}) - please wait...",
+        "cs_cfg_vmd4_note2": ", motion detection (VMD4)",
+        "cs_log_error": "  [ERROR] {name}: {msg}",
+        "cs_read_ok": "  [OK] {name}: {params} parameters, {profiles} stream profile(s){vmd} read",
+        "cs_log_ok": "OK",
+        "cs_log_fail": "ERROR",
+        "cs_log_line": "  [{status}] {name}: {msg}",
+        # Parameter selection dialog (export)
+        "ps_title": "Select and save parameters",
+        "ps_header": "{cam} - model {model}, FW {fw}",
+        "ps_count_read": "{count} parameters read. Click the check = include in the .cfg.",
+        "ps_search": "Search:",
+        "ps_col_param": "Parameter",
+        "ps_col_value": "Value",
+        "ps_all_filtered": "All (filtered)",
+        "ps_none_filtered": "None (filtered)",
+        "ps_incl_profiles": "Include stream profiles ({count})",
+        "ps_incl_vmd4": "Include motion detection (VMD4)",
+        "ps_not_available": " (not available)",
+        "ps_save": "Save...",
+        "ps_cancel": "Cancel",
+        "ps_selected_count": "{sel} of {total} selected",
+        "ps_nothing_title": "Nothing selected",
+        "ps_nothing": "Please select at least one parameter.",
+        "ps_save_title": "Save ADM configuration",
+        "ps_save_error": "Error while saving",
+        "ps_extra_profiles": " + {count} stream profile(s)",
+        "ps_extra_vmd4": " + motion detection (VMD4)",
+        "ps_saved_title": "Saved",
+        "ps_saved": "{count} parameters{extra} saved:\n{path}",
+
         # Status
         "status_searching": "Searching...",
         "status_searching_with_timeout": "Searching ({timeout} s)...",
@@ -1022,15 +1394,9 @@ class AxisDiscoveryGUI(tk.Tk):
 
     def _show_info(self):
         messagebox.showinfo(
-            "Info",
-            "Axis_Kamera_Discovery\n"
-            f"Version {__version__}\n\n"
-            "Findet Axis-Kameras im lokalen Netzwerk per Zeroconf/mDNS.\n\n"
-            "Komponenten:\n"
-            f"{self._component_versions()}\n\n"
-            "Lizenz: GPL-3.0-or-later\n"
-            "Copyright (C) 2026 Mirik\n"
-            "Co-Autor: Claude Opus 4.8 (Anthropic) - KI-gestuetzte Entwicklung",
+            self._("info_title"),
+            self._("info_body", version=__version__,
+                   components=self._component_versions()),
         )
 
     def _component_versions(self):
@@ -1047,10 +1413,10 @@ class AxisDiscoveryGUI(tk.Tk):
         return "\n".join(f"  {name:<12}{ver}" for name, ver in items)
 
     def _show_help(self):
-        self._show_text_window("README.md", "Hilfe - README")
+        self._show_text_window("README.md", self._("help_title"))
 
     def _show_licenses(self):
-        self._show_text_window("THIRD_PARTY_LICENSES.md", "Lizenzen")
+        self._show_text_window("THIRD_PARTY_LICENSES.md", self._("licenses_title"))
 
     def _show_text_window(self, filename, title):
         # Unter PyInstaller liegen gebundelte Datendateien in sys._MEIPASS,
@@ -1058,7 +1424,7 @@ class AxisDiscoveryGUI(tk.Tk):
         base = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
         path = os.path.join(base, filename)
         if not os.path.exists(path):
-            messagebox.showerror(title, f"{filename} wurde nicht gefunden.")
+            messagebox.showerror(title, self._("file_not_found", filename=filename))
             return
         with open(path, encoding="utf-8") as f:
             content = f.read()
@@ -1087,8 +1453,8 @@ class AxisDiscoveryGUI(tk.Tk):
         selection = self.tree.selection()
         if not selection:
             messagebox.showinfo(
-                "Kamera Einstellungen",
-                "Bitte zuerst eine oder mehrere Kameras in der Liste auswaehlen.",
+                self._("cs_select_first_title"),
+                self._("cs_select_first"),
             )
             return
         # Werte aus Treeview (inkl. leere Endlos-Spalte) -> nur Daten-Spalten verwenden
@@ -1141,7 +1507,12 @@ class CameraSettingsDialog(tk.Toplevel):
 
     def __init__(self, master, cameras, palette):
         super().__init__(master)
-        self.title("Kamera Einstellungen")
+        self._app = master  # AxisDiscoveryGUI (liefert die Sprache)
+        # Sprache als reinen String cachen: die Worker laufen in Hintergrund-
+        # Threads und duerfen kein Tk anfassen (language_var.get()). Wird bei
+        # jeder Aktion im Haupt-Thread (in _conn_kwargs) aufgefrischt.
+        self._lang = master.language_var.get()
+        self.title(self._("camera_settings_title"))
         self.geometry("720x780")
         self.minsize(720, 600)
         self.transient(master)
@@ -1159,6 +1530,17 @@ class CameraSettingsDialog(tk.Toplevel):
         self._on_ipv6_mode_change()  # IPv6-Felder je nach Modus anzeigen/ausblenden
         self._on_user_action()   # Rollen-Feld je nach Benutzer-Aktion schalten
 
+    def _(self, key, **kwargs):
+        """Uebersetzt anhand der gecachten Sprache (self._lang), ohne Tk-Zugriff,
+        damit die Methode auch aus Worker-Threads sicher aufrufbar ist."""
+        text = TRANSLATIONS.get(self._lang, {}).get(key, key)
+        if kwargs:
+            try:
+                text = text.format(**kwargs)
+            except (KeyError, ValueError):
+                pass
+        return text
+
     # ------------------------------------------------------------------ UI
     def _build_ui(self):
         outer = ttk.Frame(self, padding=10)
@@ -1166,12 +1548,12 @@ class CameraSettingsDialog(tk.Toplevel):
 
         ttk.Label(
             outer,
-            text=f"{len(self.cameras)} Kamera(s) ausgewaehlt",
+            text=self._("camera_settings_cameras_selected", count=len(self.cameras)),
             font=("TkDefaultFont", 10, "bold"),
         ).pack(anchor=tk.W)
 
         # --- Zugangsdaten ---
-        cred = ttk.LabelFrame(outer, text="Zugangsdaten", padding=8)
+        cred = ttk.LabelFrame(outer, text=self._("camera_settings_credentials"), padding=8)
         cred.pack(fill=tk.X, pady=(8, 4))
         self.user_var = tk.StringVar(value="root")
         self.pass_var = tk.StringVar()
@@ -1179,19 +1561,19 @@ class CameraSettingsDialog(tk.Toplevel):
         self.port_var = tk.StringVar()
         self.timeout_var = tk.IntVar(value=10)
 
-        ttk.Label(cred, text="Benutzer:").grid(row=0, column=0, sticky=tk.W, padx=4, pady=2)
+        ttk.Label(cred, text=self._("camera_settings_user")).grid(row=0, column=0, sticky=tk.W, padx=4, pady=2)
         ttk.Entry(cred, textvariable=self.user_var, width=18).grid(row=0, column=1, padx=4, pady=2)
-        ttk.Label(cred, text="Passwort:").grid(row=0, column=2, sticky=tk.W, padx=4, pady=2)
+        ttk.Label(cred, text=self._("camera_settings_password")).grid(row=0, column=2, sticky=tk.W, padx=4, pady=2)
         ttk.Entry(cred, textvariable=self.pass_var, width=18, show="*").grid(row=0, column=3, padx=4, pady=2)
 
-        ttk.Label(cred, text="Verbindung:").grid(row=1, column=0, sticky=tk.W, padx=4, pady=2)
+        ttk.Label(cred, text=self._("camera_settings_connection")).grid(row=1, column=0, sticky=tk.W, padx=4, pady=2)
         ttk.Combobox(
             cred, textvariable=self.scheme_var, width=15, state="readonly",
             values=("auto", "https", "http"),
         ).grid(row=1, column=1, padx=4, pady=2)
-        ttk.Label(cred, text="Port (optional):").grid(row=1, column=2, sticky=tk.W, padx=4, pady=2)
+        ttk.Label(cred, text=self._("camera_settings_port")).grid(row=1, column=2, sticky=tk.W, padx=4, pady=2)
         ttk.Entry(cred, textvariable=self.port_var, width=18).grid(row=1, column=3, padx=4, pady=2)
-        ttk.Label(cred, text="Timeout (s):").grid(row=2, column=0, sticky=tk.W, padx=4, pady=2)
+        ttk.Label(cred, text=self._("camera_settings_timeout")).grid(row=2, column=0, sticky=tk.W, padx=4, pady=2)
         ttk.Spinbox(cred, from_=2, to=120, width=6, textvariable=self.timeout_var).grid(
             row=2, column=1, sticky=tk.W, padx=4, pady=2
         )
@@ -1201,13 +1583,17 @@ class CameraSettingsDialog(tk.Toplevel):
         self.nb.pack(fill=tk.X, pady=4)
 
         # ===== Reiter: IP-Adresse =====
+        # Reiter-Frames + zugehoerige Apply-Handler merken, damit _apply nicht
+        # vom (uebersetzten) Reiter-Text abhaengt.
+        self._tab_handlers = []
         tab_ip = ttk.Frame(self.nb, padding=8)
-        self.nb.add(tab_ip, text="IP-Adresse")
-        ttk.Radiobutton(tab_ip, text="Auf DHCP umstellen", value="dhcp",
+        self.nb.add(tab_ip, text=self._("camera_settings_ip_tab"))
+        self._tab_handlers.append((str(tab_ip), self._apply_ip))
+        ttk.Radiobutton(tab_ip, text=self._("cs_ip_dhcp"), value="dhcp",
                         variable=self._mode_var, command=self._on_mode_change).pack(anchor=tk.W)
-        ttk.Radiobutton(tab_ip, text="Feste IP ab Start-IP fortlaufend", value="range",
+        ttk.Radiobutton(tab_ip, text=self._("cs_ip_range"), value="range",
                         variable=self._mode_var, command=self._on_mode_change).pack(anchor=tk.W)
-        ttk.Radiobutton(tab_ip, text="Pro Kamera einzeln", value="each",
+        ttk.Radiobutton(tab_ip, text=self._("cs_ip_each"), value="each",
                         variable=self._mode_var, command=self._on_mode_change).pack(anchor=tk.W)
 
         # gemeinsame Felder Maske/Gateway (fuer "range" und "each")
@@ -1216,17 +1602,17 @@ class CameraSettingsDialog(tk.Toplevel):
         self.start_ip_var = tk.StringVar()
 
         self._shared = ttk.Frame(tab_ip)
-        ttk.Label(self._shared, text="Subnetzmaske:").grid(row=0, column=0, sticky=tk.W, padx=4, pady=2)
+        ttk.Label(self._shared, text=self._("cs_subnet")).grid(row=0, column=0, sticky=tk.W, padx=4, pady=2)
         ttk.Entry(self._shared, textvariable=self.mask_var, width=18).grid(row=0, column=1, padx=4, pady=2)
-        ttk.Label(self._shared, text="Gateway (optional):").grid(row=0, column=2, sticky=tk.W, padx=4, pady=2)
+        ttk.Label(self._shared, text=self._("cs_gateway_opt")).grid(row=0, column=2, sticky=tk.W, padx=4, pady=2)
         ttk.Entry(self._shared, textvariable=self.gw_var, width=18).grid(row=0, column=3, padx=4, pady=2)
 
         self._range_frame = ttk.Frame(tab_ip)
-        ttk.Label(self._range_frame, text="Start-IP:").grid(row=0, column=0, sticky=tk.W, padx=4, pady=2)
+        ttk.Label(self._range_frame, text=self._("cs_start_ip")).grid(row=0, column=0, sticky=tk.W, padx=4, pady=2)
         ttk.Entry(self._range_frame, textvariable=self.start_ip_var, width=18).grid(row=0, column=1, padx=4, pady=2)
         ttk.Label(
             self._range_frame,
-            text="(wird fortlaufend an die Kameras in Listenreihenfolge vergeben)",
+            text=self._("cs_range_hint"),
         ).grid(row=0, column=2, columnspan=2, sticky=tk.W, padx=4)
 
         # "each": je Kamera ein IP-Feld
@@ -1245,15 +1631,16 @@ class CameraSettingsDialog(tk.Toplevel):
 
         # ===== Reiter: IPv6-Adresse =====
         tab_ipv6 = ttk.Frame(self.nb, padding=8)
-        self.nb.add(tab_ipv6, text="IPv6-Adresse")
+        self.nb.add(tab_ipv6, text=self._("camera_settings_ipv6_tab"))
+        self._tab_handlers.append((str(tab_ipv6), self._apply_ipv6))
         self._ipv6_mode_var = tk.StringVar(value="auto")
-        ttk.Radiobutton(tab_ipv6, text="Automatisch (Router Advertisement / SLAAC)",
+        ttk.Radiobutton(tab_ipv6, text=self._("cs_ipv6_auto"),
                         value="auto", variable=self._ipv6_mode_var,
                         command=self._on_ipv6_mode_change).pack(anchor=tk.W)
-        ttk.Radiobutton(tab_ipv6, text="Feste IPv6-Adresse", value="manual",
+        ttk.Radiobutton(tab_ipv6, text=self._("cs_ipv6_manual"), value="manual",
                         variable=self._ipv6_mode_var,
                         command=self._on_ipv6_mode_change).pack(anchor=tk.W)
-        ttk.Radiobutton(tab_ipv6, text="IPv6 deaktivieren", value="off",
+        ttk.Radiobutton(tab_ipv6, text=self._("cs_ipv6_off"), value="off",
                         variable=self._ipv6_mode_var,
                         command=self._on_ipv6_mode_change).pack(anchor=tk.W)
 
@@ -1261,36 +1648,33 @@ class CameraSettingsDialog(tk.Toplevel):
         self._ipv6_router_var = tk.StringVar()
         self._ipv6_manual = ttk.Frame(tab_ipv6)
         ttk.Label(self._ipv6_manual,
-                  text="IPv6-Adresse (mit Praefix, z. B. 2001:db8::10/64):").grid(
+                  text=self._("cs_ipv6_addr_label")).grid(
             row=0, column=0, sticky=tk.W, padx=4, pady=2)
         ttk.Entry(self._ipv6_manual, textvariable=self._ipv6_addr_var, width=40).grid(
             row=0, column=1, padx=4, pady=2)
-        ttk.Label(self._ipv6_manual, text="Gateway (optional):").grid(
+        ttk.Label(self._ipv6_manual, text=self._("cs_gateway_opt")).grid(
             row=1, column=0, sticky=tk.W, padx=4, pady=2)
         ttk.Entry(self._ipv6_manual, textvariable=self._ipv6_router_var, width=40).grid(
             row=1, column=1, padx=4, pady=2)
 
         self.ipv6_read_btn = ttk.Button(
-            tab_ipv6, text="Aktuelle IPv6-Konfiguration auslesen",
+            tab_ipv6, text=self._("cs_ipv6_read_btn"),
             command=self._read_ipv6)
         self.ipv6_read_btn.pack(anchor=tk.W, pady=(10, 0))
         ttk.Label(
             tab_ipv6,
-            text="Stellt die IPv6-Einstellungen der markierten Kamera(s) ueber "
-            "param.cgi (Network.IPv6) ein. 'Automatisch' uebernimmt per SLAAC/Router-"
-            "Advertisement vergebene Adressen; 'Feste IPv6-Adresse' setzt eine "
-            "manuelle Adresse inkl. Praefixlaenge. Die aktuell vergebenen Adressen "
-            "lassen sich zuvor auslesen (rein lesend).",
+            text=self._("cs_ipv6_help"),
             wraplength=560, justify=tk.LEFT,
         ).pack(anchor=tk.W, pady=(6, 0))
 
         # ===== Reiter: Benutzer (regulaere Axis-Benutzer) =====
         tab_user = ttk.Frame(self.nb, padding=8)
-        self.nb.add(tab_user, text="Benutzer")
+        self.nb.add(tab_user, text=self._("camera_settings_users_tab"))
+        self._tab_handlers.append((str(tab_user), lambda: self._apply_user(onvif=False)))
         self.user_action_var = tk.StringVar(value="add")
-        ttk.Radiobutton(tab_user, text="Benutzer anlegen", value="add",
+        ttk.Radiobutton(tab_user, text=self._("cs_user_add"), value="add",
                         variable=self.user_action_var, command=self._on_user_action).pack(anchor=tk.W)
-        ttk.Radiobutton(tab_user, text="Passwort aendern", value="setpw",
+        ttk.Radiobutton(tab_user, text=self._("cs_user_setpw"), value="setpw",
                         variable=self.user_action_var, command=self._on_user_action).pack(anchor=tk.W)
         uf = ttk.Frame(tab_user)
         uf.pack(fill=tk.X, pady=(6, 0))
@@ -1298,11 +1682,11 @@ class CameraSettingsDialog(tk.Toplevel):
         self.nu_name_var = tk.StringVar(value="root")
         self.nu_pass_var = tk.StringVar()
         self.nu_role_var = tk.StringVar(value="administrator")
-        ttk.Label(uf, text="Benutzername:").grid(row=0, column=0, sticky=tk.W, padx=4, pady=2)
+        ttk.Label(uf, text=self._("cs_username")).grid(row=0, column=0, sticky=tk.W, padx=4, pady=2)
         ttk.Entry(uf, textvariable=self.nu_name_var, width=20).grid(row=0, column=1, padx=4, pady=2)
-        ttk.Label(uf, text="Passwort:").grid(row=1, column=0, sticky=tk.W, padx=4, pady=2)
+        ttk.Label(uf, text=self._("camera_settings_password")).grid(row=1, column=0, sticky=tk.W, padx=4, pady=2)
         ttk.Entry(uf, textvariable=self.nu_pass_var, width=20, show="*").grid(row=1, column=1, padx=4, pady=2)
-        self.nu_role_label = ttk.Label(uf, text="Rolle:")
+        self.nu_role_label = ttk.Label(uf, text=self._("cs_role"))
         self.nu_role_label.grid(row=2, column=0, sticky=tk.W, padx=4, pady=2)
         self.nu_role_cb = ttk.Combobox(
             uf, textvariable=self.nu_role_var, width=17, state="readonly",
@@ -1311,60 +1695,54 @@ class CameraSettingsDialog(tk.Toplevel):
         self.nu_role_cb.grid(row=2, column=1, sticky=tk.W, padx=4, pady=2)
         ttk.Label(
             tab_user,
-            text="Hinweis: 'root' ist der uebliche Erstbenutzer (Administrator).",
+            text=self._("cs_user_root_hint"),
         ).pack(anchor=tk.W, pady=(6, 0))
         # Manuelle Option, falls die Auto-Erkennung des Auslieferungszustands
         # bei diesem Modell/dieser Firmware nicht greift.
         self.factory_var = tk.BooleanVar(value=False)
         ttk.Checkbutton(
             tab_user,
-            text="Auslieferungszustand (Standard-Zugangsdaten/ohne Anmeldung probieren; Anlegen als Administrator)",
+            text=self._("cs_factory_cb"),
             variable=self.factory_var,
         ).pack(anchor=tk.W, pady=(2, 0))
         ttk.Label(
             tab_user,
-            text="Ersteinstellung: \"Auslieferungszustand\" anhaken und \"Benutzer "
-            "anlegen\" mit Benutzer 'root' + Passwort. Funktioniert fuer moderne "
-            "Kameras (legt den Erstadmin an) wie aeltere (z. B. M7001: setzt das "
-            "Passwort des vorhandenen 'root').",
+            text=self._("cs_factory_help"),
             wraplength=560, justify=tk.LEFT,
         ).pack(anchor=tk.W, pady=(2, 0))
 
         ttk.Separator(tab_user, orient=tk.HORIZONTAL).pack(fill=tk.X, pady=(10, 6))
-        ttk.Label(tab_user, text="Stapel-Import aus Textdatei (mehrere Benutzer anlegen):",
+        ttk.Label(tab_user, text=self._("cs_import_users_title"),
                   font=("TkDefaultFont", 9, "bold")).pack(anchor=tk.W)
         self.import_user_btn = ttk.Button(
-            tab_user, text="Benutzerliste waehlen und anlegen...",
+            tab_user, text=self._("cs_import_btn"),
             command=lambda: self._import_users(onvif=False))
         self.import_user_btn.pack(anchor=tk.W, pady=(4, 0))
         ttk.Label(
             tab_user,
-            text="Eine Zeile je Benutzer: Name,Passwort,Rolle - Rolle optional "
-            "(Standard: viewer), gueltig: administrator/operator/viewer. Passwoerter "
-            "mit Komma in \"...\" setzen; Zeilen mit '#' sind Kommentare. Der oben "
-            "gewaehlte 'Auslieferungszustand' gilt auch fuer den Import (legt als "
-            "Administrator an).",
+            text=self._("cs_import_users_help"),
             wraplength=560, justify=tk.LEFT,
         ).pack(anchor=tk.W, pady=(4, 0))
 
         # ===== Reiter: ONVIF-Benutzer =====
         tab_onvif = ttk.Frame(self.nb, padding=8)
-        self.nb.add(tab_onvif, text="ONVIF-Benutzer")
+        self.nb.add(tab_onvif, text=self._("camera_settings_onvif_tab"))
+        self._tab_handlers.append((str(tab_onvif), lambda: self._apply_user(onvif=True)))
         self.onv_action_var = tk.StringVar(value="add")
-        ttk.Radiobutton(tab_onvif, text="ONVIF-Benutzer anlegen", value="add",
+        ttk.Radiobutton(tab_onvif, text=self._("cs_onvif_add"), value="add",
                         variable=self.onv_action_var).pack(anchor=tk.W)
-        ttk.Radiobutton(tab_onvif, text="Passwort aendern", value="setpw",
+        ttk.Radiobutton(tab_onvif, text=self._("cs_onvif_setpw"), value="setpw",
                         variable=self.onv_action_var).pack(anchor=tk.W)
         of = ttk.Frame(tab_onvif)
         of.pack(fill=tk.X, pady=(6, 0))
         self.onv_name_var = tk.StringVar()
         self.onv_pass_var = tk.StringVar()
         self.onv_level_var = tk.StringVar(value="Administrator")
-        ttk.Label(of, text="Benutzername:").grid(row=0, column=0, sticky=tk.W, padx=4, pady=2)
+        ttk.Label(of, text=self._("cs_username")).grid(row=0, column=0, sticky=tk.W, padx=4, pady=2)
         ttk.Entry(of, textvariable=self.onv_name_var, width=20).grid(row=0, column=1, padx=4, pady=2)
-        ttk.Label(of, text="Passwort:").grid(row=1, column=0, sticky=tk.W, padx=4, pady=2)
+        ttk.Label(of, text=self._("camera_settings_password")).grid(row=1, column=0, sticky=tk.W, padx=4, pady=2)
         ttk.Entry(of, textvariable=self.onv_pass_var, width=20, show="*").grid(row=1, column=1, padx=4, pady=2)
-        ttk.Label(of, text="Stufe:").grid(row=2, column=0, sticky=tk.W, padx=4, pady=2)
+        ttk.Label(of, text=self._("cs_level")).grid(row=2, column=0, sticky=tk.W, padx=4, pady=2)
         ttk.Combobox(
             of, textvariable=self.onv_level_var, width=17, state="readonly",
             values=vapix.ONVIF_LEVELS,
@@ -1372,101 +1750,89 @@ class CameraSettingsDialog(tk.Toplevel):
 
         ttk.Separator(tab_onvif, orient=tk.HORIZONTAL).pack(fill=tk.X, pady=(10, 6))
         ttk.Label(tab_onvif,
-                  text="Stapel-Import aus Textdatei (mehrere ONVIF-Benutzer anlegen):",
+                  text=self._("cs_import_onvif_title"),
                   font=("TkDefaultFont", 9, "bold")).pack(anchor=tk.W)
         self.import_onvif_btn = ttk.Button(
-            tab_onvif, text="Benutzerliste waehlen und anlegen...",
+            tab_onvif, text=self._("cs_import_btn"),
             command=lambda: self._import_users(onvif=True))
         self.import_onvif_btn.pack(anchor=tk.W, pady=(4, 0))
         ttk.Label(
             tab_onvif,
-            text="Eine Zeile je Benutzer: Name,Passwort,Stufe - Stufe optional "
-            "(Standard: User), gueltig: Administrator/Operator/User. Passwoerter "
-            "mit Komma in \"...\" setzen; Zeilen mit '#' sind Kommentare.",
+            text=self._("cs_import_onvif_help"),
             wraplength=560, justify=tk.LEFT,
         ).pack(anchor=tk.W, pady=(4, 0))
 
         # ===== Reiter: Firmware =====
         tab_fw = ttk.Frame(self.nb, padding=8)
-        self.nb.add(tab_fw, text="Firmware")
+        self.nb.add(tab_fw, text=self._("camera_settings_firmware_tab"))
+        self._tab_handlers.append((str(tab_fw), self._apply_firmware))
         self.fw_path_var = tk.StringVar()
         ff = ttk.Frame(tab_fw)
         ff.pack(fill=tk.X)
-        ttk.Label(ff, text="Firmware-Datei:").grid(row=0, column=0, sticky=tk.W, padx=4, pady=2)
+        ttk.Label(ff, text=self._("cs_fw_file")).grid(row=0, column=0, sticky=tk.W, padx=4, pady=2)
         ttk.Entry(ff, textvariable=self.fw_path_var, width=46).grid(row=0, column=1, padx=4, pady=2)
-        ttk.Button(ff, text="Durchsuchen...", command=self._choose_firmware).grid(
+        ttk.Button(ff, text=self._("cs_browse"), command=self._choose_firmware).grid(
             row=0, column=2, padx=4, pady=2)
         self.fw_factory_var = tk.BooleanVar(value=False)
-        ttk.Checkbutton(tab_fw, text="Werkseinstellungen beim Update (factory default)",
+        ttk.Checkbutton(tab_fw, text=self._("cs_fw_factory"),
                         variable=self.fw_factory_var).pack(anchor=tk.W, pady=(6, 0))
         ttk.Label(
             tab_fw,
-            text="Achtung: Die Firmware muss zum Kameramodell passen. Sie wird auf "
-            "ALLE markierten Kameras gespielt - nur Kameras gleichen Modells "
-            "auswaehlen. Der Vorgang dauert einige Minuten; die Kamera startet "
-            "danach neu.",
+            text=self._("cs_fw_help"),
             wraplength=560, justify=tk.LEFT,
         ).pack(anchor=tk.W, pady=(8, 0))
 
         # ===== Reiter: Konfiguration (ADM .cfg) =====
         tab_cfg = ttk.Frame(self.nb, padding=8)
-        self.nb.add(tab_cfg, text="Konfiguration")
+        self.nb.add(tab_cfg, text=self._("camera_settings_config_tab"))
+        self._tab_handlers.append((str(tab_cfg), self._apply_config))
         self.cfg_path_var = tk.StringVar()
         self._cfg = None  # zuletzt geparste Konfiguration
         cf = ttk.Frame(tab_cfg)
         cf.pack(fill=tk.X)
-        ttk.Label(cf, text="ADM-Konfig (.cfg):").grid(row=0, column=0, sticky=tk.W, padx=4, pady=2)
+        ttk.Label(cf, text=self._("cs_cfg_file")).grid(row=0, column=0, sticky=tk.W, padx=4, pady=2)
         ttk.Entry(cf, textvariable=self.cfg_path_var, width=46).grid(row=0, column=1, padx=4, pady=2)
-        ttk.Button(cf, text="Durchsuchen...", command=self._choose_config).grid(
+        ttk.Button(cf, text=self._("cs_browse"), command=self._choose_config).grid(
             row=0, column=2, padx=4, pady=2)
-        self.cfg_info_var = tk.StringVar(value="Keine Datei gewaehlt.")
+        self.cfg_info_var = tk.StringVar(value=self._("cs_cfg_none"))
         ttk.Label(tab_cfg, textvariable=self.cfg_info_var, wraplength=560,
                   justify=tk.LEFT).pack(anchor=tk.W, pady=(6, 0))
         self.cfg_profiles_var = tk.BooleanVar(value=True)
-        ttk.Checkbutton(tab_cfg, text="Stream-Profile mit uebernehmen",
+        ttk.Checkbutton(tab_cfg, text=self._("cs_cfg_profiles"),
                         variable=self.cfg_profiles_var).pack(anchor=tk.W, pady=(6, 0))
         self.cfg_vmd4_var = tk.BooleanVar(value=True)
-        ttk.Checkbutton(tab_cfg, text="Bewegungserkennung (VMD4) mit uebernehmen",
+        ttk.Checkbutton(tab_cfg, text=self._("cs_cfg_vmd4"),
                         variable=self.cfg_vmd4_var).pack(anchor=tk.W, pady=(2, 0))
         ttk.Label(
             tab_cfg,
-            text="Wendet die Parameter aus der Axis-Device-Manager-Konfiguration "
-            "(param.cgi) auf die markierten Kameras an; optional auch die "
-            "Stream-Profile (gleichnamige vorhandene Profile werden ueberschrieben, "
-            "neue angelegt). Enthaelt die Datei eine Bewegungserkennung (VMD4), "
-            "wird diese automatisch mit angewendet (die VMD-Anwendung wird bei "
-            "Bedarf gestartet). Die Konfiguration sollte zum Modell passen.",
+            text=self._("cs_cfg_help"),
             wraplength=560, justify=tk.LEFT,
         ).pack(anchor=tk.W, pady=(8, 0))
 
         ttk.Separator(tab_cfg, orient=tk.HORIZONTAL).pack(fill=tk.X, pady=(12, 8))
-        ttk.Label(tab_cfg, text="Konfiguration aus Kamera auslesen:",
+        ttk.Label(tab_cfg, text=self._("cs_cfg_export_title"),
                   font=("TkDefaultFont", 9, "bold")).pack(anchor=tk.W)
         self.export_cfg_btn = ttk.Button(
-            tab_cfg, text="Aus Kamera auslesen und speichern...",
+            tab_cfg, text=self._("cs_cfg_export_btn"),
             command=self._read_config)
         self.export_cfg_btn.pack(anchor=tk.W, pady=(4, 0))
         ttk.Label(
             tab_cfg,
-            text="Liest die komplette Parameterliste der ERSTEN markierten Kamera. "
-            "Anschliessend laesst sich auswaehlen und durchsuchen, welche Parameter "
-            "in die ADM-.cfg geschrieben werden. Tipp: ein vollstaendiger Export "
-            "enthaelt auch geraetespezifische/nur-lesbare Werte (z.B. Seriennummer) "
-            "- fuer die Uebertragung auf andere Kameras nur passende Parameter waehlen.",
+            text=self._("cs_cfg_export_help"),
             wraplength=560, justify=tk.LEFT,
         ).pack(anchor=tk.W, pady=(4, 0))
 
         # --- Buttons ---
         btns = ttk.Frame(outer)
         btns.pack(fill=tk.X, pady=(6, 4))
-        self.test_btn = ttk.Button(btns, text="Verbindung testen", command=self._test_connection)
+        self.test_btn = ttk.Button(btns, text=self._("camera_settings_test_connection"), command=self._test_connection)
         self.test_btn.pack(side=tk.LEFT)
-        self.apply_btn = ttk.Button(btns, text="Anwenden", command=self._apply)
+        self.apply_btn = ttk.Button(btns, text=self._("cs_apply"), command=self._apply)
         self.apply_btn.pack(side=tk.LEFT, padx=(8, 0))
-        ttk.Button(btns, text="Schliessen", command=self.destroy).pack(side=tk.RIGHT)
+        ttk.Button(btns, text=self._("cs_close"), command=self.destroy).pack(side=tk.RIGHT)
 
         # --- Ergebnisanzeige ---
-        ttk.Label(outer, text="Ergebnis:").pack(anchor=tk.W, pady=(6, 0))
+        ttk.Label(outer, text=self._("cs_result")).pack(anchor=tk.W, pady=(6, 0))
         self.result = scrolledtext.ScrolledText(outer, height=18, wrap=tk.WORD)
         self.result.configure(
             bg=self._palette["tree_bg"], fg=self._palette["fg"],
@@ -1501,6 +1867,8 @@ class CameraSettingsDialog(tk.Toplevel):
     # ---------------------------------------------------------- Hilfsdaten
     def _conn_kwargs(self):
         """Verbindungsparameter aus den Eingabefeldern als Dict."""
+        # Sprache im Haupt-Thread auffrischen (Worker lesen danach nur self._lang).
+        self._lang = self._app.language_var.get()
         port = self.port_var.get().strip()
         return {
             "username": self.user_var.get(),
@@ -1526,7 +1894,7 @@ class CameraSettingsDialog(tk.Toplevel):
             return
         self._clear_log()
         self._set_busy(True)
-        self._log("Teste Verbindung (lesend, ohne Aenderung)...")
+        self._log(self._("cs_test_conn_log"))
         kwargs = self._conn_kwargs()
         threading.Thread(
             target=self._worker_test, args=(kwargs,), daemon=True
@@ -1538,7 +1906,7 @@ class CameraSettingsDialog(tk.Toplevel):
             ip = get_first_ip(cam)
             name = cam.get("Name", ip)
             if not ip:
-                self._queue.put((name, False, "keine IP-Adresse bekannt"))
+                self._queue.put((name, False, self._("cs_no_ip_known")))
                 continue
             try:
                 info = vapix.get_device_info(ip, **kwargs)
@@ -1556,18 +1924,13 @@ class CameraSettingsDialog(tk.Toplevel):
     def _apply(self):
         if self._working:
             return
-        # Dispatch anhand des Reiter-Textes (robust gegen Reihenfolge/neue Reiter)
-        text = self.nb.tab(self.nb.select(), "text")
-        handler = {
-            "IP-Adresse": self._apply_ip,
-            "IPv6-Adresse": self._apply_ipv6,
-            "Benutzer": lambda: self._apply_user(onvif=False),
-            "ONVIF-Benutzer": lambda: self._apply_user(onvif=True),
-            "Firmware": self._apply_firmware,
-            "Konfiguration": self._apply_config,
-        }.get(text)
-        if handler:
-            handler()
+        # Dispatch anhand der Reiter-Widget-ID (sprachunabhaengig, robust gegen
+        # Reihenfolge/neue Reiter) -- self._tab_handlers wird in _build_ui befuellt.
+        current = self.nb.select()
+        for widget_id, handler in self._tab_handlers:
+            if widget_id == current:
+                handler()
+                return
 
     def _apply_ip(self):
         mode = self._mode_var.get()
@@ -1575,19 +1938,22 @@ class CameraSettingsDialog(tk.Toplevel):
         try:
             targets = self._compute_targets(mode)
         except ValueError as exc:
-            messagebox.showerror("Eingabefehler", str(exc), parent=self)
+            messagebox.showerror(self._("cs_input_error"), str(exc), parent=self)
             return
 
-        confirm = "Auf DHCP umstellen?" if mode == "dhcp" else \
-            "Folgende IP-Adressen setzen?\n\n" + "\n".join(
+        if mode == "dhcp":
+            confirm = self._("cs_confirm_dhcp")
+        else:
+            ips = "\n".join(
                 f"  {self.cameras[i].get('Name','?')}: {t}" for i, t in targets.items()
             )
-        if not messagebox.askyesno("Aenderung bestaetigen", confirm, parent=self):
+            confirm = self._("cs_confirm_set_ips", ips=ips)
+        if not messagebox.askyesno(self._("cs_confirm_change"), confirm, parent=self):
             return
 
         self._clear_log()
         self._set_busy(True)
-        self._log(f"Wende Aenderung an ({len(self.cameras)} Kamera(s))...")
+        self._log(self._("cs_applying", count=len(self.cameras)))
         kwargs = self._conn_kwargs()
         # Tk-Variablen NUR im Haupt-Thread lesen und an den Worker uebergeben
         # (Tkinter ist nicht thread-safe).
@@ -1605,23 +1971,23 @@ class CameraSettingsDialog(tk.Toplevel):
             return {}
         mask = self.mask_var.get().strip()
         if not mask:
-            raise ValueError("Bitte eine Subnetzmaske angeben.")
+            raise ValueError(self._("cs_need_subnet"))
         targets = {}
         if mode == "range":
             start = self.start_ip_var.get().strip()
             if not start:
-                raise ValueError("Bitte eine Start-IP angeben.")
+                raise ValueError(self._("cs_need_start_ip"))
             try:
                 for offset in range(len(self.cameras)):
                     targets[offset] = vapix.next_ip(start, offset)
             except ValueError:
-                raise ValueError(f"Ungueltige Start-IP: {start}")
+                raise ValueError(self._("cs_invalid_start_ip", start=start))
         elif mode == "each":
             for idx in range(len(self.cameras)):
                 value = self._ip_entries[idx].get().strip()
                 if not value:
                     raise ValueError(
-                        f"Bitte fuer '{self.cameras[idx].get('Name','?')}' eine IP angeben."
+                        self._("cs_need_ip_for", name=self.cameras[idx].get('Name', '?'))
                     )
                 targets[idx] = value
         return targets
@@ -1631,17 +1997,17 @@ class CameraSettingsDialog(tk.Toplevel):
             ip = get_first_ip(cam)
             name = cam.get("Name", ip)
             if not ip:
-                self._queue.put((name, False, "keine IP-Adresse bekannt"))
+                self._queue.put((name, False, self._("cs_no_ip_known")))
                 continue
             try:
                 if mode == "dhcp":
                     vapix.set_dhcp(ip, **kwargs)
-                    self._queue.put((name, True, "auf DHCP umgestellt"))
+                    self._queue.put((name, True, self._("cs_dhcp_ok")))
                 else:
                     new_ip = targets[idx]
                     vapix.set_static_ip(ip, new_ip=new_ip, subnet_mask=mask,
                                         gateway=gateway, **kwargs)
-                    self._queue.put((name, True, f"IP gesetzt auf {new_ip}"))
+                    self._queue.put((name, True, self._("cs_ip_set_ok", ip=new_ip)))
             except vapix.VapixError as exc:
                 self._queue.put((name, False, str(exc)))
         self._queue.put(None)
@@ -1659,22 +2025,23 @@ class CameraSettingsDialog(tk.Toplevel):
         router = self._ipv6_router_var.get().strip()
         if mode == "manual" and not address:
             messagebox.showerror(
-                "Eingabefehler",
-                "Bitte eine IPv6-Adresse mit Praefix angeben (z. B. 2001:db8::10/64).",
+                self._("cs_input_error"),
+                self._("cs_need_ipv6"),
                 parent=self)
             return
         summary = {
-            "off": "IPv6 deaktivieren",
-            "auto": "IPv6 auf automatisch (SLAAC / Router Advertisement) stellen",
-            "manual": f"feste IPv6-Adresse {address} setzen",
+            "off": self._("cs_ipv6_sum_off"),
+            "auto": self._("cs_ipv6_sum_auto"),
+            "manual": self._("cs_ipv6_sum_manual", address=address),
         }[mode]
         if not messagebox.askyesno(
-                "Aenderung bestaetigen",
-                f"{summary}\nauf {len(self.cameras)} Kamera(s)?", parent=self):
+                self._("cs_confirm_change"),
+                self._("cs_ipv6_confirm", summary=summary, count=len(self.cameras)),
+                parent=self):
             return
         self._clear_log()
         self._set_busy(True)
-        self._log(f"Wende IPv6-Aenderung an ({len(self.cameras)} Kamera(s))...")
+        self._log(self._("cs_ipv6_applying", count=len(self.cameras)))
         kwargs = self._conn_kwargs()
         threading.Thread(
             target=self._worker_ipv6, args=(mode, address, router, kwargs),
@@ -1684,15 +2051,15 @@ class CameraSettingsDialog(tk.Toplevel):
 
     def _worker_ipv6(self, mode, address, router, kwargs):
         done = {
-            "off": "IPv6 deaktiviert",
-            "auto": "IPv6 auf automatisch gesetzt",
-            "manual": f"feste IPv6-Adresse {address} gesetzt",
+            "off": self._("cs_ipv6_done_off"),
+            "auto": self._("cs_ipv6_done_auto"),
+            "manual": self._("cs_ipv6_done_manual", address=address),
         }[mode]
         for cam in self.cameras:
             ip = get_first_ip(cam)
             name = cam.get("Name", ip)
             if not ip:
-                self._queue.put((name, False, "keine IP-Adresse bekannt"))
+                self._queue.put((name, False, self._("cs_no_ip_known")))
                 continue
             try:
                 vapix.set_ipv6_config(ip, mode=mode, address=address,
@@ -1707,7 +2074,7 @@ class CameraSettingsDialog(tk.Toplevel):
             return
         self._clear_log()
         self._set_busy(True)
-        self._log("Lese aktuelle IPv6-Konfiguration (rein lesend)...")
+        self._log(self._("cs_ipv6_reading"))
         kwargs = self._conn_kwargs()
         threading.Thread(
             target=self._worker_read_ipv6, args=(kwargs,), daemon=True).start()
@@ -1718,13 +2085,13 @@ class CameraSettingsDialog(tk.Toplevel):
             ip = get_first_ip(cam)
             name = cam.get("Name", ip)
             if not ip:
-                self._queue.put((name, False, "keine IP-Adresse bekannt"))
+                self._queue.put((name, False, self._("cs_no_ip_known")))
                 continue
             try:
                 cfg = vapix.read_ipv6_config(ip, **kwargs)
-                state = "aktiv" if cfg["enabled"] else "deaktiviert"
-                addrs = ", ".join(cfg["addresses"]) or "(keine)"
-                self._queue.put((name, True, f"IPv6 {state}; Adressen: {addrs}"))
+                state = self._("cs_ipv6_state_on") if cfg["enabled"] else self._("cs_ipv6_state_off")
+                addrs = ", ".join(cfg["addresses"]) or self._("cs_ipv6_none")
+                self._queue.put((name, True, self._("cs_ipv6_read_result", state=state, addrs=addrs)))
             except vapix.VapixError as exc:
                 self._queue.put((name, False, str(exc)))
         self._queue.put(None)
@@ -1737,21 +2104,22 @@ class CameraSettingsDialog(tk.Toplevel):
         level = self.onv_level_var.get() if onvif else self.nu_role_var.get()
 
         if not name:
-            messagebox.showerror("Eingabefehler", "Bitte einen Benutzernamen angeben.", parent=self)
+            messagebox.showerror(self._("cs_input_error"), self._("cs_need_username"), parent=self)
             return
         if not pwd:
-            messagebox.showerror("Eingabefehler", "Bitte ein Passwort angeben.", parent=self)
+            messagebox.showerror(self._("cs_input_error"), self._("cs_need_password"), parent=self)
             return
 
-        kind = "ONVIF-Benutzer" if onvif else "Benutzer"
-        verb = "anlegen" if action == "add" else "Passwort aendern fuer"
-        confirm = f"{kind} '{name}' {verb} auf {len(self.cameras)} Kamera(s)?"
-        if not messagebox.askyesno("Aenderung bestaetigen", confirm, parent=self):
+        kind = self._("cs_kind_onvif") if onvif else self._("cs_kind_user")
+        verb = self._("cs_verb_add") if action == "add" else self._("cs_verb_setpw")
+        confirm = self._("cs_user_confirm", kind=kind, name=name, verb=verb,
+                         count=len(self.cameras))
+        if not messagebox.askyesno(self._("cs_confirm_change"), confirm, parent=self):
             return
 
         self._clear_log()
         self._set_busy(True)
-        self._log(f"Wende Aenderung an ({len(self.cameras)} Kamera(s))...")
+        self._log(self._("cs_applying", count=len(self.cameras)))
         kwargs = self._conn_kwargs()
         # Manuell erzwungener Auslieferungszustand (nur fuer regulaere Benutzer)
         factory = self.factory_var.get() and not onvif
@@ -1765,26 +2133,26 @@ class CameraSettingsDialog(tk.Toplevel):
         """Fuehrt op im Auslieferungszustand aus: erst ohne Anmeldung, dann mit
         gaengigen Standard-Zugangsdaten; nimmt die erste funktionierende Variante.
         """
-        attempts = [("ohne Anmeldung", "", "", False)]
+        attempts = [(self._("cs_factory_no_auth"), "", "", False)]
         for u, p in vapix.DEFAULT_CREDENTIALS:
-            attempts.append((f"{u}/{p or 'leer'}", u, p, True))
+            attempts.append((f"{u}/{p or self._('cs_factory_empty')}", u, p, True))
         last = None
         for label, u, p, auth in attempts:
             ck = dict(base_kwargs)
             ck["username"] = u
             ck["password"] = p
             try:
-                return op(ck, auth) + f" [Auslieferungszustand: {label}]"
+                return op(ck, auth) + self._("cs_factory_suffix", label=label)
             except vapix.VapixError as exc:
                 last = exc
-        raise last if last is not None else vapix.VapixError("kein Zugang moeglich")
+        raise last if last is not None else vapix.VapixError(self._("cs_no_access"))
 
     def _worker_user(self, onvif, action, name, pwd, level, factory, kwargs):
         for cam in self.cameras:
             ip = get_first_ip(cam)
             cname = cam.get("Name", ip)
             if not ip:
-                self._queue.put((cname, False, "keine IP-Adresse bekannt"))
+                self._queue.put((cname, False, self._("cs_no_ip_known")))
                 continue
             try:
                 if onvif and action == "add":
@@ -1813,7 +2181,7 @@ class CameraSettingsDialog(tk.Toplevel):
                                 return (vapix.set_user_password(
                                     ip, target_user=name, new_password=pwd,
                                     authenticate=auth, **ck)
-                                    + " (vorhandener Benutzer, Passwort gesetzt)")
+                                    + self._("cs_existing_user_pw"))
                     else:
                         def op(ck, auth):
                             return vapix.set_user_password(ip, target_user=name,
@@ -1833,29 +2201,29 @@ class CameraSettingsDialog(tk.Toplevel):
         if self._working:
             return
         path = filedialog.askopenfilename(
-            title="Benutzerliste waehlen", parent=self,
-            filetypes=[("Textdatei", "*.txt"), ("CSV-Datei", "*.csv"),
-                       ("Alle Dateien", "*.*")],
+            title=self._("cs_choose_user_list"), parent=self,
+            filetypes=[(self._("cs_ft_txt"), "*.txt"), (self._("cs_ft_csv"), "*.csv"),
+                       (self._("cs_ft_all"), "*.*")],
         )
         if not path:
             return
         try:
             users = vapix.parse_user_list(path, onvif=onvif)
         except vapix.VapixError as exc:
-            messagebox.showerror("Datei-Fehler", str(exc), parent=self)
+            messagebox.showerror(self._("cs_file_error"), str(exc), parent=self)
             return
-        kind = "ONVIF-Benutzer" if onvif else "Benutzer"
+        kind = self._("cs_kind_onvif") if onvif else self._("cs_kind_user")
         preview = "\n".join(f"  {u['name']} ({u['role']})" for u in users[:12])
         if len(users) > 12:
-            preview += f"\n  ... ({len(users) - 12} weitere)"
-        confirm = (f"{len(users)} {kind} aus der Datei auf {len(self.cameras)} "
-                   f"Kamera(s) anlegen?\n\n{preview}")
-        if not messagebox.askyesno("Stapel-Import bestaetigen", confirm, parent=self):
+            preview += self._("cs_more_users", count=len(users) - 12)
+        confirm = self._("cs_import_confirm", count=len(users), kind=kind,
+                         cams=len(self.cameras), preview=preview)
+        if not messagebox.askyesno(self._("cs_import_confirm_title"), confirm, parent=self):
             return
         self._clear_log()
         self._set_busy(True)
         factory = self.factory_var.get() and not onvif
-        self._log(f"Importiere {len(users)} {kind} auf {len(self.cameras)} Kamera(s)...")
+        self._log(self._("cs_importing", count=len(users), kind=kind, cams=len(self.cameras)))
         kwargs = self._conn_kwargs()
         threading.Thread(target=self._worker_import_users,
                          args=(onvif, users, factory, kwargs), daemon=True).start()
@@ -1866,7 +2234,7 @@ class CameraSettingsDialog(tk.Toplevel):
             ip = get_first_ip(cam)
             cname = cam.get("Name", ip)
             if not ip:
-                self._queue.put((cname, False, "keine IP-Adresse bekannt"))
+                self._queue.put((cname, False, self._("cs_no_ip_known")))
                 continue
             for u in users:
                 label = f"{cname} / {u['name']}"
@@ -1887,8 +2255,8 @@ class CameraSettingsDialog(tk.Toplevel):
     # --------------------------------------------------------- Firmware
     def _choose_firmware(self):
         path = filedialog.askopenfilename(
-            title="Firmware-Datei waehlen", parent=self,
-            filetypes=[("Firmware", "*.bin"), ("Alle Dateien", "*.*")],
+            title=self._("cs_choose_fw"), parent=self,
+            filetypes=[(self._("cs_ft_fw"), "*.bin"), (self._("cs_ft_all"), "*.*")],
         )
         if path:
             self.fw_path_var.set(path)
@@ -1896,20 +2264,16 @@ class CameraSettingsDialog(tk.Toplevel):
     def _apply_firmware(self):
         path = self.fw_path_var.get().strip()
         if not path or not os.path.isfile(path):
-            messagebox.showerror("Eingabefehler", "Bitte eine gueltige Firmware-Datei waehlen.",
+            messagebox.showerror(self._("cs_input_error"), self._("cs_need_fw"),
                                  parent=self)
             return
-        confirm = (
-            f"Firmware\n  {os.path.basename(path)}\n"
-            f"auf {len(self.cameras)} Kamera(s) aufspielen?\n\n"
-            "Die Firmware MUSS zum Modell passen. Der Vorgang dauert einige "
-            "Minuten, danach startet die Kamera neu."
-        )
-        if not messagebox.askyesno("Firmware-Update bestaetigen", confirm, parent=self):
+        confirm = self._("cs_fw_confirm", name=os.path.basename(path),
+                         count=len(self.cameras))
+        if not messagebox.askyesno(self._("cs_fw_confirm_title"), confirm, parent=self):
             return
         self._clear_log()
         self._set_busy(True)
-        self._log(f"Spiele Firmware auf ({len(self.cameras)} Kamera(s)) - bitte warten...")
+        self._log(self._("cs_fw_applying", count=len(self.cameras)))
         conn = self._conn_kwargs()
         conn["timeout"] = 600  # Firmware-Upload braucht deutlich laenger
         factory = self.fw_factory_var.get()
@@ -1923,7 +2287,7 @@ class CameraSettingsDialog(tk.Toplevel):
             ip = get_first_ip(cam)
             cname = cam.get("Name", ip)
             if not ip:
-                self._queue.put((cname, False, "keine IP-Adresse bekannt"))
+                self._queue.put((cname, False, self._("cs_no_ip_known")))
                 continue
             try:
                 msg = vapix.upgrade_firmware(ip, firmware_path=path,
@@ -1936,43 +2300,41 @@ class CameraSettingsDialog(tk.Toplevel):
     # ----------------------------------------------- ADM-Konfiguration
     def _choose_config(self):
         path = filedialog.askopenfilename(
-            title="ADM-Konfigurationsdatei waehlen", parent=self,
-            filetypes=[("ADM-Konfiguration", "*.cfg"), ("Alle Dateien", "*.*")],
+            title=self._("cs_choose_cfg"), parent=self,
+            filetypes=[(self._("cs_ft_cfg"), "*.cfg"), (self._("cs_ft_all"), "*.*")],
         )
         if not path:
             return
         self.cfg_path_var.set(path)
         try:
             self._cfg = vapix.parse_adm_config(path)
-            vmd4_note = (" | Bewegungserkennung (VMD4)"
+            vmd4_note = (self._("cs_cfg_vmd4_note")
                          if self._cfg.get("vmd4") is not None else "")
-            self.cfg_info_var.set(
-                f"Modell: {self._cfg['model'] or '?'} | Firmware: "
-                f"{self._cfg['firmware'] or '?'} | {len(self._cfg['parameters'])} "
-                f"Parameter, {len(self._cfg['profiles'])} Stream-Profil(e)"
-                f"{vmd4_note}"
-            )
+            self.cfg_info_var.set(self._(
+                "cs_cfg_info",
+                model=self._cfg['model'] or '?',
+                fw=self._cfg['firmware'] or '?',
+                params=len(self._cfg['parameters']),
+                profiles=len(self._cfg['profiles']),
+                vmd=vmd4_note,
+            ))
         except vapix.VapixError as exc:
             self._cfg = None
-            self.cfg_info_var.set(f"Fehler: {exc}")
+            self.cfg_info_var.set(self._("cs_cfg_parse_error", exc=exc))
 
     def _apply_config(self):
         if self._cfg is None:
-            messagebox.showerror("Eingabefehler",
-                                 "Bitte eine gueltige ADM-Konfigurationsdatei waehlen.",
+            messagebox.showerror(self._("cs_input_error"),
+                                 self._("cs_need_cfg"),
                                  parent=self)
             return
-        confirm = (
-            f"Konfiguration fuer Modell '{self._cfg['model'] or '?'}'\n"
-            f"({len(self._cfg['parameters'])} Parameter) auf "
-            f"{len(self.cameras)} Kamera(s) anwenden?\n\n"
-            "Die Konfiguration sollte zum Kameramodell passen."
-        )
-        if not messagebox.askyesno("Konfiguration anwenden", confirm, parent=self):
+        confirm = self._("cs_cfg_confirm", model=self._cfg['model'] or '?',
+                         params=len(self._cfg['parameters']), count=len(self.cameras))
+        if not messagebox.askyesno(self._("cs_cfg_confirm_title"), confirm, parent=self):
             return
         self._clear_log()
         self._set_busy(True)
-        self._log(f"Wende Konfiguration an ({len(self.cameras)} Kamera(s))...")
+        self._log(self._("cs_cfg_applying", count=len(self.cameras)))
         conn = self._conn_kwargs()
         conn["timeout"] = max(30, conn["timeout"])
         cfg = self._cfg
@@ -1988,7 +2350,7 @@ class CameraSettingsDialog(tk.Toplevel):
             ip = get_first_ip(cam)
             cname = cam.get("Name", ip)
             if not ip:
-                self._queue.put((cname, False, "keine IP-Adresse bekannt"))
+                self._queue.put((cname, False, self._("cs_no_ip_known")))
                 continue
             try:
                 msg = vapix.apply_adm_config(ip, config=cfg, with_profiles=with_profiles,
@@ -2003,20 +2365,20 @@ class CameraSettingsDialog(tk.Toplevel):
         if self._working:
             return
         if not self.cameras:
-            messagebox.showerror("Keine Kamera", "Keine Kamera ausgewaehlt.", parent=self)
+            messagebox.showerror(self._("cs_no_camera_title"), self._("cs_no_camera"), parent=self)
             return
         cam = self.cameras[0]
         ip = get_first_ip(cam)
         name = cam.get("Name", ip)
         if not ip:
-            messagebox.showerror("Keine IP",
-                                 f"Fuer '{name}' ist keine IP-Adresse bekannt.", parent=self)
+            messagebox.showerror(self._("cs_no_ip_title"),
+                                 self._("cs_no_ip_for", name=name), parent=self)
             return
         self._clear_log()
         self._set_busy(True)
         if len(self.cameras) > 1:
-            self._log(f"Hinweis: Es wird nur die erste markierte Kamera ausgelesen ({name}).")
-        self._log(f"Lese Konfiguration von {name} ({ip}) - bitte warten...")
+            self._log(self._("cs_read_only_first", name=name))
+        self._log(self._("cs_reading_cfg", name=name, ip=ip))
         kwargs = self._conn_kwargs()
         kwargs["timeout"] = max(30, kwargs["timeout"])
         self._read_q = queue.Queue()
@@ -2039,13 +2401,13 @@ class CameraSettingsDialog(tk.Toplevel):
             return
         self._set_busy(False)
         if kind == "err":
-            self._log(f"  [FEHLER] {name}: {payload}")
+            self._log(self._("cs_log_error", name=name, msg=payload))
             return
         cfg = payload
-        vmd4_note = (", Bewegungserkennung (VMD4)"
+        vmd4_note = (self._("cs_cfg_vmd4_note2")
                      if cfg.get("vmd4") is not None else "")
-        self._log(f"  [OK] {name}: {len(cfg['parameters'])} Parameter, "
-                  f"{len(cfg['profiles'])} Stream-Profil(e){vmd4_note} gelesen")
+        self._log(self._("cs_read_ok", name=name, params=len(cfg['parameters']),
+                         profiles=len(cfg['profiles']), vmd=vmd4_note))
         ParameterSelectDialog(self, cfg, name, self._palette)
 
     def _poll(self):
@@ -2054,10 +2416,11 @@ class CameraSettingsDialog(tk.Toplevel):
                 item = self._queue.get_nowait()
                 if item is None:
                     self._set_busy(False)
-                    self._log("Fertig.")
+                    self._log(self._("cs_done"))
                     return
                 name, ok, msg = item
-                self._log(f"  [{'OK' if ok else 'FEHLER'}] {name}: {msg}")
+                status = self._("cs_log_ok") if ok else self._("cs_log_fail")
+                self._log(self._("cs_log_line", status=status, name=name, msg=msg))
         except queue.Empty:
             self.after(150, self._poll)
 
@@ -2076,7 +2439,9 @@ class ParameterSelectDialog(tk.Toplevel):
 
     def __init__(self, master, config, cam_name, palette):
         super().__init__(master)
-        self.title("Parameter auswaehlen und speichern")
+        # Sprache vom oeffnenden CameraSettingsDialog uebernehmen (reiner String).
+        self._lang = getattr(master, "_lang", "de")
+        self.title(self._("ps_title"))
         self.geometry("680x680")
         self.minsize(560, 480)
         self.transient(master)
@@ -2089,22 +2454,32 @@ class ParameterSelectDialog(tk.Toplevel):
         self._build_ui()
         self._refilter()
 
+    def _(self, key, **kwargs):
+        """Uebersetzt anhand der gecachten Sprache (self._lang), ohne Tk-Zugriff."""
+        text = TRANSLATIONS.get(self._lang, {}).get(key, key)
+        if kwargs:
+            try:
+                text = text.format(**kwargs)
+            except (KeyError, ValueError):
+                pass
+        return text
+
     def _build_ui(self):
         outer = ttk.Frame(self, padding=10)
         outer.pack(fill=tk.BOTH, expand=True)
         ttk.Label(
             outer,
-            text=f"{self._cam_name} - Modell {self._config.get('model') or '?'}, "
-                 f"FW {self._config.get('firmware') or '?'}",
+            text=self._("ps_header", cam=self._cam_name,
+                        model=self._config.get('model') or '?',
+                        fw=self._config.get('firmware') or '?'),
             font=("TkDefaultFont", 10, "bold"),
         ).pack(anchor=tk.W)
-        ttk.Label(outer, text=f"{len(self._all_names)} Parameter gelesen. "
-                  "Haken anklicken = in die .cfg uebernehmen.").pack(anchor=tk.W,
-                                                                     pady=(0, 6))
+        ttk.Label(outer, text=self._("ps_count_read", count=len(self._all_names))).pack(
+            anchor=tk.W, pady=(0, 6))
 
         sf = ttk.Frame(outer)
         sf.pack(fill=tk.X)
-        ttk.Label(sf, text="Suche:").pack(side=tk.LEFT)
+        ttk.Label(sf, text=self._("ps_search")).pack(side=tk.LEFT)
         self._search_var = tk.StringVar()
         self._search_var.trace_add("write", lambda *_: self._refilter())
         ttk.Entry(sf, textvariable=self._search_var).pack(
@@ -2115,8 +2490,8 @@ class ParameterSelectDialog(tk.Toplevel):
         self.tree = ttk.Treeview(tf, columns=("chk", "name", "value"),
                                  show="headings", selectmode="none")
         self.tree.heading("chk", text="")
-        self.tree.heading("name", text="Parameter")
-        self.tree.heading("value", text="Wert")
+        self.tree.heading("name", text=self._("ps_col_param"))
+        self.tree.heading("value", text=self._("ps_col_value"))
         self.tree.column("chk", width=32, anchor=tk.CENTER, stretch=tk.NO)
         self.tree.column("name", width=340, stretch=tk.NO)
         self.tree.column("value", width=260)
@@ -2132,15 +2507,15 @@ class ParameterSelectDialog(tk.Toplevel):
         cf.pack(fill=tk.X, pady=(6, 0))
         self._count_var = tk.StringVar()
         ttk.Label(cf, textvariable=self._count_var).pack(side=tk.LEFT)
-        ttk.Button(cf, text="Alle (gefiltert)",
+        ttk.Button(cf, text=self._("ps_all_filtered"),
                    command=lambda: self._set_filtered(True)).pack(side=tk.RIGHT)
-        ttk.Button(cf, text="Keine (gefiltert)",
+        ttk.Button(cf, text=self._("ps_none_filtered"),
                    command=lambda: self._set_filtered(False)).pack(side=tk.RIGHT, padx=(0, 4))
 
         self._profiles_var = tk.BooleanVar(value=bool(self._config.get("profiles")))
         ttk.Checkbutton(
             outer,
-            text=f"Stream-Profile einschliessen ({len(self._config.get('profiles', []))})",
+            text=self._("ps_incl_profiles", count=len(self._config.get('profiles', []))),
             variable=self._profiles_var,
         ).pack(anchor=tk.W, pady=(6, 0))
 
@@ -2148,8 +2523,8 @@ class ParameterSelectDialog(tk.Toplevel):
         self._vmd4_var = tk.BooleanVar(value=has_vmd4)
         cb_vmd4 = ttk.Checkbutton(
             outer,
-            text="Bewegungserkennung (VMD4) einschliessen"
-                 + ("" if has_vmd4 else " (nicht vorhanden)"),
+            text=self._("ps_incl_vmd4")
+                 + ("" if has_vmd4 else self._("ps_not_available")),
             variable=self._vmd4_var,
         )
         if not has_vmd4:
@@ -2158,8 +2533,8 @@ class ParameterSelectDialog(tk.Toplevel):
 
         bf = ttk.Frame(outer)
         bf.pack(fill=tk.X, pady=(8, 0))
-        ttk.Button(bf, text="Speichern...", command=self._save).pack(side=tk.LEFT)
-        ttk.Button(bf, text="Abbrechen", command=self.destroy).pack(side=tk.RIGHT)
+        ttk.Button(bf, text=self._("ps_save"), command=self._save).pack(side=tk.LEFT)
+        ttk.Button(bf, text=self._("ps_cancel"), command=self.destroy).pack(side=tk.RIGHT)
 
     def _filtered_names(self):
         term = self._search_var.get().strip().lower()
@@ -2182,7 +2557,7 @@ class ParameterSelectDialog(tk.Toplevel):
 
     def _update_count(self):
         self._count_var.set(
-            f"{len(self._selected)} von {len(self._all_names)} ausgewaehlt")
+            self._("ps_selected_count", sel=len(self._selected), total=len(self._all_names)))
 
     def _on_click(self, event):
         row = self.tree.identify_row(event.y)
@@ -2206,15 +2581,15 @@ class ParameterSelectDialog(tk.Toplevel):
 
     def _save(self):
         if not self._selected:
-            messagebox.showerror("Nichts ausgewaehlt",
-                                 "Bitte mindestens einen Parameter auswaehlen.",
+            messagebox.showerror(self._("ps_nothing_title"),
+                                 self._("ps_nothing"),
                                  parent=self)
             return
         default = (self._config.get("model") or "konfiguration").replace(" ", "_") + ".cfg"
         path = filedialog.asksaveasfilename(
-            title="ADM-Konfiguration speichern", parent=self,
+            title=self._("ps_save_title"), parent=self,
             defaultextension=".cfg", initialfile=default,
-            filetypes=[("ADM-Konfiguration", "*.cfg"), ("Alle Dateien", "*.*")],
+            filetypes=[(self._("cs_ft_cfg"), "*.cfg"), (self._("cs_ft_all"), "*.*")],
         )
         if not path:
             return
@@ -2226,14 +2601,14 @@ class ParameterSelectDialog(tk.Toplevel):
                                        with_profiles=with_profiles,
                                        with_vmd4=with_vmd4)
         except vapix.VapixError as exc:
-            messagebox.showerror("Fehler beim Speichern", str(exc), parent=self)
+            messagebox.showerror(self._("ps_save_error"), str(exc), parent=self)
             return
-        extra = (f" + {len(self._config.get('profiles', []))} Stream-Profil(e)"
+        extra = (self._("ps_extra_profiles", count=len(self._config.get('profiles', [])))
                  if with_profiles else "")
         if with_vmd4 and self._config.get("vmd4") is not None:
-            extra += " + Bewegungserkennung (VMD4)"
-        messagebox.showinfo("Gespeichert",
-                            f"{n} Parameter{extra} gespeichert:\n{path}", parent=self)
+            extra += self._("ps_extra_vmd4")
+        messagebox.showinfo(self._("ps_saved_title"),
+                            self._("ps_saved", count=n, extra=extra, path=path), parent=self)
         self.destroy()
 
 
