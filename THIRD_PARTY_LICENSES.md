@@ -10,7 +10,7 @@ betroffen.
 
 | Komponente | Version | Lizenz |
 |---|---|---|
-| CPython | 3.14.6 | PSF License Agreement |
+| CPython | 3.14.7 | PSF License Agreement |
 | Tcl | 9.0.4 | Tcl/Tk License (BSD-artig) |
 | Tk | 9.0.4 | Tcl/Tk License (BSD-artig) |
 | libffi | 3.7.1 | libffi License (MIT-artig) |
@@ -31,7 +31,7 @@ betroffen.
 
 ---
 
-## CPython 3.14.6
+## CPython 3.14.7
 
 Copyright © 2001-2024 Python Software Foundation. Alle Rechte vorbehalten.
 

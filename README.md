@@ -361,6 +361,7 @@ axis_IP_Utility/
 
 | Version | Änderungen |
 |---|---|
+| 26.08.08 | Gebündeltes **CPython auf 3.14.7** aktualisiert (Sicherheits-/Fehlerkorrekturen der Python-Foundation); übrige Toolchain (Tcl/Tk 9.0.4, OpenSSL 3.5.7, libffi 3.7.1) und Python-Wheels bereits aktuell |
 | 26.07.22 | **Vollständige englische Übersetzung**: Der Dialog „Kamera Einstellungen" (alle Reiter IP/IPv6/Benutzer/ONVIF/Firmware/Konfiguration inkl. aller Hinweise, Bestätigungsdialoge, Fehler- und Ergebnismeldungen) und der Parameter-Auswahldialog folgen jetzt der Sprachwahl im Einstellungsmenü. Der `_apply`-Dispatch nutzt statt des (übersetzten) Reiter-Textes die Widget-ID des Reiters; die Worker-Threads übersetzen über eine gecachte Sprach-Kennung (kein Tk-Zugriff aus dem Thread) |
 | 26.07.19b2 | Neuer Reiter **IPv6-Adresse** im Dialog „Kamera Einstellungen": IPv6 auf *automatisch* (SLAAC/Router-Advertisement), *feste Adresse* (mit Präfix + optionalem Gateway) oder *aus* stellen, plus *aktuelle IPv6-Konfiguration auslesen* (rein lesend, `param.cgi` `Network.IPv6`). Neue CLI-Unterbefehle `set-ipv6` und `ipv6-show` |
 | 26.07.19b1 | Neue Spalte **IPv6 Adresse**: Die mDNS-Suche erkennt jetzt auch IPv6-Adressen (`parsed_addresses`, da zeroconfs `.addresses` aus Kompatibilitätsgründen nur IPv4 liefert) und zeigt sie an; ein-/ausblendbar über „Spalten…", im Export enthalten |
