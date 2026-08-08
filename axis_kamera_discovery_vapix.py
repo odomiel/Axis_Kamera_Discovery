@@ -166,11 +166,12 @@ def _http_error_detail(exc) -> str:
     return raw[:200]
 
 
-def _post_json(ip, username, password, path, obj, scheme, port, timeout):
-    """POSTet einen JSON-Body und liefert die geparste JSON-Antwort (Dict).
+def _post_json(ip, username, password, path, obj, scheme, port, timeout, method="POST"):
+    """Sendet einen JSON-Body (POST oder PATCH) und liefert die geparste JSON-Antwort.
 
-    Fuer die JSON-Steuer-APIs neuerer AXIS-Funktionen (z. B. VMD4). Leere Antworten
-    ergeben ``{}``; nicht-JSON-Antworten werfen VapixError.
+    Fuer die JSON-Steuer-APIs neuerer AXIS-Funktionen (z. B. VMD4) und die
+    Device-Configuration-API (``$import`` per PATCH). Leere Antworten ergeben
+    ``{}``; nicht-JSON-Antworten werfen VapixError.
     """
     if port is None:
         port = DEFAULT_PORTS[scheme]
@@ -179,7 +180,8 @@ def _post_json(ip, username, password, path, obj, scheme, port, timeout):
     body = json.dumps(obj).encode("utf-8")
     opener = _build_opener(host_port, username, password)
     req = urllib.request.Request(
-        url, data=body, headers={"Content-Type": "application/json"})
+        url, data=body, headers={"Content-Type": "application/json"},
+        method=method)
     try:
         with opener.open(req, timeout=timeout) as resp:
             text = resp.read().decode("utf-8", errors="replace")
@@ -203,14 +205,15 @@ def _post_json(ip, username, password, path, obj, scheme, port, timeout):
         raise VapixError(f"Unerwartete Antwort: {text.strip()[:200]}")
 
 
-def _post_json_auto(ip, username, password, path, obj, scheme="auto", port=None, timeout=30):
+def _post_json_auto(ip, username, password, path, obj, scheme="auto", port=None,
+                    timeout=30, method="POST"):
     """Wie _post_json, aber 'auto' probiert erst HTTPS, dann HTTP."""
     if scheme != "auto":
-        return _post_json(ip, username, password, path, obj, scheme, port, timeout)
+        return _post_json(ip, username, password, path, obj, scheme, port, timeout, method)
     try:
-        return _post_json(ip, username, password, path, obj, "https", port, timeout)
+        return _post_json(ip, username, password, path, obj, "https", port, timeout, method)
     except _SchemeUnreachable:
-        return _post_json(ip, username, password, path, obj, "http", port, timeout)
+        return _post_json(ip, username, password, path, obj, "http", port, timeout, method)
 
 
 def is_unconfigured(ip, scheme="auto", port=None, timeout=10):
@@ -1185,3 +1188,147 @@ def write_adm_config(path, config, selected_params=None, with_profiles=True,
     except OSError as exc:
         raise VapixError(f"Datei nicht schreibbar: {exc}")
     return len(names)
+
+
+# =====================================================================
+#  Geraete-Sicherung (Device Configuration API: $export / $import)
+# =====================================================================
+# Die moderne AXIS-OS-Weboberflaeche (System > Wartung) sichert und
+# restauriert die *komplette* Geraetekonfiguration als JSON ueber die
+# Device-Configuration-API (DCA, ab AXIS OS 11.8). Das ist etwas anderes als
+# die ADM-.cfg oben: die .cfg ist eine *auswaehlbare* Parameter-Vorlage fuer
+# den Fleet-Rollout, die Geraete-Sicherung dagegen ein vollstaendiges,
+# geraetespezifisches Abbild (IP, Name, Ereignisregeln, Zeit, Benutzer ...).
+#
+#   Export:  GET   /config/rest/$export  -> {"status":"success","data":{...}}
+#   Import:  PATCH /config/rest/$import   <- {"data":{...},"options":{...}}
+#
+# Die gespeicherte Datei enthaelt den reinen ``data``-Teil (versionierte
+# Ressourcen wie ``param.v2``, ``user-management.v2``, ``time.v2`` ...) -- genau
+# das Format, das die Weboberflaeche herunterlaedt. Passwoerter sind im Export
+# nicht enthalten (AXIS laesst als ``export_import``/Secret markierte Werte weg).
+
+DEVICE_SETTINGS_EXPORT_PATH = "/config/rest/$export"
+DEVICE_SETTINGS_IMPORT_PATH = "/config/rest/$import"
+IMPORT_TYPES = ("merge", "default")
+
+
+def _dca_error(obj):
+    """Formuliert eine lesbare Meldung aus einer DCA-Fehlerantwort."""
+    err = obj.get("error") if isinstance(obj, dict) else None
+    if isinstance(err, dict):
+        msg = err.get("message") or err.get("code")
+        if msg:
+            return f"Geraet meldete Fehler: {msg}"
+    return "Geraet meldete einen Fehler bei der Geraete-Sicherung."
+
+
+def _unwrap_backup(obj):
+    """Liefert den reinen ``data``-Teil eines Sicherungsobjekts.
+
+    Akzeptiert die volle ``$export``-Antwort ``{"status":..,"data":{...}}``,
+    ein ``{"data":{...}}`` sowie die von der Weboberflaeche gespeicherte reine
+    Ressourcen-Map (Top-Level-Schluessel wie ``param.v2``).
+    """
+    if not isinstance(obj, dict):
+        raise VapixError("Sicherung ist kein JSON-Objekt.")
+    data = obj.get("data")
+    # Vollstaendige $export-Antwort oder {"data":...}: den data-Teil herausziehen.
+    # (Eine reine Ressourcen-Map hat nie einen Schluessel "data".)
+    if isinstance(data, dict) and ("status" in obj or set(obj) == {"data"}):
+        return data
+    return obj
+
+
+def export_device_settings(ip, username, password, scheme="auto", port=None, timeout=60):
+    """Liest die komplette Geraetekonfiguration (DCA ``$export``).
+
+    Liefert den ``data``-Teil (Ressourcen-Map), fertig zum Speichern in eine
+    ``.json``-Sicherungsdatei. Wirft VapixError, wenn das Geraet die DCA nicht
+    unterstuetzt (aeltere Firmware als AXIS OS 11.8 -> HTTP 404).
+    """
+    try:
+        text = _request_auto(ip, username, password, DEVICE_SETTINGS_EXPORT_PATH,
+                             scheme, port, timeout)
+    except VapixError as exc:
+        if "404" in str(exc):
+            raise VapixError(
+                "Geraet unterstuetzt keine Geraete-Sicherung "
+                "(benoetigt AXIS OS 11.8 oder neuer).")
+        raise
+    try:
+        obj = json.loads(text)
+    except ValueError:
+        raise VapixError(f"Unerwartete Antwort: {text.strip()[:200]}")
+    if not isinstance(obj, dict):
+        raise VapixError("Unerwartetes Sicherungsformat.")
+    if obj.get("status") == "error":
+        raise VapixError(_dca_error(obj))
+    data = obj.get("data")
+    if not isinstance(data, dict) or not data:
+        raise VapixError("Sicherung enthielt keine Daten.")
+    return data
+
+
+def save_device_settings(ip, username, password, path, scheme="auto", port=None,
+                         timeout=60):
+    """Liest die Geraetekonfiguration und schreibt sie als JSON-Datei.
+
+    Liefert die Anzahl gesicherter Ressourcen (Top-Level-Schluessel).
+    """
+    data = export_device_settings(ip, username, password, scheme, port, timeout)
+    try:
+        with open(path, "w", encoding="utf-8") as fh:
+            json.dump(data, fh, ensure_ascii=False, indent=2, sort_keys=True)
+    except OSError as exc:
+        raise VapixError(f"Datei nicht schreibbar: {exc}")
+    return len(data)
+
+
+def load_device_settings_backup(path):
+    """Liest eine ``.json``-Sicherungsdatei und liefert die Ressourcen-Map.
+
+    Toleriert sowohl das von der Weboberflaeche gespeicherte reine Format als
+    auch eine vollstaendige ``$export``-Antwort mit ``status``/``data``-Huelle.
+    """
+    try:
+        with open(path, "r", encoding="utf-8") as fh:
+            obj = json.load(fh)
+    except OSError as exc:
+        raise VapixError(f"Datei nicht lesbar: {exc}")
+    except ValueError as exc:
+        raise VapixError(f"Keine gueltige JSON-Sicherung: {exc}")
+    data = _unwrap_backup(obj)
+    if not isinstance(data, dict) or not data:
+        raise VapixError("Sicherungsdatei enthaelt keine Konfigurationsdaten.")
+    return data
+
+
+def import_device_settings(ip, username, password, data, import_type="merge",
+                           scheme="auto", port=None, timeout=120):
+    """Spielt eine Geraete-Sicherung ein (DCA ``$import`` per PATCH).
+
+    ``data`` ist die Ressourcen-Map (aus load_device_settings_backup) oder eine
+    volle ``$export``-Antwort. ``import_type``:
+      * ``"merge"``   -- fehlende Werte behalten (nur Gesichertes ueberschreiben),
+      * ``"default"`` -- betroffene APIs zuruecksetzen, Fehlendes auf Standard.
+    Das Geraet kann sich nach dem Einspielen selbst neu starten.
+    """
+    if import_type not in IMPORT_TYPES:
+        raise ValueError("import_type muss 'merge' oder 'default' sein.")
+    payload_data = _unwrap_backup(data)
+    if not isinstance(payload_data, dict) or not payload_data:
+        raise VapixError("Sicherung enthaelt keine Konfigurationsdaten.")
+    body = {"data": payload_data, "options": {"importType": import_type}}
+    try:
+        resp = _post_json_auto(ip, username, password, DEVICE_SETTINGS_IMPORT_PATH,
+                               body, scheme, port, timeout, method="PATCH")
+    except VapixError as exc:
+        if "404" in str(exc):
+            raise VapixError(
+                "Geraet unterstuetzt keine Geraete-Sicherung "
+                "(benoetigt AXIS OS 11.8 oder neuer).")
+        raise
+    if isinstance(resp, dict) and resp.get("status") == "error":
+        raise VapixError(_dca_error(resp))
+    return len(payload_data)

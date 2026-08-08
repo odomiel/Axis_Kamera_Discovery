@@ -43,6 +43,7 @@ Python 3.14 inklusive **Tcl/Tk 9** sowie alle Abhängigkeiten mitbringt und dami
 | Firmware-Update (Mehrfachauswahl) | „Kamera Einstellungen" | `firmware` |
 | ADM-Konfigurationsdatei anwenden | „Kamera Einstellungen" | `config` |
 | Konfiguration auslesen & als ADM-`.cfg` speichern | „Kamera Einstellungen" | `config-export` |
+| Geräte-Sicherung anlegen & einspielen (AXIS OS 11.8+, `.json`) | „Kamera Einstellungen" | `backup` / `backup-restore` |
 | Dark Mode (heller/dunkler Modus) | Einstellungen → Checkbox „Dark Mode" | – |
 | Sprache (Deutsch/Englisch) | Einstellungen → Radiobuttons | – |
 | Version anzeigen | im Fenstertitel | `--version/-v` |
@@ -191,6 +192,22 @@ Bedienung:
     nur passende Parameter auswählen. Die erzeugte Datei ist wieder über
     „Konfiguration" anwendbar.
 
+  - **Geräte-Sicherung** – legt eine **vollständige Geräte-Sicherung** an bzw.
+    spielt sie wieder ein (das JSON-Format aus AXIS OS „System > Wartung",
+    ab **AXIS OS 11.8**, über die Device-Configuration-API `/config/rest/$export`
+    bzw. `$import`). „Sicherung der **ersten** Kamera speichern…" liest die
+    komplette Konfiguration der ersten markierten Kamera und schreibt sie als
+    `.json`. „Sicherung einspielen" wählt eine `.json`-Datei und wendet sie auf
+    **alle** markierten Kameras an – wahlweise im Modus **Zusammenführen** (nur
+    gesicherte Werte überschreiben) oder **Zurücksetzen** (betroffene Bereiche auf
+    Standard, dann Sicherung). Anders als die ADM-`.cfg` (eine auswählbare
+    Parameter-Vorlage für den Rollout) ist eine Geräte-Sicherung ein
+    **geräte­spezifisches Voll­abbild** (u. a. IP, Hostname, Ereignisregeln, Zeit,
+    Benutzerverwaltung). ⚠️ **Passwörter sind aus Sicherheitsgründen nicht
+    enthalten** und werden nicht wiederhergestellt; auf mehrere Kameras angewandt
+    drohen IP-/Namenskonflikte, und die Kamera kann sich nach dem Einspielen selbst
+    neu starten.
+
   Die Aufrufe laufen über die Axis-VAPIX-API bzw. den ONVIF-Dienst (HTTPS mit
   selbstsignierten Zertifikaten wird unterstützt); das Ergebnis wird je Kamera
   angezeigt.
@@ -286,6 +303,8 @@ wird interaktiv gefragt), `--scheme {auto,https,http}`, `--port`, `--conn-timeou
 | `firmware` | Firmware aufspielen | `--file` (.bin), `--factory-default` |
 | `config` | ADM-Konfiguration anwenden | `--file` (.cfg), `--no-profiles`, `--no-vmd4` |
 | `config-export` | Konfiguration auslesen & als ADM-`.cfg` speichern | `--output`/`-o` (.cfg, Pflicht), `--grep` (Namens-Regex), `--no-profiles`, `--no-vmd4` |
+| `backup` | Geräte-Sicherung (`.json`) einer Kamera speichern | `--output`/`-o` (.json, Pflicht) |
+| `backup-restore` | Geräte-Sicherung (`.json`) auf Kamera(s) einspielen | `--file` (.json, Pflicht), `--import-type merge\|default` |
 
 ```bash
 # IP zweier Kameras (Passwort wird abgefragt)
@@ -313,6 +332,10 @@ python3 axis_kamera_discovery_cli.py onvif-import 192.168.0.50 --file onvif.txt 
 ./Axis_Kamera_Discovery-x86_64.AppImage cli config-export 192.168.0.50 -o Konfig.cfg -p pw
 # nur Netzwerk-Parameter exportieren (Namens-Regex), ohne Stream-Profile
 ./Axis_Kamera_Discovery-x86_64.AppImage cli config-export 192.168.0.50 -o Net.cfg -p pw --grep '^Network\.' --no-profiles
+
+# Geräte-Sicherung anlegen (AXIS OS 11.8+) und wieder einspielen
+./Axis_Kamera_Discovery-x86_64.AppImage cli backup 192.168.0.50 -o device_setting_M7104.json -p pw
+./Axis_Kamera_Discovery-x86_64.AppImage cli backup-restore 192.168.0.50 --file device_setting_M7104.json -p pw
 ```
 
 ---
@@ -361,6 +384,7 @@ axis_IP_Utility/
 
 | Version | Änderungen |
 |---|---|
+| 26.08.09 | Neuer Reiter **Geräte-Sicherung** im Dialog „Kamera Einstellungen": komplette Geräte-Sicherung (JSON aus AXIS OS „System > Wartung", ab AXIS OS 11.8) über die Device-Configuration-API `/config/rest/$export` bzw. `$import` (PATCH) **anlegen** (erste markierte Kamera) und **einspielen** (alle markierten, Modus *Zusammenführen*/*Zurücksetzen*). Neue CLI-Unterbefehle `backup` und `backup-restore`. Hinweis: Passwörter sind in einer Sicherung nicht enthalten; das Abbild ist gerätespezifisch |
 | 26.08.08 | Gebündeltes **CPython auf 3.14.7** aktualisiert (Sicherheits-/Fehlerkorrekturen der Python-Foundation); übrige Toolchain (Tcl/Tk 9.0.4, OpenSSL 3.5.7, libffi 3.7.1) und Python-Wheels bereits aktuell |
 | 26.07.22 | **Vollständige englische Übersetzung**: Der Dialog „Kamera Einstellungen" (alle Reiter IP/IPv6/Benutzer/ONVIF/Firmware/Konfiguration inkl. aller Hinweise, Bestätigungsdialoge, Fehler- und Ergebnismeldungen) und der Parameter-Auswahldialog folgen jetzt der Sprachwahl im Einstellungsmenü. Der `_apply`-Dispatch nutzt statt des (übersetzten) Reiter-Textes die Widget-ID des Reiters; die Worker-Threads übersetzen über eine gecachte Sprach-Kennung (kein Tk-Zugriff aus dem Thread) |
 | 26.07.19b2 | Neuer Reiter **IPv6-Adresse** im Dialog „Kamera Einstellungen": IPv6 auf *automatisch* (SLAAC/Router-Advertisement), *feste Adresse* (mit Präfix + optionalem Gateway) oder *aus* stellen, plus *aktuelle IPv6-Konfiguration auslesen* (rein lesend, `param.cgi` `Network.IPv6`). Neue CLI-Unterbefehle `set-ipv6` und `ipv6-show` |

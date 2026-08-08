@@ -28,7 +28,7 @@ import axis_kamera_discovery_vapix as vapix
 
 # Versionsschema: JJ.MM.TT, bei mehreren Releases am selben Tag b1, b2, ...
 # (wird von bump_version.py gepflegt)
-__version__ = "26.08.08"
+__version__ = "26.08.09"
 
 FIELD_NAMES = [
     "Name",
@@ -360,6 +360,35 @@ def cmd_config_export(args):
     print(f"[OK]     {ip}: {n} Parameter{extra} -> {args.output}")
     return 0
 
+def cmd_backup(args):
+    """Speichert die komplette Geraete-Sicherung (DCA $export) einer Kamera als JSON."""
+    if len(args.ips) != 1:
+        print("[FEHLER] backup erwartet genau eine IP-Adresse.")
+        return 1
+    ip = args.ips[0]
+    k = _conn_kwargs(args)
+    k["timeout"] = max(60, args.conn_timeout)
+    try:
+        n = vapix.save_device_settings(ip, args.output, **k)
+    except vapix.VapixError as exc:
+        print(f"[FEHLER] {ip}: {exc}")
+        return 1
+    print(f"[OK]     {ip}: {n} Ressourcen -> {args.output}")
+    return 0
+
+def cmd_backup_restore(args):
+    """Spielt eine JSON-Geraete-Sicherung (DCA $import) auf die Kamera(s) ein."""
+    try:
+        data = vapix.load_device_settings_backup(args.file)
+    except vapix.VapixError as exc:
+        print(f"[FEHLER] {exc}")
+        return 1
+    print(f"Sicherung: {len(data)} Ressourcen ({', '.join(sorted(data))})")
+    k = _conn_kwargs(args)
+    k["timeout"] = max(60, args.conn_timeout)
+    return _run_over_ips(args.ips, lambda ip: "{} Ressourcen eingespielt".format(
+        vapix.import_device_settings(ip, data=data, import_type=args.import_type, **k)))
+
 def main():
     parser = argparse.ArgumentParser(
         description='Axis_Kamera_Discovery - Suche und Konfiguration von Axis-Kameras.')
@@ -381,7 +410,7 @@ def main():
                                 help='Kamera-Konfiguration (set-ip, set-dhcp, set-ipv6, '
                                      'ipv6-show, user-add, user-passwd, user-import, '
                                      'onvif-add, onvif-passwd, onvif-import, firmware, '
-                                     'config, config-export)')
+                                     'config, config-export, backup, backup-restore)')
     # gemeinsame Verbindungs-/Auth-Optionen
     conn = argparse.ArgumentParser(add_help=False)
     conn.add_argument('ips', nargs='+', help='Ziel-IP(s) der Kamera(s)')
@@ -476,6 +505,20 @@ def main():
     sp.add_argument('--no-vmd4', dest='no_vmd4', action='store_true',
                     help='Bewegungserkennung (VMD4) nicht exportieren')
     sp.set_defaults(func=cmd_config_export)
+
+    sp = sub.add_parser('backup', parents=[conn],
+                        help='Komplette Geraete-Sicherung (.json) einer Kamera speichern')
+    sp.add_argument('--output', '-o', required=True, help='Zieldatei (.json)')
+    sp.set_defaults(func=cmd_backup)
+
+    sp = sub.add_parser('backup-restore', parents=[conn],
+                        help='Geraete-Sicherung (.json) auf Kamera(s) einspielen')
+    sp.add_argument('--file', required=True, help='Sicherungsdatei (.json)')
+    sp.add_argument('--import-type', dest='import_type', choices=['merge', 'default'],
+                    default='merge',
+                    help="'merge' (nur Gesichertes ueberschreiben, Standard) oder "
+                         "'default' (betroffene Bereiche zuruecksetzen)")
+    sp.set_defaults(func=cmd_backup_restore)
 
     args = parser.parse_args()
 

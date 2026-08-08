@@ -230,6 +230,39 @@ TRANSLATIONS = {
         "in die ADM-.cfg geschrieben werden. Tipp: ein vollstaendiger Export "
         "enthaelt auch geraetespezifische/nur-lesbare Werte (z.B. Seriennummer) "
         "- fuer die Uebertragung auf andere Kameras nur passende Parameter waehlen.",
+        # Kamera-Einstellungen: Geraete-Sicherung (Device Configuration API)
+        "camera_settings_backup_tab": "Geraete-Sicherung",
+        "cs_bk_restore_title": "Sicherung einspielen:",
+        "cs_bk_file": "Sicherungsdatei:",
+        "cs_bk_none": "Keine Sicherungsdatei gewaehlt.",
+        "cs_bk_info": "{n} Ressourcen in der Sicherung: {keys}",
+        "cs_bk_parse_error": "Sicherung nicht lesbar: {exc}",
+        "cs_bk_importtype": "Modus beim Einspielen:",
+        "cs_bk_merge": "Zusammenfuehren - nur gesicherte Werte ueberschreiben, Rest behalten",
+        "cs_bk_default": "Zuruecksetzen - betroffene Bereiche auf Standard, dann Sicherung",
+        "cs_bk_help": "Spielt eine komplette Geraete-Sicherung (JSON aus AXIS OS "
+        "„System > Wartung“, ab AXIS OS 11.8) auf die markierten Kameras ein. "
+        "Passwoerter sind in einer Sicherung NICHT enthalten und werden nicht "
+        "wiederhergestellt. Die Sicherung ist geraetespezifisch (u.a. IP, Hostname) - "
+        "auf mehrere Kameras angewandt entstehen Adress-/Namenskonflikte. Das Geraet "
+        "kann sich nach dem Einspielen selbst neu starten.",
+        "cs_bk_need_file": "Bitte zuerst eine Sicherungsdatei waehlen.",
+        "cs_bk_restore_confirm_title": "Sicherung einspielen?",
+        "cs_bk_restore_confirm": "Sicherung auf {count} Kamera(s) einspielen? "
+        "Die Geraete koennen dabei neu starten. Bei mehreren Kameras drohen "
+        "IP-/Namenskonflikte (die Sicherung ist geraetespezifisch).",
+        "cs_bk_restoring": "Spiele Sicherung auf {count} Kamera(s) ein ...",
+        "cs_bk_restore_ok": "Sicherung eingespielt ({n} Ressourcen) - Geraet startet ggf. neu",
+        "cs_bk_choose": "Sicherungsdatei waehlen",
+        "cs_bk_download_title": "Sicherung herunterladen:",
+        "cs_bk_download_btn": "Sicherung der ERSTEN Kamera speichern...",
+        "cs_bk_download_help": "Liest die komplette Konfiguration der ERSTEN markierten "
+        "Kamera und speichert sie als JSON-Sicherung (gleiches Format wie AXIS OS "
+        "„System > Wartung“). Passwoerter sind aus Sicherheitsgruenden nicht enthalten.",
+        "cs_bk_save_as": "Sicherung speichern unter",
+        "cs_bk_saving": "Lese Sicherung von {name} ({ip}) ...",
+        "cs_bk_save_ok": "Sicherung gespeichert: {path} ({n} Ressourcen)",
+        "cs_ft_json": "Geraete-Sicherung",
         # Kamera-Einstellungen: Meldungen und Status
         "cs_input_error": "Eingabefehler",
         "cs_confirm_change": "Aenderung bestaetigen",
@@ -497,6 +530,38 @@ TRANSLATIONS = {
         "ADM .cfg. Tip: a full export also contains device-specific/read-only values "
         "(e.g. serial number) - for transfer to other cameras, select only matching "
         "parameters.",
+        # Camera settings: device backup (Device Configuration API)
+        "camera_settings_backup_tab": "Device backup",
+        "cs_bk_restore_title": "Restore backup:",
+        "cs_bk_file": "Backup file:",
+        "cs_bk_none": "No backup file selected.",
+        "cs_bk_info": "{n} resources in backup: {keys}",
+        "cs_bk_parse_error": "Backup not readable: {exc}",
+        "cs_bk_importtype": "Restore mode:",
+        "cs_bk_merge": "Merge - overwrite only saved values, keep the rest",
+        "cs_bk_default": "Reset - affected areas to default, then apply backup",
+        "cs_bk_help": "Restores a complete device backup (JSON from AXIS OS "
+        "“System > Maintenance”, AXIS OS 11.8 or newer) to the selected cameras. "
+        "Passwords are NOT contained in a backup and are not restored. A backup is "
+        "device-specific (incl. IP, hostname) - applying it to several cameras causes "
+        "address/name conflicts. The device may reboot itself after the restore.",
+        "cs_bk_need_file": "Please select a backup file first.",
+        "cs_bk_restore_confirm_title": "Restore backup?",
+        "cs_bk_restore_confirm": "Restore the backup to {count} camera(s)? "
+        "The devices may reboot. With several cameras there is a risk of IP/name "
+        "conflicts (a backup is device-specific).",
+        "cs_bk_restoring": "Restoring backup to {count} camera(s) ...",
+        "cs_bk_restore_ok": "Backup restored ({n} resources) - device may reboot",
+        "cs_bk_choose": "Select backup file",
+        "cs_bk_download_title": "Download backup:",
+        "cs_bk_download_btn": "Save backup of the FIRST camera...",
+        "cs_bk_download_help": "Reads the complete configuration of the FIRST selected "
+        "camera and saves it as a JSON backup (same format as AXIS OS "
+        "“System > Maintenance”). Passwords are not included for security reasons.",
+        "cs_bk_save_as": "Save backup as",
+        "cs_bk_saving": "Reading backup from {name} ({ip}) ...",
+        "cs_bk_save_ok": "Backup saved: {path} ({n} resources)",
+        "cs_ft_json": "Device backup",
         # Camera settings: messages and status
         "cs_input_error": "Input error",
         "cs_confirm_change": "Confirm change",
@@ -1822,6 +1887,48 @@ class CameraSettingsDialog(tk.Toplevel):
             wraplength=560, justify=tk.LEFT,
         ).pack(anchor=tk.W, pady=(4, 0))
 
+        # ===== Reiter: Geraete-Sicherung (Device Configuration API .json) =====
+        tab_bk = ttk.Frame(self.nb, padding=8)
+        self.nb.add(tab_bk, text=self._("camera_settings_backup_tab"))
+        self._tab_handlers.append((str(tab_bk), self._apply_backup))
+        self.backup_path_var = tk.StringVar()
+        self._backup_data = None  # zuletzt geladene Sicherung (Ressourcen-Map)
+        ttk.Label(tab_bk, text=self._("cs_bk_restore_title"),
+                  font=("TkDefaultFont", 9, "bold")).pack(anchor=tk.W)
+        bf = ttk.Frame(tab_bk)
+        bf.pack(fill=tk.X, pady=(4, 0))
+        ttk.Label(bf, text=self._("cs_bk_file")).grid(row=0, column=0, sticky=tk.W, padx=4, pady=2)
+        ttk.Entry(bf, textvariable=self.backup_path_var, width=46).grid(row=0, column=1, padx=4, pady=2)
+        ttk.Button(bf, text=self._("cs_browse"), command=self._choose_backup).grid(
+            row=0, column=2, padx=4, pady=2)
+        self.backup_info_var = tk.StringVar(value=self._("cs_bk_none"))
+        ttk.Label(tab_bk, textvariable=self.backup_info_var, wraplength=560,
+                  justify=tk.LEFT).pack(anchor=tk.W, pady=(6, 0))
+        self.backup_importtype_var = tk.StringVar(value="merge")
+        ttk.Label(tab_bk, text=self._("cs_bk_importtype")).pack(anchor=tk.W, pady=(6, 0))
+        ttk.Radiobutton(tab_bk, text=self._("cs_bk_merge"), value="merge",
+                        variable=self.backup_importtype_var).pack(anchor=tk.W)
+        ttk.Radiobutton(tab_bk, text=self._("cs_bk_default"), value="default",
+                        variable=self.backup_importtype_var).pack(anchor=tk.W)
+        ttk.Label(
+            tab_bk,
+            text=self._("cs_bk_help"),
+            wraplength=560, justify=tk.LEFT,
+        ).pack(anchor=tk.W, pady=(8, 0))
+
+        ttk.Separator(tab_bk, orient=tk.HORIZONTAL).pack(fill=tk.X, pady=(12, 8))
+        ttk.Label(tab_bk, text=self._("cs_bk_download_title"),
+                  font=("TkDefaultFont", 9, "bold")).pack(anchor=tk.W)
+        self.backup_dl_btn = ttk.Button(
+            tab_bk, text=self._("cs_bk_download_btn"),
+            command=self._download_backup)
+        self.backup_dl_btn.pack(anchor=tk.W, pady=(4, 0))
+        ttk.Label(
+            tab_bk,
+            text=self._("cs_bk_download_help"),
+            wraplength=560, justify=tk.LEFT,
+        ).pack(anchor=tk.W, pady=(4, 0))
+
         # --- Buttons ---
         btns = ttk.Frame(outer)
         btns.pack(fill=tk.X, pady=(6, 4))
@@ -1884,6 +1991,7 @@ class CameraSettingsDialog(tk.Toplevel):
         self.test_btn.config(state=state)
         self.apply_btn.config(state=state)
         self.export_cfg_btn.config(state=state)
+        self.backup_dl_btn.config(state=state)
         self.import_user_btn.config(state=state)
         self.import_onvif_btn.config(state=state)
         self.ipv6_read_btn.config(state=state)
@@ -2409,6 +2517,114 @@ class CameraSettingsDialog(tk.Toplevel):
         self._log(self._("cs_read_ok", name=name, params=len(cfg['parameters']),
                          profiles=len(cfg['profiles']), vmd=vmd4_note))
         ParameterSelectDialog(self, cfg, name, self._palette)
+
+    # ------------------------ Geraete-Sicherung: einspielen (Restore)
+    def _choose_backup(self):
+        path = filedialog.askopenfilename(
+            title=self._("cs_bk_choose"), parent=self,
+            filetypes=[(self._("cs_ft_json"), "*.json"), (self._("cs_ft_all"), "*.*")],
+        )
+        if not path:
+            return
+        self.backup_path_var.set(path)
+        try:
+            self._backup_data = vapix.load_device_settings_backup(path)
+            keys = ", ".join(sorted(self._backup_data))
+            self.backup_info_var.set(self._(
+                "cs_bk_info", n=len(self._backup_data), keys=keys))
+        except vapix.VapixError as exc:
+            self._backup_data = None
+            self.backup_info_var.set(self._("cs_bk_parse_error", exc=exc))
+
+    def _apply_backup(self):
+        if self._backup_data is None:
+            messagebox.showerror(self._("cs_input_error"),
+                                 self._("cs_bk_need_file"), parent=self)
+            return
+        confirm = self._("cs_bk_restore_confirm", count=len(self.cameras))
+        if not messagebox.askyesno(self._("cs_bk_restore_confirm_title"),
+                                   confirm, parent=self):
+            return
+        self._clear_log()
+        self._set_busy(True)
+        self._log(self._("cs_bk_restoring", count=len(self.cameras)))
+        conn = self._conn_kwargs()
+        conn["timeout"] = max(60, conn["timeout"])
+        data = self._backup_data
+        import_type = self.backup_importtype_var.get()
+        threading.Thread(target=self._worker_backup_restore,
+                         args=(data, import_type, conn), daemon=True).start()
+        self.after(150, self._poll)
+
+    def _worker_backup_restore(self, data, import_type, kwargs):
+        for cam in self.cameras:
+            ip = get_first_ip(cam)
+            cname = cam.get("Name", ip)
+            if not ip:
+                self._queue.put((cname, False, self._("cs_no_ip_known")))
+                continue
+            try:
+                n = vapix.import_device_settings(
+                    ip, data=data, import_type=import_type, **kwargs)
+                self._queue.put((cname, True, self._("cs_bk_restore_ok", n=n)))
+            except vapix.VapixError as exc:
+                self._queue.put((cname, False, str(exc)))
+        self._queue.put(None)
+
+    # ------------------------ Geraete-Sicherung: herunterladen (Download)
+    def _download_backup(self):
+        if self._working:
+            return
+        if not self.cameras:
+            messagebox.showerror(self._("cs_no_camera_title"),
+                                 self._("cs_no_camera"), parent=self)
+            return
+        cam = self.cameras[0]
+        ip = get_first_ip(cam)
+        name = cam.get("Name", ip)
+        if not ip:
+            messagebox.showerror(self._("cs_no_ip_title"),
+                                 self._("cs_no_ip_for", name=name), parent=self)
+            return
+        safe = re.sub(r"[^A-Za-z0-9._-]+", "_", str(name)).strip("_") or "kamera"
+        path = filedialog.asksaveasfilename(
+            title=self._("cs_bk_save_as"), parent=self, defaultextension=".json",
+            initialfile=f"device_setting_{safe}.json",
+            filetypes=[(self._("cs_ft_json"), "*.json"), (self._("cs_ft_all"), "*.*")],
+        )
+        if not path:
+            return
+        self._clear_log()
+        self._set_busy(True)
+        if len(self.cameras) > 1:
+            self._log(self._("cs_read_only_first", name=name))
+        self._log(self._("cs_bk_saving", name=name, ip=ip))
+        kwargs = self._conn_kwargs()
+        kwargs["timeout"] = max(60, kwargs["timeout"])
+        self._backup_q = queue.Queue()
+        threading.Thread(target=self._worker_backup_download,
+                         args=(ip, name, path, kwargs), daemon=True).start()
+        self.after(150, self._poll_backup)
+
+    def _worker_backup_download(self, ip, name, path, kwargs):
+        try:
+            n = vapix.save_device_settings(ip, path=path, **kwargs)
+            self._backup_q.put(("ok", name, (path, n)))
+        except vapix.VapixError as exc:
+            self._backup_q.put(("err", name, str(exc)))
+
+    def _poll_backup(self):
+        try:
+            kind, name, payload = self._backup_q.get_nowait()
+        except queue.Empty:
+            self.after(150, self._poll_backup)
+            return
+        self._set_busy(False)
+        if kind == "err":
+            self._log(self._("cs_log_error", name=name, msg=payload))
+            return
+        path, n = payload
+        self._log(self._("cs_bk_save_ok", path=path, n=n))
 
     def _poll(self):
         try:
