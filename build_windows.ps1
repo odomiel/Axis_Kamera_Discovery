@@ -163,13 +163,18 @@ if ($Clean) {
 }
 
 # 3. Abhängigkeiten installieren
-Write-Info "Installiere Abhaengigkeiten..."
-$dependencies = @("pyinstaller", "zeroconf", "prettytable", "ifaddr", "sv-ttk")
+# WICHTIG: --upgrade, damit eine evtl. veraltete PyInstaller-Version aktualisiert
+# wird. Python 3.14 bringt Tcl/Tk 9 mit; nur ein aktuelles PyInstaller buendelt das
+# Tcl-Datenverzeichnis (_tcl_data) korrekt. Aeltere Versionen brechen sonst zur
+# Laufzeit ab ("Tcl data directory ... _tcl_data not found"). pip waehlt mit
+# --upgrade automatisch das neueste PyInstaller, das Python 3.14 unterstuetzt.
+Write-Info "Installiere/aktualisiere Abhaengigkeiten..."
+$dependencies = @("pyinstaller>=6.11", "zeroconf", "prettytable", "ifaddr", "sv-ttk")
 
 if ($ForceReinstall) {
-    & $pythonExe -m pip install --force-reinstall $dependencies
+    & $pythonExe -m pip install --upgrade --force-reinstall $dependencies
 } else {
-    & $pythonExe -m pip install $dependencies
+    & $pythonExe -m pip install --upgrade $dependencies
 }
 
 if ($LASTEXITCODE -ne 0) {

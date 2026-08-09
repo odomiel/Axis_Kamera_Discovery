@@ -28,9 +28,18 @@ Deshalb den Interpreter über den Python-Launcher `py` explizit wählen:
 py -0p                 # zeigt alle installierten Versionen und ihre Pfade
 py -3.14 -V            # muss "Python 3.14.x" ausgeben
 
-py -3.14 -m pip install pyinstaller zeroconf prettytable ifaddr sv-ttk
+py -3.14 -m pip install --upgrade "pyinstaller>=6.11" zeroconf prettytable ifaddr sv-ttk
 py -3.14 -m PyInstaller --noconfirm Axis_Kamera_Discovery.spec
 ```
+
+> **Wichtig – PyInstaller aktuell halten:** Python 3.14 bringt **Tcl/Tk 9** mit.
+> Nur ein **aktuelles** PyInstaller (≥ 6.11, am besten das neueste) bündelt dessen
+> Datenverzeichnis korrekt. Eine ältere, bereits installierte Version bricht sonst
+> beim Start der Exe ab mit
+> `FileNotFoundError: Tcl data directory "...\_tcl_data" not found`. Deshalb
+> unbedingt mit **`--upgrade`** installieren (ein blankes `pip install` lässt eine
+> vorhandene alte Version stehen). `pip` wählt automatisch das neueste PyInstaller,
+> das Python 3.14 unterstützt.
 
 PyInstaller schreibt die verwendete Version zu Beginn ins Log
 (`INFO: Python: 3.14.x`) – dort lässt sich prüfen, ob wirklich 3.14 gebaut wurde.
@@ -80,6 +89,12 @@ Ergebnis liegt als Artefakt `Axis_Kamera_Discovery-windows` (die `.exe`-Dateien)
   dem Skript). So bleibt die Konfiguration bei einem mitgeführten Programmordner
   (z. B. USB-Stick) erhalten. Unter Linux unverändert in
   `~/.config/axis_kamera_discovery/`.
-- **Tcl/Tk**: Windows-Python bringt Tk 8.6 mit; alle genutzten Widgets und das
-  moderne **Sun-Valley-Theme** (`sv-ttk`, Hell/Dunkel) funktionieren damit.
-  Fehlt `sv-ttk`, faellt die GUI automatisch auf das `clam`-Theme zurueck.
+- **Tcl/Tk**: Python 3.14 bringt **Tcl/Tk 9** mit (frühere 3.x brachten Tk 8.6);
+  alle genutzten Widgets und das moderne **Sun-Valley-Theme** (`sv-ttk`,
+  Hell/Dunkel) funktionieren damit. Fehlt `sv-ttk`, faellt die GUI automatisch auf
+  das `clam`-Theme zurueck.
+- **Fehler „Tcl data directory … _tcl_data not found"** beim Start der fertigen
+  Exe: Das PyInstaller ist zu alt für Tcl/Tk 9. Mit
+  `py -3.14 -m pip install --upgrade pyinstaller` aktualisieren und neu bauen
+  (siehe oben). Das mitgelieferte `build_windows.ps1` und die CI installieren
+  bereits mit `--upgrade`.

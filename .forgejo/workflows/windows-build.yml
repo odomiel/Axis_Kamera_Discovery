@@ -20,7 +20,10 @@ jobs:
           python-version: "3.14"
 
       - name: Abhaengigkeiten installieren
-        run: pip install pyinstaller zeroconf prettytable ifaddr sv-ttk
+        # --upgrade + Mindestversion: Python 3.14 bringt Tcl/Tk 9 mit; nur ein
+        # aktuelles PyInstaller buendelt das Tcl-Datenverzeichnis (_tcl_data)
+        # korrekt (aeltere brechen mit "Tcl data directory ... not found" ab).
+        run: pip install --upgrade "pyinstaller>=6.11" zeroconf prettytable ifaddr sv-ttk
 
       - name: .exe bauen
         run: pyinstaller --noconfirm Axis_Kamera_Discovery.spec
