@@ -1579,7 +1579,8 @@ class CameraSettingsDialog(tk.Toplevel):
         self._lang = master.language_var.get()
         self.title(self._("camera_settings_title"))
         self.geometry("720x780")
-        self.minsize(720, 600)
+        # Breite darf klein werden -> die Reiter-Leiste scrollt dann horizontal.
+        self.minsize(480, 600)
         self.transient(master)
         self._palette = palette
         self.configure(bg=palette["bg"])
@@ -1644,15 +1645,21 @@ class CameraSettingsDialog(tk.Toplevel):
         )
 
         # --- Aktionen in Reitern ---
-        self.nb = ttk.Notebook(outer)
-        self.nb.pack(fill=tk.X, pady=4)
+        # ttk.Notebook kann seine Reiter nicht scrollen -> bei zu schmalem Fenster
+        # wuerden sie abgeschnitten. Deshalb: ein "tabloses" Notebook (Reiter per
+        # leerem Style ausgeblendet) plus eine eigene, horizontal scrollbare
+        # Reiter-Leiste darueber (Pfeile + Mausrad).
+        self._build_tabbar(outer)
+        self.nb = ttk.Notebook(outer, style="Tabless.TNotebook")
+        self.nb.pack(fill=tk.X, pady=(0, 4))
+        self.nb.bind("<<NotebookTabChanged>>", self._sync_active_tab)
 
         # ===== Reiter: IP-Adresse =====
         # Reiter-Frames + zugehoerige Apply-Handler merken, damit _apply nicht
         # vom (uebersetzten) Reiter-Text abhaengt.
         self._tab_handlers = []
         tab_ip = ttk.Frame(self.nb, padding=8)
-        self.nb.add(tab_ip, text=self._("camera_settings_ip_tab"))
+        self._add_tab(tab_ip, self._("camera_settings_ip_tab"))
         self._tab_handlers.append((str(tab_ip), self._apply_ip))
         ttk.Radiobutton(tab_ip, text=self._("cs_ip_dhcp"), value="dhcp",
                         variable=self._mode_var, command=self._on_mode_change).pack(anchor=tk.W)
@@ -1696,7 +1703,7 @@ class CameraSettingsDialog(tk.Toplevel):
 
         # ===== Reiter: IPv6-Adresse =====
         tab_ipv6 = ttk.Frame(self.nb, padding=8)
-        self.nb.add(tab_ipv6, text=self._("camera_settings_ipv6_tab"))
+        self._add_tab(tab_ipv6, self._("camera_settings_ipv6_tab"))
         self._tab_handlers.append((str(tab_ipv6), self._apply_ipv6))
         self._ipv6_mode_var = tk.StringVar(value="auto")
         ttk.Radiobutton(tab_ipv6, text=self._("cs_ipv6_auto"),
@@ -1734,7 +1741,7 @@ class CameraSettingsDialog(tk.Toplevel):
 
         # ===== Reiter: Benutzer (regulaere Axis-Benutzer) =====
         tab_user = ttk.Frame(self.nb, padding=8)
-        self.nb.add(tab_user, text=self._("camera_settings_users_tab"))
+        self._add_tab(tab_user, self._("camera_settings_users_tab"))
         self._tab_handlers.append((str(tab_user), lambda: self._apply_user(onvif=False)))
         self.user_action_var = tk.StringVar(value="add")
         ttk.Radiobutton(tab_user, text=self._("cs_user_add"), value="add",
@@ -1791,7 +1798,7 @@ class CameraSettingsDialog(tk.Toplevel):
 
         # ===== Reiter: ONVIF-Benutzer =====
         tab_onvif = ttk.Frame(self.nb, padding=8)
-        self.nb.add(tab_onvif, text=self._("camera_settings_onvif_tab"))
+        self._add_tab(tab_onvif, self._("camera_settings_onvif_tab"))
         self._tab_handlers.append((str(tab_onvif), lambda: self._apply_user(onvif=True)))
         self.onv_action_var = tk.StringVar(value="add")
         ttk.Radiobutton(tab_onvif, text=self._("cs_onvif_add"), value="add",
@@ -1829,7 +1836,7 @@ class CameraSettingsDialog(tk.Toplevel):
 
         # ===== Reiter: Firmware =====
         tab_fw = ttk.Frame(self.nb, padding=8)
-        self.nb.add(tab_fw, text=self._("camera_settings_firmware_tab"))
+        self._add_tab(tab_fw, self._("camera_settings_firmware_tab"))
         self._tab_handlers.append((str(tab_fw), self._apply_firmware))
         self.fw_path_var = tk.StringVar()
         ff = ttk.Frame(tab_fw)
@@ -1849,7 +1856,7 @@ class CameraSettingsDialog(tk.Toplevel):
 
         # ===== Reiter: Konfiguration (ADM .cfg) =====
         tab_cfg = ttk.Frame(self.nb, padding=8)
-        self.nb.add(tab_cfg, text=self._("camera_settings_config_tab"))
+        self._add_tab(tab_cfg, self._("camera_settings_config_tab"))
         self._tab_handlers.append((str(tab_cfg), self._apply_config))
         self.cfg_path_var = tk.StringVar()
         self._cfg = None  # zuletzt geparste Konfiguration
@@ -1889,7 +1896,7 @@ class CameraSettingsDialog(tk.Toplevel):
 
         # ===== Reiter: Geraete-Sicherung (Device Configuration API .json) =====
         tab_bk = ttk.Frame(self.nb, padding=8)
-        self.nb.add(tab_bk, text=self._("camera_settings_backup_tab"))
+        self._add_tab(tab_bk, self._("camera_settings_backup_tab"))
         self._tab_handlers.append((str(tab_bk), self._apply_backup))
         self.backup_path_var = tk.StringVar()
         self._backup_data = None  # zuletzt geladene Sicherung (Ressourcen-Map)
@@ -1947,6 +1954,133 @@ class CameraSettingsDialog(tk.Toplevel):
         )
         self.result.pack(fill=tk.BOTH, expand=True, pady=(2, 0))
         self.result.config(state=tk.DISABLED)
+
+        # Aktive Reiter-Markierung initialisieren (das <<NotebookTabChanged>>
+        # feuert beim Aufbau nicht zuverlaessig synchron).
+        self._sync_active_tab()
+        # Reiter-Ueberlauf erst pruefen, wenn die Groessen feststehen.
+        self.after(0, self._update_tab_overflow)
+
+    # ------------------------------------------------- scrollbare Reiter-Leiste
+    def _setup_tabless_style(self):
+        """Legt einen Notebook-Style ohne sichtbare Reiter an (Reiter kommen in die
+        eigene scrollbare Leiste). Der Rumpf erbt vom aktuellen Theme-Notebook."""
+        style = ttk.Style(self)
+        try:
+            style.layout("Tabless.TNotebook", style.layout("TNotebook"))
+            style.layout("Tabless.TNotebook.Tab", [])
+        except tk.TclError:
+            pass
+
+    def _build_tabbar(self, parent):
+        """Baut die horizontal scrollbare Reiter-Leiste (Pfeile + Canvas)."""
+        self._setup_tabless_style()
+        self._active_tab_var = tk.StringVar()
+        self._tab_buttons = []
+        self._tab_overflow = None
+
+        bar = ttk.Frame(parent)
+        bar.pack(fill=tk.X, pady=(4, 0))
+        self._tab_left = ttk.Button(bar, text="‹", width=2,
+                                    command=lambda: self._scroll_tabs(-1))
+        self._tab_right = ttk.Button(bar, text="›", width=2,
+                                     command=lambda: self._scroll_tabs(1))
+        self._tabcanvas = tk.Canvas(bar, height=1, highlightthickness=0,
+                                    bg=self._palette["bg"])
+        self._tabcanvas.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        self._tabinner = ttk.Frame(self._tabcanvas)
+        self._tabcanvas.create_window((0, 0), window=self._tabinner, anchor="nw")
+        self._tabinner.bind("<Configure>", self._on_tabinner_configure)
+        self._tabcanvas.bind("<Configure>", lambda e: self._update_tab_overflow())
+        for seq in ("<MouseWheel>", "<Button-4>", "<Button-5>"):
+            self._tabcanvas.bind(seq, self._on_tab_wheel)
+            self._tabinner.bind(seq, self._on_tab_wheel)
+
+    def _add_tab(self, frame, text):
+        """Fuegt eine Seite ins tablose Notebook ein und legt den zugehoerigen
+        Reiter-Knopf in der scrollbaren Leiste an."""
+        btn = ttk.Radiobutton(
+            self._tabinner, text=text, value=str(frame),
+            variable=self._active_tab_var, style="Toolbutton",
+            command=lambda f=frame: self._select_tab(f))
+        btn.pack(side=tk.LEFT, padx=1)
+        for seq in ("<MouseWheel>", "<Button-4>", "<Button-5>"):
+            btn.bind(seq, self._on_tab_wheel)
+        self._tab_buttons.append(btn)
+        self.nb.add(frame, text=text)
+
+    def _select_tab(self, frame):
+        """Waehlt eine Seite (loest <<NotebookTabChanged>> -> _sync_active_tab)."""
+        self.nb.select(frame)
+
+    def _sync_active_tab(self, event=None):
+        """Haelt Knopf-Markierung und Sichtbarkeit mit der aktiven Seite in Sync."""
+        try:
+            current = self.nb.select()
+        except tk.TclError:
+            return
+        if current:
+            self._active_tab_var.set(current)
+            self._ensure_tab_visible(current)
+
+    def _on_tabinner_configure(self, event=None):
+        self._tabcanvas.configure(scrollregion=self._tabcanvas.bbox("all"))
+        h = self._tabinner.winfo_reqheight()
+        if h > 1:
+            self._tabcanvas.configure(height=h)
+        self._update_tab_overflow()
+
+    def _update_tab_overflow(self):
+        """Blendet die Scroll-Pfeile nur ein, wenn die Reiter nicht ganz passen."""
+        if not hasattr(self, "_tabcanvas"):
+            return
+        inner_w = self._tabinner.winfo_reqwidth()
+        canvas_w = self._tabcanvas.winfo_width()
+        overflow = inner_w > canvas_w + 1
+        if overflow == self._tab_overflow:
+            return
+        self._tab_overflow = overflow
+        if overflow:
+            self._tab_left.pack(side=tk.LEFT, before=self._tabcanvas)
+            self._tab_right.pack(side=tk.RIGHT)
+        else:
+            self._tab_left.pack_forget()
+            self._tab_right.pack_forget()
+            self._tabcanvas.xview_moveto(0)
+
+    def _scroll_tabs(self, direction):
+        self._tabcanvas.xview_scroll(direction * 3, "units")
+
+    def _on_tab_wheel(self, event):
+        num = getattr(event, "num", None)
+        if num == 4:
+            delta = -1
+        elif num == 5:
+            delta = 1
+        else:
+            delta = -1 if getattr(event, "delta", 0) > 0 else 1
+        self._tabcanvas.xview_scroll(delta * 2, "units")
+        return "break"
+
+    def _ensure_tab_visible(self, pathname):
+        """Scrollt den aktiven Reiter in den sichtbaren Bereich."""
+        if not self._tab_overflow:
+            return
+        btn = next((b for b in self._tab_buttons
+                    if str(b["value"]) == pathname), None)
+        if btn is None:
+            return
+        self._tabcanvas.update_idletasks()
+        bx = btn.winfo_x()
+        bw = btn.winfo_width()
+        inner_w = max(1, self._tabinner.winfo_reqwidth())
+        canvas_w = self._tabcanvas.winfo_width()
+        view_left = self._tabcanvas.canvasx(0)
+        view_right = view_left + canvas_w
+        if bx < view_left:
+            self._tabcanvas.xview_moveto(bx / inner_w)
+        elif bx + bw > view_right:
+            self._tabcanvas.xview_moveto(max(0, (bx + bw - canvas_w)) / inner_w)
 
     def _on_mode_change(self):
         mode = self._mode_var.get()
