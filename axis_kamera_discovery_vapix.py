@@ -854,22 +854,85 @@ def _writable_params(params):
             if not k.startswith(READONLY_PARAM_PREFIXES)}
 
 
-def apply_parameters(ip, username, password, params, scheme="auto", port=None, timeout=30):
-    """Setzt eine Reihe von param.cgi-Parametern (per POST) in einem Aufruf.
+def _param_batch_ok(text) -> bool:
+    """True, wenn eine ``param.cgi?action=update``-Antwort keinen Fehler meldet."""
+    return not re.search(r"#\s*Error|^Error", text, re.IGNORECASE | re.MULTILINE)
 
-    Schreibgeschuetzte ``Properties.*``-Parameter werden ignoriert (sonst weist die
-    Kamera den kompletten Batch mit 401 ab).
+
+def _auth_ok(ip, username, password, scheme, port, timeout) -> bool:
+    """True, wenn ein *lesender* ``param.cgi``-Aufruf mit den Zugangsdaten durchgeht.
+
+    Dient dazu, ein 401 auf einen ``update`` einzuordnen: liegt es am **falschen
+    Passwort** (dann schlaegt auch dieser Lese-Aufruf fehl) oder daran, dass das
+    Geraet einen **Parameter nicht erlaubt/kennt** (Lesen geht, Schreiben nicht)?
+    """
+    try:
+        _request_auto(ip, username, password,
+                      "/axis-cgi/param.cgi?action=list&group=Brand.Brand",
+                      scheme, port, timeout)
+        return True
+    except _SchemeUnreachable:
+        raise
+    except VapixError:
+        return False
+
+
+def _try_one_param(ip, username, password, name, value, scheme, port, timeout) -> bool:
+    """Setzt genau **einen** param.cgi-Parameter; True bei Erfolg, False, wenn das
+    Geraet ihn ablehnt (``# Error``-Antwort). Verbindungsfehler propagieren."""
+    text = _post_form_auto(ip, username, password, "/axis-cgi/param.cgi",
+                           {"action": "update", name: value}, scheme, port, timeout)
+    return _param_batch_ok(text)
+
+
+def apply_parameters(ip, username, password, params, scheme="auto", port=None, timeout=30):
+    """Setzt eine Reihe von param.cgi-Parametern und liefert ``(angewendet, abgelehnt)``.
+
+    Zuerst ein einziger Batch-``update``. Lehnt das Geraet ihn ab -- etwa weil eine
+    Quell-``.cfg`` einen in dieser Firmware **entfernten/obsoleten** Parameter enthaelt
+    (in neueren AXIS OS zunehmend, siehe **AXIS OS 13**: entfernte PTZ-/Streaming-/
+    ``Time.POSIXTimeZone``-Parameter u. a.) -- wird **parameterweise** nachgefahren: die
+    gueltigen werden angewendet, die vom Geraet abgelehnten in ``abgelehnt`` (Liste der
+    Parameternamen) gesammelt, statt den ganzen Import scheitern zu lassen.
+
+    Schreibgeschuetzte ``Properties.*``-Parameter werden vorab entfernt (sonst weist die
+    Kamera den kompletten Batch ab). Ein 401 auf den Batch gilt nur dann als
+    Auth-Problem (-> propagiert), wenn ein Lesezugriff bestaetigt, dass die
+    Zugangsdaten wirklich nicht mehr stimmen -- sonst ist es eine Parameter-Ablehnung
+    (kein N-faches Einzel-Login, das die Brute-Force-Sperre ausloesen wuerde).
     """
     params = _writable_params(params)
     if not params:
-        return 0
+        return 0, []
     fields = {"action": "update"}
     fields.update(params)
-    text = _post_form_auto(ip, username, password, "/axis-cgi/param.cgi",
-                           fields, scheme, port, timeout)
-    if re.search(r"#\s*Error|^Error", text, re.IGNORECASE | re.MULTILINE):
-        raise VapixError(f"param.cgi meldete: {text.strip()[:200]}")
-    return len(params)
+    try:
+        text = _post_form_auto(ip, username, password, "/axis-cgi/param.cgi",
+                               fields, scheme, port, timeout)
+        if _param_batch_ok(text):
+            return len(params), []
+    except _SchemeUnreachable:
+        raise
+    except VapixError:
+        # 401 o. Ae. auf den Batch: nur als Auth-Fehler durchreichen, wenn ein
+        # Lesezugriff bestaetigt, dass die Zugangsdaten wirklich falsch sind.
+        if not _auth_ok(ip, username, password, scheme, port, timeout):
+            raise
+
+    # Batch abgelehnt -> einzeln, um die gueltigen anzuwenden und die schlechten zu
+    # isolieren (Auth ist an dieser Stelle als in Ordnung bestaetigt).
+    applied, rejected = 0, []
+    for name, value in params.items():
+        try:
+            if _try_one_param(ip, username, password, name, value, scheme, port, timeout):
+                applied += 1
+            else:
+                rejected.append(name)
+        except _SchemeUnreachable:
+            raise
+        except VapixError:
+            rejected.append(name)
+    return applied, rejected
 
 
 def _existing_stream_profiles(ip, username, password, scheme, port, timeout):
@@ -1074,9 +1137,13 @@ def apply_adm_config(ip, username, password, config, scheme="auto", port=None,
     zusaetzlich, was zuvor bereits erfolgreich angewendet wurde).
     """
     sc = _resolve_scheme(ip, username, password, scheme, port, timeout=15) or scheme
-    count = apply_parameters(ip, username, password, config.get("parameters", {}),
-                             sc, port, timeout)
+    count, rejected = apply_parameters(ip, username, password,
+                                       config.get("parameters", {}), sc, port, timeout)
     msg = f"{count} Parameter angewendet"
+    if rejected:
+        shown = ", ".join(rejected[:8]) + ("..." if len(rejected) > 8 else "")
+        msg += (f"; {len(rejected)} vom Geraet abgelehnt/uebersprungen "
+                f"(evtl. in dieser Firmware entfernt): {shown}")
     if with_profiles and config.get("profiles"):
         created, updated, failed = apply_stream_profiles(
             ip, username, password, config["profiles"], sc, port, timeout)

@@ -174,7 +174,12 @@ Bedienung:
     (einheitlich über `param.cgi`): gleichnamige vorhandene Profile werden
     **überschrieben**, neue angelegt. Schreibgeschützte `Properties.*`-Parameter
     werden dabei automatisch übersprungen (neuere Firmware wies sonst den gesamten
-    Batch ab). Enthält die Datei eine **Bewegungserkennung (VMD4)**, kann diese –
+    Batch ab). **Einzelne vom Gerät abgelehnte Parameter** (z. B. in neuerer Firmware
+    wie **AXIS OS 13** entfernte/obsolete Parameter wie `Time.POSIXTimeZone`) lassen
+    den Import nicht mehr scheitern: Wird der Sammel-Aufruf abgelehnt, werden die
+    Parameter **einzeln** angewendet, die gültigen übernommen und die abgelehnten
+    übersprungen und im Ergebnis genannt. Enthält die Datei eine **Bewegungserkennung
+    (VMD4)**, kann diese –
     ebenfalls per Häkchen – über die VMD4-Steuer-API mit angewendet werden (die
     VMD-Anwendung wird bei Bedarf zuvor gestartet). Die Datei sollte zum Modell
     passen.
@@ -384,6 +389,7 @@ axis_IP_Utility/
 
 | Version | Änderungen |
 |---|---|
+| 26.08.10 | **AXIS-OS-13-Vorbereitung** beim Konfig-Import: In AXIS OS 13 entfernte/obsolete `param.cgi`-Parameter (z. B. `Time.POSIXTimeZone`, alte PTZ-/Streaming-Parameter) ließen bisher den gesamten ADM-`.cfg`-Import scheitern, wenn sie in der Quelldatei standen. Wird der Sammel-Aufruf (`param.cgi?action=update`) abgelehnt, fährt `apply_parameters` jetzt **parameterweise** nach: gültige werden angewendet, abgelehnte übersprungen und im Ergebnis genannt. Ein 401 wird nur dann als Auth-Fehler behandelt, wenn ein Lesezugriff das falsche Passwort bestätigt (sonst = Parameter-Ablehnung, kein Einzel-Login-Sturm). Die übrigen genutzten APIs (`Network.*`, `pwdgrp.cgi`, `firmwaremanagement.cgi`, Geräte-Sicherung/DCA, ONVIF) stehen nicht auf der OS-13-Removal-Liste |
 | 26.08.09b2 | Dialog „Kamera Einstellungen": Die **Reiter-Leiste scrollt jetzt horizontal**, wenn das Fenster zu schmal für alle Reiter ist (Reiter werden nicht mehr abgeschnitten). Es erscheinen bei Bedarf ‹/›-Pfeile, Mausrad scrollt ebenfalls, und der aktive Reiter wird automatisch in den sichtbaren Bereich gescrollt. Das Fenster lässt sich dadurch deutlich schmaler ziehen (Mindestbreite 720 → 480). Technisch: „tabloses" Notebook + eigene, in einem Canvas scrollbare Knopf-Leiste |
 | 26.08.09b1 | Windows-Build repariert: Python 3.14 bringt **Tcl/Tk 9** mit, das nur ein **aktuelles PyInstaller** (≥ 6.11) korrekt bündelt – ein blankes `pip install` ließ eine alte Version stehen, wodurch die fertige `.exe` mit `Tcl data directory … _tcl_data not found` abbrach. `build_windows.ps1` und die CI installieren PyInstaller jetzt mit `--upgrade`; `BUILD_WINDOWS.md` um einen Hinweis ergänzt (nur Windows-Verpackung betroffen, App-Code unverändert) |
 | 26.08.09 | Neuer Reiter **Geräte-Sicherung** im Dialog „Kamera Einstellungen": komplette Geräte-Sicherung (JSON aus AXIS OS „System > Wartung", ab AXIS OS 11.8) über die Device-Configuration-API `/config/rest/$export` bzw. `$import` (PATCH) **anlegen** (erste markierte Kamera) und **einspielen** (alle markierten, Modus *Zusammenführen*/*Zurücksetzen*). Neue CLI-Unterbefehle `backup` und `backup-restore`. Hinweis: Passwörter sind in einer Sicherung nicht enthalten; das Abbild ist gerätespezifisch |

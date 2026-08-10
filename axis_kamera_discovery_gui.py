@@ -222,7 +222,10 @@ TRANSLATIONS = {
         "Stream-Profile (gleichnamige vorhandene Profile werden ueberschrieben, "
         "neue angelegt). Enthaelt die Datei eine Bewegungserkennung (VMD4), "
         "wird diese automatisch mit angewendet (die VMD-Anwendung wird bei "
-        "Bedarf gestartet). Die Konfiguration sollte zum Modell passen.",
+        "Bedarf gestartet). Die Konfiguration sollte zum Modell passen. "
+        "Vom Geraet abgelehnte Einzelparameter (z. B. in neuerer Firmware wie "
+        "AXIS OS 13 entfernte Parameter) werden uebersprungen und im Ergebnis "
+        "genannt, statt den ganzen Import abzubrechen.",
         "cs_cfg_export_title": "Konfiguration aus Kamera auslesen:",
         "cs_cfg_export_btn": "Aus Kamera auslesen und speichern...",
         "cs_cfg_export_help": "Liest die komplette Parameterliste der ERSTEN markierten Kamera. "
@@ -522,7 +525,10 @@ TRANSLATIONS = {
         "(param.cgi) to the selected cameras; optionally the stream profiles too "
         "(existing profiles of the same name are overwritten, new ones added). If "
         "the file contains a motion detection (VMD4), it is applied automatically "
-        "(the VMD app is started if needed). The configuration should match the model.",
+        "(the VMD app is started if needed). The configuration should match the model. "
+        "Individual parameters the device rejects (e.g. parameters removed in newer "
+        "firmware such as AXIS OS 13) are skipped and listed in the result instead of "
+        "aborting the whole import.",
         "cs_cfg_export_title": "Read configuration from camera:",
         "cs_cfg_export_btn": "Read from camera and save...",
         "cs_cfg_export_help": "Reads the complete parameter list of the FIRST selected camera. "
