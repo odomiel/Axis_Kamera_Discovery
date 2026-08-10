@@ -178,6 +178,20 @@ TRANSLATIONS = {
         "Advertisement vergebene Adressen; 'Feste IPv6-Adresse' setzt eine "
         "manuelle Adresse inkl. Praefixlaenge. Die aktuell vergebenen Adressen "
         "lassen sich zuvor auslesen (rein lesend).",
+        # Zeitzone-Reiter (Time API)
+        "camera_settings_timezone_tab": "Zeitzone",
+        "cs_tz_label": "Zeitzone (IANA, z. B. Europe/Berlin):",
+        "cs_tz_load_btn": "Von erster Kamera laden",
+        "cs_tz_help": "Setzt die Zeitzone der markierten Kamera(s) ueber die Time API "
+        "(POST time.cgi, setTimeZone; ab AXIS OS 9.30). Ersetzt den in AXIS OS 13 "
+        "entfernten Parameter Time.POSIXTimeZone; die Sommerzeit wird anhand des "
+        "IANA-Namens automatisch angewandt. 'Von erster Kamera laden' holt die "
+        "aktuelle Zone und die vom Geraet unterstuetzten Zonen (rein lesend).",
+        "cs_tz_need": "Bitte eine Zeitzone waehlen oder eingeben.",
+        "cs_tz_applying": "Setze Zeitzone {tz} auf {count} Kamera(s) ...",
+        "cs_tz_reading": "Lese Zeitzone von {name} ({ip}) ...",
+        "cs_tz_current": "Aktuelle Zeitzone von {name}: {tz}",
+        "cs_tz_unknown": "(unbekannt)",
         # Benutzer-Reiter
         "cs_user_add": "Benutzer anlegen",
         "cs_user_setpw": "Passwort aendern",
@@ -483,6 +497,20 @@ TRANSLATIONS = {
         "SLAAC/Router Advertisement; 'Static IPv6 address' sets a manual address "
         "including prefix length. The currently assigned addresses can be read "
         "beforehand (read-only).",
+        # Timezone tab (Time API)
+        "camera_settings_timezone_tab": "Time zone",
+        "cs_tz_label": "Time zone (IANA, e.g. Europe/Berlin):",
+        "cs_tz_load_btn": "Load from first camera",
+        "cs_tz_help": "Sets the time zone of the selected camera(s) via the Time API "
+        "(POST time.cgi, setTimeZone; AXIS OS 9.30+). Replaces the Time.POSIXTimeZone "
+        "parameter removed in AXIS OS 13; daylight saving time is applied automatically "
+        "from the IANA name. 'Load from first camera' fetches the current zone and the "
+        "zones the device supports (read-only).",
+        "cs_tz_need": "Please select or enter a time zone.",
+        "cs_tz_applying": "Setting time zone {tz} on {count} camera(s) ...",
+        "cs_tz_reading": "Reading time zone from {name} ({ip}) ...",
+        "cs_tz_current": "Current time zone of {name}: {tz}",
+        "cs_tz_unknown": "(unknown)",
         # Users tab
         "cs_user_add": "Create user",
         "cs_user_setpw": "Change password",
@@ -1566,6 +1594,31 @@ class AxisDiscoveryGUI(tk.Tk):
         self.status_var.set(self._("status_exported", path=path))
 
 
+# Fallback-Zeitzonen, falls die Laufzeit keine tz-Datenbank hat (zoneinfo leer,
+# z. B. Windows ohne tzdata). Die Combobox ist frei editierbar -- der Nutzer kann
+# jeden IANA-Namen eingeben, und "Von erster Kamera laden" holt die vom Geraet
+# selbst unterstuetzte Liste.
+_FALLBACK_ZONES = [
+    "UTC", "Europe/Berlin", "Europe/Vienna", "Europe/Zurich", "Europe/London",
+    "Europe/Paris", "Europe/Madrid", "Europe/Rome", "Europe/Amsterdam",
+    "Europe/Stockholm", "Europe/Warsaw", "Europe/Moscow", "America/New_York",
+    "America/Chicago", "America/Denver", "America/Los_Angeles", "America/Sao_Paulo",
+    "Asia/Dubai", "Asia/Kolkata", "Asia/Shanghai", "Asia/Tokyo", "Australia/Sydney",
+]
+
+
+def _iana_zones():
+    """Liefert die IANA-Zeitzonennamen aus der stdlib (zoneinfo), sonst den Fallback."""
+    try:
+        from zoneinfo import available_timezones
+        zones = sorted(available_timezones())
+        if zones:
+            return zones
+    except Exception:  # noqa: BLE001 - keine tz-Datenbank o. Ae.
+        pass
+    return list(_FALLBACK_ZONES)
+
+
 class CameraSettingsDialog(tk.Toplevel):
     """Dialog zum Aendern von Einstellungen an einer oder mehreren Kameras.
 
@@ -1744,6 +1797,26 @@ class CameraSettingsDialog(tk.Toplevel):
             text=self._("cs_ipv6_help"),
             wraplength=560, justify=tk.LEFT,
         ).pack(anchor=tk.W, pady=(6, 0))
+
+        # ===== Reiter: Zeitzone (Time API, Ersatz fuer Time.POSIXTimeZone) =====
+        tab_tz = ttk.Frame(self.nb, padding=8)
+        self._add_tab(tab_tz, self._("camera_settings_timezone_tab"))
+        self._tab_handlers.append((str(tab_tz), self._apply_timezone))
+        self.tz_var = tk.StringVar()
+        ttk.Label(tab_tz, text=self._("cs_tz_label")).pack(anchor=tk.W)
+        tzrow = ttk.Frame(tab_tz)
+        tzrow.pack(fill=tk.X, pady=(2, 0))
+        self.tz_combo = ttk.Combobox(tzrow, textvariable=self.tz_var,
+                                     values=_iana_zones(), width=34)
+        self.tz_combo.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        self.tz_load_btn = ttk.Button(tzrow, text=self._("cs_tz_load_btn"),
+                                      command=self._load_timezone)
+        self.tz_load_btn.pack(side=tk.LEFT, padx=(6, 0))
+        ttk.Label(
+            tab_tz,
+            text=self._("cs_tz_help"),
+            wraplength=560, justify=tk.LEFT,
+        ).pack(anchor=tk.W, pady=(8, 0))
 
         # ===== Reiter: Benutzer (regulaere Axis-Benutzer) =====
         tab_user = ttk.Frame(self.nb, padding=8)
@@ -2135,6 +2208,7 @@ class CameraSettingsDialog(tk.Toplevel):
         self.import_user_btn.config(state=state)
         self.import_onvif_btn.config(state=state)
         self.ipv6_read_btn.config(state=state)
+        self.tz_load_btn.config(state=state)
 
     # ------------------------------------------------- Verbindung testen
     def _test_connection(self):
@@ -2765,6 +2839,87 @@ class CameraSettingsDialog(tk.Toplevel):
             return
         path, n = payload
         self._log(self._("cs_bk_save_ok", path=path, n=n))
+
+    # ------------------------ Zeitzone (Time API)
+    def _apply_timezone(self):
+        tz = self.tz_var.get().strip()
+        if not tz:
+            messagebox.showerror(self._("cs_input_error"),
+                                 self._("cs_tz_need"), parent=self)
+            return
+        self._clear_log()
+        self._set_busy(True)
+        self._log(self._("cs_tz_applying", tz=tz, count=len(self.cameras)))
+        conn = self._conn_kwargs()
+        threading.Thread(target=self._worker_timezone, args=(tz, conn),
+                         daemon=True).start()
+        self.after(150, self._poll)
+
+    def _worker_timezone(self, tz, kwargs):
+        for cam in self.cameras:
+            ip = get_first_ip(cam)
+            cname = cam.get("Name", ip)
+            if not ip:
+                self._queue.put((cname, False, self._("cs_no_ip_known")))
+                continue
+            try:
+                msg = vapix.set_timezone(ip, timezone=tz, **kwargs)
+                self._queue.put((cname, True, msg))
+            except vapix.VapixError as exc:
+                self._queue.put((cname, False, str(exc)))
+        self._queue.put(None)
+
+    def _load_timezone(self):
+        if self._working:
+            return
+        if not self.cameras:
+            messagebox.showerror(self._("cs_no_camera_title"),
+                                 self._("cs_no_camera"), parent=self)
+            return
+        cam = self.cameras[0]
+        ip = get_first_ip(cam)
+        name = cam.get("Name", ip)
+        if not ip:
+            messagebox.showerror(self._("cs_no_ip_title"),
+                                 self._("cs_no_ip_for", name=name), parent=self)
+            return
+        self._clear_log()
+        self._set_busy(True)
+        if len(self.cameras) > 1:
+            self._log(self._("cs_read_only_first", name=name))
+        self._log(self._("cs_tz_reading", name=name, ip=ip))
+        kwargs = self._conn_kwargs()
+        self._tz_q = queue.Queue()
+        threading.Thread(target=self._worker_load_timezone,
+                         args=(ip, name, kwargs), daemon=True).start()
+        self.after(150, self._poll_tz)
+
+    def _worker_load_timezone(self, ip, name, kwargs):
+        try:
+            data = vapix.get_time_settings(ip, **kwargs)
+            self._tz_q.put(("ok", name, data))
+        except vapix.VapixError as exc:
+            self._tz_q.put(("err", name, str(exc)))
+
+    def _poll_tz(self):
+        try:
+            kind, name, payload = self._tz_q.get_nowait()
+        except queue.Empty:
+            self.after(150, self._poll_tz)
+            return
+        self._set_busy(False)
+        if kind == "err":
+            self._log(self._("cs_log_error", name=name, msg=payload))
+            return
+        data = payload if isinstance(payload, dict) else {}
+        zones = data.get("timeZones") or []
+        if zones:
+            self.tz_combo.config(values=sorted(zones))
+        current = data.get("timeZone") or ""
+        if current:
+            self.tz_var.set(current)
+        self._log(self._("cs_tz_current", name=name,
+                         tz=current or self._("cs_tz_unknown")))
 
     def _poll(self):
         try:

@@ -1399,3 +1399,61 @@ def import_device_settings(ip, username, password, data, import_type="merge",
     if isinstance(resp, dict) and resp.get("status") == "error":
         raise VapixError(_dca_error(resp))
     return len(payload_data)
+
+
+# =====================================================================
+#  Zeitzone (Time API, AXIS OS 9.30+)
+# =====================================================================
+# Die Time API (POST /axis-cgi/time.cgi, JSON) ersetzt den in AXIS OS 13
+# entfernten param.cgi-Parameter ``Time.POSIXTimeZone``. ``setTimeZone`` nutzt
+# IANA-Namen (z. B. ``Europe/Berlin``) und wendet die Sommerzeit-Regeln
+# automatisch an; ``getAll`` liefert die aktuelle Zone und die vom Geraet
+# unterstuetzten Zonen.
+TIME_API_PATH = "/axis-cgi/time.cgi"
+
+
+def _time_api(ip, username, password, method, params=None, scheme="auto", port=None,
+              timeout=10):
+    """Ruft eine Time-API-Methode auf und liefert die JSON-Antwort (Dict).
+
+    Wirft VapixError, wenn das Geraet ein ``error``-Objekt zurueckmeldet.
+    """
+    body = {"apiVersion": "1.0", "context": "axis_discovery", "method": method}
+    if params is not None:
+        body["params"] = params
+    resp = _post_json_auto(ip, username, password, TIME_API_PATH, body, scheme, port, timeout)
+    if isinstance(resp, dict) and resp.get("error"):
+        err = resp["error"]
+        msg = (err.get("message") or err.get("code")) if isinstance(err, dict) else err
+        raise VapixError(f"Geraet meldete Fehler: {msg}")
+    return resp if isinstance(resp, dict) else {}
+
+
+def get_time_settings(ip, username, password, scheme="auto", port=None, timeout=10):
+    """Time API ``getAll`` -> ``data``-Dict (u. a. ``timeZone`` (IANA-Name),
+    ``posixTimeZone``, ``dstEnabled``, ``timeZones`` = unterstuetzte Zonen)."""
+    data = _time_api(ip, username, password, "getAll", None, scheme, port, timeout).get("data")
+    return data if isinstance(data, dict) else {}
+
+
+def get_timezone(ip, username, password, scheme="auto", port=None, timeout=10):
+    """Aktuelle IANA-Zeitzone der Kamera (leer, wenn nicht gesetzt/verfuegbar)."""
+    return get_time_settings(ip, username, password, scheme, port, timeout).get("timeZone") or ""
+
+
+def list_timezones(ip, username, password, scheme="auto", port=None, timeout=10):
+    """Vom Geraet unterstuetzte IANA-Zeitzonen (die Time API liefert sie selbst)."""
+    return list(get_time_settings(ip, username, password, scheme, port, timeout).get("timeZones") or [])
+
+
+def set_timezone(ip, username, password, timezone, scheme="auto", port=None, timeout=10):
+    """Setzt die Zeitzone ueber die Time API (``setTimeZone``, IANA-Name; AXIS OS 9.30+).
+
+    Ersetzt den in AXIS OS 13 entfernten param.cgi-Parameter ``Time.POSIXTimeZone``; die
+    Sommerzeit wird anhand des IANA-Namens automatisch angewandt.
+    """
+    tz = (timezone or "").strip()
+    if not tz:
+        raise VapixError("Keine Zeitzone angegeben.")
+    _time_api(ip, username, password, "setTimeZone", {"timeZone": tz}, scheme, port, timeout)
+    return f"Zeitzone auf {tz} gesetzt"

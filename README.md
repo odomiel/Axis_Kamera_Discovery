@@ -38,6 +38,7 @@ Python 3.14 inklusive **Tcl/Tk 9** sowie alle Abhängigkeiten mitbringt und dami
 | Kamera-Weboberfläche im Browser öffnen | Doppelklick auf Zeile | `--open` |
 | Kamera-IP ändern (DHCP/fest, Mehrfachauswahl) | „Kamera Einstellungen" | `set-ip` / `set-dhcp` |
 | IPv6 einstellen (auto/fest/aus) & auslesen | „Kamera Einstellungen" | `set-ipv6` / `ipv6-show` |
+| Zeitzone setzen & auslesen (Time API, IANA; AXIS OS 13) | „Kamera Einstellungen" | `set-timezone` / `timezone-show` |
 | Benutzer/ONVIF-Benutzer anlegen oder Passwort ändern | „Kamera Einstellungen" | `user-add`/`user-passwd`/`onvif-add`/`onvif-passwd` |
 | Benutzer/ONVIF-Benutzer aus Textdatei importieren (Stapel) | „Kamera Einstellungen" | `user-import`/`onvif-import` |
 | Firmware-Update (Mehrfachauswahl) | „Kamera Einstellungen" | `firmware` |
@@ -128,6 +129,14 @@ Bedienung:
     *IPv6 deaktivieren*. Der Knopf *Aktuelle IPv6-Konfiguration auslesen* zeigt –
     rein lesend – den aktuellen Status und die vergebenen Adressen der markierten
     Kamera(s) (über `param.cgi`, Gruppe `Network.IPv6`).
+  - **Zeitzone** – setzt die Zeitzone der markierten Kamera(s) über die **Time
+    API** (`POST time.cgi`, `setTimeZone`, ab AXIS OS 9.30) mit einem **IANA-Namen**
+    (z. B. `Europe/Berlin`). Das ersetzt den in **AXIS OS 13 entfernten**
+    `param.cgi`-Parameter `Time.POSIXTimeZone`; die Sommerzeit wird anhand des
+    IANA-Namens automatisch angewandt. Die Auswahlliste ist frei editierbar und mit
+    den Zonen der Python-`zoneinfo`-Datenbank vorbefüllt (mit kleinem Fallback);
+    *Von erster Kamera laden* holt – rein lesend – die aktuelle Zone und die vom
+    Gerät selbst unterstützten Zonen.
   - **Benutzer** – regulären Axis-Benutzer *anlegen* (mit Rolle
     Administrator/Operator/Viewer) oder *Passwort ändern*. Ist die Kamera noch
     im **Auslieferungszustand**, hilft die Checkbox *Auslieferungszustand*: Sie
@@ -299,6 +308,8 @@ wird interaktiv gefragt), `--scheme {auto,https,http}`, `--port`, `--conn-timeou
 | `set-dhcp` | auf DHCP umstellen | – |
 | `set-ipv6` | IPv6 einstellen | `--mode auto\|manual\|off` (Pflicht), `--address` (mit Präfix, nur `manual`), `--router` |
 | `ipv6-show` | aktuelle IPv6-Konfiguration auslesen | – |
+| `set-timezone` | Zeitzone setzen (Time API, IANA) | `--timezone` (z. B. `Europe/Berlin`, Pflicht) |
+| `timezone-show` | aktuelle Zeitzone auslesen | – |
 | `user-add` | Benutzer anlegen | `--name`, `--new-password`, `--role`, `--factory` |
 | `user-passwd` | Benutzer-Passwort ändern | `--name`, `--new-password` |
 | `user-import` | Benutzer aus Textdatei anlegen | `--file` (Name,Passwort[,Rolle]), `--factory` |
@@ -318,6 +329,10 @@ python3 axis_kamera_discovery_cli.py set-ip 192.168.0.90 --new-ip 192.168.0.50 -
 # IPv6: feste Adresse setzen bzw. aktuelle Konfiguration auslesen
 python3 axis_kamera_discovery_cli.py set-ipv6 192.168.0.90 --mode manual --address 2001:db8::10/64 -p pw
 python3 axis_kamera_discovery_cli.py ipv6-show 192.168.0.90 -p pw
+
+# Zeitzone setzen bzw. aktuelle Zeitzone auslesen (Time API, IANA)
+python3 axis_kamera_discovery_cli.py set-timezone 192.168.0.90 --timezone Europe/Berlin -p pw
+python3 axis_kamera_discovery_cli.py timezone-show 192.168.0.90 -p pw
 
 # Erstbenutzer auf werksneuer Kamera (ohne Anmeldung / Standard-Zugangsdaten)
 python3 axis_kamera_discovery_cli.py user-add 192.168.0.90 --name root --new-password 'Geheim123' --factory
@@ -389,6 +404,7 @@ axis_IP_Utility/
 
 | Version | Änderungen |
 |---|---|
+| 26.08.10b1 | Neuer Reiter **Zeitzone** im Dialog „Kamera Einstellungen" + CLI-Befehle `set-timezone`/`timezone-show`: Die Zeitzone wird über die **Time API** (`POST time.cgi`, `setTimeZone`, IANA-Name; ab AXIS OS 9.30) gesetzt/ausgelesen — Ersatz für den in **AXIS OS 13 entfernten** `param.cgi`-Parameter `Time.POSIXTimeZone` (Sommerzeit automatisch). Die IANA-Auswahlliste kommt aus `zoneinfo` (mit Fallback) und lässt sich per „Von erster Kamera laden" durch die vom Gerät unterstützten Zonen ersetzen |
 | 26.08.10 | **AXIS-OS-13-Vorbereitung** beim Konfig-Import: In AXIS OS 13 entfernte/obsolete `param.cgi`-Parameter (z. B. `Time.POSIXTimeZone`, alte PTZ-/Streaming-Parameter) ließen bisher den gesamten ADM-`.cfg`-Import scheitern, wenn sie in der Quelldatei standen. Wird der Sammel-Aufruf (`param.cgi?action=update`) abgelehnt, fährt `apply_parameters` jetzt **parameterweise** nach: gültige werden angewendet, abgelehnte übersprungen und im Ergebnis genannt. Ein 401 wird nur dann als Auth-Fehler behandelt, wenn ein Lesezugriff das falsche Passwort bestätigt (sonst = Parameter-Ablehnung, kein Einzel-Login-Sturm). Die übrigen genutzten APIs (`Network.*`, `pwdgrp.cgi`, `firmwaremanagement.cgi`, Geräte-Sicherung/DCA, ONVIF) stehen nicht auf der OS-13-Removal-Liste |
 | 26.08.09b2 | Dialog „Kamera Einstellungen": Die **Reiter-Leiste scrollt jetzt horizontal**, wenn das Fenster zu schmal für alle Reiter ist (Reiter werden nicht mehr abgeschnitten). Es erscheinen bei Bedarf ‹/›-Pfeile, Mausrad scrollt ebenfalls, und der aktive Reiter wird automatisch in den sichtbaren Bereich gescrollt. Das Fenster lässt sich dadurch deutlich schmaler ziehen (Mindestbreite 720 → 480). Technisch: „tabloses" Notebook + eigene, in einem Canvas scrollbare Knopf-Leiste |
 | 26.08.09b1 | Windows-Build repariert: Python 3.14 bringt **Tcl/Tk 9** mit, das nur ein **aktuelles PyInstaller** (≥ 6.11) korrekt bündelt – ein blankes `pip install` ließ eine alte Version stehen, wodurch die fertige `.exe` mit `Tcl data directory … _tcl_data not found` abbrach. `build_windows.ps1` und die CI installieren PyInstaller jetzt mit `--upgrade`; `BUILD_WINDOWS.md` um einen Hinweis ergänzt (nur Windows-Verpackung betroffen, App-Code unverändert) |

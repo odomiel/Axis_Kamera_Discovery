@@ -28,7 +28,7 @@ import axis_kamera_discovery_vapix as vapix
 
 # Versionsschema: JJ.MM.TT, bei mehreren Releases am selben Tag b1, b2, ...
 # (wird von bump_version.py gepflegt)
-__version__ = "26.08.10"
+__version__ = "26.08.10b1"
 
 FIELD_NAMES = [
     "Name",
@@ -389,6 +389,22 @@ def cmd_backup_restore(args):
     return _run_over_ips(args.ips, lambda ip: "{} Ressourcen eingespielt".format(
         vapix.import_device_settings(ip, data=data, import_type=args.import_type, **k)))
 
+def cmd_set_timezone(args):
+    k = _conn_kwargs(args)
+    return _run_over_ips(args.ips, lambda ip: vapix.set_timezone(
+        ip, timezone=args.timezone, **k))
+
+def cmd_timezone_show(args):
+    k = _conn_kwargs(args)
+    def _show(ip):
+        data = vapix.get_time_settings(ip, **k)
+        tz = data.get("timeZone") or "(unbekannt)"
+        dst = data.get("dstEnabled")
+        n = len(data.get("timeZones") or [])
+        extra = f", Sommerzeit={'an' if dst else 'aus'}" if dst is not None else ""
+        return f"Zeitzone={tz}{extra}, {n} unterstuetzte Zonen"
+    return _run_over_ips(args.ips, _show)
+
 def main():
     parser = argparse.ArgumentParser(
         description='Axis_Kamera_Discovery - Suche und Konfiguration von Axis-Kameras.')
@@ -410,7 +426,8 @@ def main():
                                 help='Kamera-Konfiguration (set-ip, set-dhcp, set-ipv6, '
                                      'ipv6-show, user-add, user-passwd, user-import, '
                                      'onvif-add, onvif-passwd, onvif-import, firmware, '
-                                     'config, config-export, backup, backup-restore)')
+                                     'config, config-export, backup, backup-restore, '
+                                     'set-timezone, timezone-show)')
     # gemeinsame Verbindungs-/Auth-Optionen
     conn = argparse.ArgumentParser(add_help=False)
     conn.add_argument('ips', nargs='+', help='Ziel-IP(s) der Kamera(s)')
@@ -519,6 +536,16 @@ def main():
                     help="'merge' (nur Gesichertes ueberschreiben, Standard) oder "
                          "'default' (betroffene Bereiche zuruecksetzen)")
     sp.set_defaults(func=cmd_backup_restore)
+
+    sp = sub.add_parser('set-timezone', parents=[conn],
+                        help='Zeitzone setzen (Time API, IANA-Name)')
+    sp.add_argument('--timezone', required=True,
+                    help='IANA-Zeitzone, z. B. Europe/Berlin')
+    sp.set_defaults(func=cmd_set_timezone)
+
+    sp = sub.add_parser('timezone-show', parents=[conn],
+                        help='Aktuelle Zeitzone der Kamera anzeigen')
+    sp.set_defaults(func=cmd_timezone_show)
 
     args = parser.parse_args()
 
