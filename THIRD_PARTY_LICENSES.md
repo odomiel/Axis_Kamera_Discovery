@@ -13,7 +13,7 @@ betroffen.
 | CPython | 3.14.7 | PSF License Agreement |
 | Tcl | 9.0.4 | Tcl/Tk License (BSD-artig) |
 | Tk | 9.0.4 | Tcl/Tk License (BSD-artig) |
-| libffi | 3.7.1 | libffi License (MIT-artig) |
+| libffi | 3.8.0 | libffi License (MIT-artig) |
 | OpenSSL | 3.5.7 | Apache License 2.0 |
 | zeroconf | 0.150.0 | **LGPL-2.1-or-later** |
 | ifaddr | 0.2.0 | MIT |
@@ -74,7 +74,7 @@ MODIFICATIONS.
 
 ---
 
-## libffi 3.7.1
+## libffi 3.8.0
 
 libffi - Copyright (c) 1996-2024  Anthony Green, Red Hat, Inc and others.
 See source files for details.
