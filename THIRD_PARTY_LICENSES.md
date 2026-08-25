@@ -14,7 +14,7 @@ betroffen.
 | Tcl | 9.0.4 | Tcl/Tk License (BSD-artig) |
 | Tk | 9.0.4 | Tcl/Tk License (BSD-artig) |
 | libffi | 3.8.0 | libffi License (MIT-artig) |
-| OpenSSL | 3.5.7 | Apache License 2.0 |
+| OpenSSL | 3.5.8 | Apache License 2.0 |
 | zeroconf | 0.150.0 | **LGPL-2.1-or-later** |
 | ifaddr | 0.2.0 | MIT |
 | prettytable | 3.18.0 | BSD-3-Clause |
@@ -100,7 +100,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ---
 
-## OpenSSL 3.5.7
+## OpenSSL 3.5.8
 
 Copyright © 1998-2025 The OpenSSL Project Authors. Alle Rechte vorbehalten.
 
