@@ -18,6 +18,14 @@ APPDIR="$BUILD/AppDir"
 PREFIX="$APPDIR/usr"
 JOBS="$(nproc)"
 
+# --bump: vor dem Build die Version hochzaehlen (schreibt axis_kamera_discovery_cli.py)
+for arg in "$@"; do
+    case "$arg" in
+        --bump) python3 "$ROOT/bump_version.py" >/dev/null ;;
+        *) echo "Unbekannte Option: $arg" >&2; exit 2 ;;
+    esac
+done
+
 TCL_VER=9.0.4
 TK_VER=9.0.4
 PY_VER=3.14.7
