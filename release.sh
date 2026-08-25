@@ -149,12 +149,19 @@ info "Release-ID: ${REL_ID}"
 # ---------------------------------------------------------------------------
 # 3) AppImage als Asset anhaengen (gleichnamiges vorher entfernen -> re-upload)
 # ---------------------------------------------------------------------------
-EXIST_ID="$(api "${REL_URL}/${REL_ID}/assets" | python3 -c '
+EXIST_ID="$(api "${REL_URL}/${REL_ID}/assets" | APPIMAGE="$APPIMAGE" python3 -c '
 import json, sys, os
 name = os.path.basename(os.environ["APPIMAGE"])
-try: data = json.load(sys.stdin)
-except Exception: data = []
-print(next((str(a["id"]) for a in data if a.get("name")==name), ""))' APPIMAGE="$APPIMAGE")
+try:
+    data = json.load(sys.stdin)
+except Exception:
+    data = []
+out = ""
+for a in data:
+    if a.get("name") == name:
+        out = str(a["id"])
+        break
+print(out)')"
 
 if [ -n "$EXIST_ID" ]; then
     api -X DELETE "${REL_URL}/${REL_ID}/assets/${EXIST_ID}" >/dev/null
