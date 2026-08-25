@@ -387,6 +387,7 @@ axis_IP_Utility/
 ├── axis_kamera_discovery_gui.py        # Tkinter-GUI (nutzt die Kernlogik)
 ├── bump_version.py              # Versionsverwaltung (JJ.MM.TT + bN)
 ├── build_appimage.sh            # Build (Tcl/Tk 9 + Python 3.14 aus Quellcode)
+├── release.sh                   # Release: Tag + Forgejo-Release + AppImage-Asset
 ├── appimage/Axis_Kamera_Discovery/
 │   └── Axis_Kamera_Discovery.png        # Icon für das AppImage
 ├── THIRD_PARTY_LICENSES.md      # Lizenzen der gebündelten Komponenten
