@@ -1205,10 +1205,10 @@ class AxisDiscoveryGUI(tk.Tk):
         dlg.resizable(False, False)
         dlg.configure(bg=palette["bg"])
 
-        frm = ttk.Frame(dlg, padding=12)
+        frm = ttk.Frame(dlg, padding=20)
         frm.pack(fill=tk.BOTH, expand=True)
-        ttk.Label(frm, text=self._("manual_add_hint"), wraplength=360).grid(
-            row=0, column=0, columnspan=2, sticky="w", pady=(0, 10)
+        ttk.Label(frm, text=self._("manual_add_hint"), wraplength=440).grid(
+            row=0, column=0, columnspan=2, sticky="w", pady=(0, 16)
         )
 
         name_var = tk.StringVar()
@@ -1224,10 +1224,10 @@ class AxisDiscoveryGUI(tk.Tk):
         entries = {}
         for i, (key, var) in enumerate(fields, start=1):
             ttk.Label(frm, text=self._(key)).grid(
-                row=i, column=0, sticky="w", padx=(0, 8), pady=2
+                row=i, column=0, sticky="w", padx=(0, 12), pady=5
             )
-            ent = ttk.Entry(frm, textvariable=var, width=30)
-            ent.grid(row=i, column=1, sticky="ew", pady=2)
+            ent = ttk.Entry(frm, textvariable=var, width=38)
+            ent.grid(row=i, column=1, sticky="ew", pady=5, ipady=2)
             entries[key] = ent
         frm.columnconfigure(1, weight=1)
         entries["manual_add_ip"].focus_set()
