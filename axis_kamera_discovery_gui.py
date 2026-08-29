@@ -926,17 +926,22 @@ class AxisDiscoveryGUI(tk.Tk):
         bar = ttk.Frame(self, padding=8)
         bar.pack(side=tk.TOP, fill=tk.X)
 
-        self.search_btn = ttk.Button(bar, text=self._("btn_search"), command=self.start_search)
+        # "Suchen" als Split-Button: Hauptaktion links, anliegender Pfeil-Teil
+        # rechts fuer die Unterpunkte (beide buendig -> ein Bedienelement).
+        search_group = ttk.Frame(bar)
+        search_group.pack(side=tk.LEFT)
+        self.search_btn = ttk.Button(
+            search_group, text=self._("btn_search"), command=self.start_search,
+        )
         self.search_btn.pack(side=tk.LEFT)
-
-        # Caret direkt neben "Suchen": Unterpunkt zum manuellen Hinzufuegen
-        self.search_menu_btn = ttk.Menubutton(bar, text="▾", direction="below", width=2)
+        # Der Menubutton zeigt nur den nativen Theme-Pfeil (kein zweites "▾").
+        self.search_menu_btn = ttk.Menubutton(search_group, direction="below")
         self._search_menu = tk.Menu(self.search_menu_btn, tearoff=0)
         self._search_menu.add_command(
             label=self._("menu_add_manual"), command=self._add_manual_camera
         )
         self.search_menu_btn.configure(menu=self._search_menu)
-        self.search_menu_btn.pack(side=tk.LEFT, padx=(2, 0))
+        self.search_menu_btn.pack(side=tk.LEFT)
 
         self.duration_label = ttk.Label(bar, text=self._("label_duration"))
         self.duration_label.pack(side=tk.LEFT, padx=(12, 4))

@@ -99,8 +99,8 @@ python3 axis_kamera_discovery_gui.py
 Bedienung:
 
 - **Suchen** – startet die Suche im Hintergrund (Fenster bleibt bedienbar).
-  Der kleine **▾-Knopf daneben** öffnet den Unterpunkt **„Kamera manuell
-  hinzufügen…"**: fügt eine Kamera über ihre IP-Adresse hinzu (Name/Port/Hostname
+  „Suchen" ist ein **Split-Button**: der direkt anliegende **Pfeil-Teil** öffnet
+  den Unterpunkt **„Kamera manuell hinzufügen…"**: fügt eine Kamera über ihre IP-Adresse hinzu (Name/Port/Hostname
   optional), die die Suche nicht findet – etwa in einem anderen Subnetz oder wenn
   mDNS blockiert ist. Der Eintrag landet als Zeile in der Tabelle (nutzbar für
   „Kamera Einstellungen") und **bleibt auch nach einer erneuten Suche erhalten**;
@@ -412,7 +412,7 @@ axis_IP_Utility/
 
 | Version | Änderungen |
 |---|---|
-| 26.08.29 | Neuer Unterpunkt **„Kamera manuell hinzufügen…"** am „Suchen"-Button (kleiner ▾-Knopf): fügt eine Kamera über ihre IP-Adresse hinzu (Name/Port/Hostname optional), die die Suche nicht findet – z. B. in einem anderen Subnetz oder bei blockiertem mDNS. Die IP wird als „konfigurierte" Adresse übernommen (so verbindet sich „Kamera Einstellungen"), der Eintrag bleibt auch nach einer erneuten Suche erhalten und wird durch einen späteren mDNS-Fund derselben IP ersetzt. IP-Eingabe wird validiert (IPv4/IPv6), Duplikate werden abgefangen |
+| 26.08.29 | Neuer Unterpunkt **„Kamera manuell hinzufügen…"** am „Suchen"-Button (Split-Button: „Suchen" plus anliegender Pfeil-Teil): fügt eine Kamera über ihre IP-Adresse hinzu (Name/Port/Hostname optional), die die Suche nicht findet – z. B. in einem anderen Subnetz oder bei blockiertem mDNS. Die IP wird als „konfigurierte" Adresse übernommen (so verbindet sich „Kamera Einstellungen"), der Eintrag bleibt auch nach einer erneuten Suche erhalten und wird durch einen späteren mDNS-Fund derselben IP ersetzt. IP-Eingabe wird validiert (IPv4/IPv6), Duplikate werden abgefangen |
 | 26.08.25 | Gebündeltes **OpenSSL auf 3.5.8** aktualisiert (Sicherheits-/Wartungsrelease; wird beim AppImage-Build aus dem Quellcode kompiliert und vom Python-`ssl`-Modul für die HTTPS-Verbindungen zu den Kameras genutzt). Übrige gebündelte Komponenten unverändert und aktuell (CPython 3.14.7, Tcl/Tk 9.0.4, libffi 3.8.0). Zusätzlich: `build_appimage.sh` wertet den dokumentierten Schalter `--bump` jetzt tatsächlich aus (Version vor dem Build hochzählen) |
 | 26.08.10b1 | Neuer Reiter **Zeitzone** im Dialog „Kamera Einstellungen" + CLI-Befehle `set-timezone`/`timezone-show`: Die Zeitzone wird über die **Time API** (`POST time.cgi`, `setTimeZone`, IANA-Name; ab AXIS OS 9.30) gesetzt/ausgelesen — Ersatz für den in **AXIS OS 13 entfernten** `param.cgi`-Parameter `Time.POSIXTimeZone` (Sommerzeit automatisch). Die IANA-Auswahlliste kommt aus `zoneinfo` (mit Fallback) und lässt sich per „Von erster Kamera laden" durch die vom Gerät unterstützten Zonen ersetzen |
 | 26.08.10 | **AXIS-OS-13-Vorbereitung** beim Konfig-Import: In AXIS OS 13 entfernte/obsolete `param.cgi`-Parameter (z. B. `Time.POSIXTimeZone`, alte PTZ-/Streaming-Parameter) ließen bisher den gesamten ADM-`.cfg`-Import scheitern, wenn sie in der Quelldatei standen. Wird der Sammel-Aufruf (`param.cgi?action=update`) abgelehnt, fährt `apply_parameters` jetzt **parameterweise** nach: gültige werden angewendet, abgelehnte übersprungen und im Ergebnis genannt. Ein 401 wird nur dann als Auth-Fehler behandelt, wenn ein Lesezugriff das falsche Passwort bestätigt (sonst = Parameter-Ablehnung, kein Einzel-Login-Sturm). Die übrigen genutzten APIs (`Network.*`, `pwdgrp.cgi`, `firmwaremanagement.cgi`, Geräte-Sicherung/DCA, ONVIF) stehen nicht auf der OS-13-Removal-Liste |
