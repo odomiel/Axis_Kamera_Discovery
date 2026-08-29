@@ -23,6 +23,7 @@ einfriert.
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import ipaddress
 import json
 import os
 import platform
@@ -97,6 +98,21 @@ TRANSLATIONS = {
         
         # Toolbar
         "btn_search": "Suchen",
+        "menu_add_manual": "Kamera manuell hinzufügen…",
+        "manual_add_title": "Kamera manuell hinzufügen",
+        "manual_add_hint": "Fügt eine Kamera über ihre IP-Adresse hinzu, die die "
+            "Suche nicht gefunden hat (z. B. in einem anderen Subnetz). Der Eintrag "
+            "bleibt auch nach einer erneuten Suche erhalten.",
+        "manual_add_name": "Name:",
+        "manual_add_ip": "IP-Adresse:",
+        "manual_add_port": "Port:",
+        "manual_add_hostname": "Hostname:",
+        "manual_add_add": "Hinzufügen",
+        "manual_add_cancel": "Abbrechen",
+        "manual_add_ip_required": "Bitte eine IP-Adresse eingeben.",
+        "manual_add_ip_invalid": "„{ip}“ ist keine gültige IP-Adresse.",
+        "manual_add_duplicate": "Eine Kamera mit der IP-Adresse {ip} ist bereits in der Liste.",
+        "manual_add_default_name": "(manuell hinzugefügt)",
         "label_duration": "Dauer (s):",
         "label_every": "alle (s):",
         "btn_autorefresh": "Auto-Refresh",
@@ -416,6 +432,20 @@ TRANSLATIONS = {
         
         # Toolbar
         "btn_search": "Search",
+        "menu_add_manual": "Add camera manually…",
+        "manual_add_title": "Add camera manually",
+        "manual_add_hint": "Adds a camera by its IP address that the search did not "
+            "find (e.g. on a different subnet). The entry is kept after a new search.",
+        "manual_add_name": "Name:",
+        "manual_add_ip": "IP address:",
+        "manual_add_port": "Port:",
+        "manual_add_hostname": "Hostname:",
+        "manual_add_add": "Add",
+        "manual_add_cancel": "Cancel",
+        "manual_add_ip_required": "Please enter an IP address.",
+        "manual_add_ip_invalid": "“{ip}” is not a valid IP address.",
+        "manual_add_duplicate": "A camera with IP address {ip} is already in the list.",
+        "manual_add_default_name": "(added manually)",
         "label_duration": "Duration (s):",
         "label_every": "every (s):",
         "btn_autorefresh": "Auto-Refresh",
@@ -766,6 +796,7 @@ class AxisDiscoveryGUI(tk.Tk):
         self.minsize(800, 400)
 
         self.cameras = []
+        self._manual_cameras = []  # manuell hinzugefuegte Kameras (ueberleben eine Suche)
         self._result_queue = queue.Queue()
         self._searching = False
         self._refresh_after_id = None
@@ -842,6 +873,8 @@ class AxisDiscoveryGUI(tk.Tk):
         
         # Toolbar
         self.search_btn.config(text=self._("btn_search"))
+        if hasattr(self, "_search_menu"):
+            self._search_menu.entryconfig(0, label=self._("menu_add_manual"))
         self.duration_label.config(text=self._("label_duration"))
         self.autorefresh_cb.config(text=self._("btn_autorefresh"))
         self.every_label.config(text=self._("label_every"))
@@ -895,6 +928,15 @@ class AxisDiscoveryGUI(tk.Tk):
 
         self.search_btn = ttk.Button(bar, text=self._("btn_search"), command=self.start_search)
         self.search_btn.pack(side=tk.LEFT)
+
+        # Caret direkt neben "Suchen": Unterpunkt zum manuellen Hinzufuegen
+        self.search_menu_btn = ttk.Menubutton(bar, text="▾", direction="below", width=2)
+        self._search_menu = tk.Menu(self.search_menu_btn, tearoff=0)
+        self._search_menu.add_command(
+            label=self._("menu_add_manual"), command=self._add_manual_camera
+        )
+        self.search_menu_btn.configure(menu=self._search_menu)
+        self.search_menu_btn.pack(side=tk.LEFT, padx=(2, 0))
 
         self.duration_label = ttk.Label(bar, text=self._("label_duration"))
         self.duration_label.pack(side=tk.LEFT, padx=(12, 4))
@@ -1127,6 +1169,17 @@ class AxisDiscoveryGUI(tk.Tk):
             # Werte für Daten-Spalten + leere Zelle für Endlos-Spalte
             values = [cam.get(c, "") for c in COLUMNS] + [""]
             self.tree.insert("", tk.END, values=values)
+
+        # Manuell hinzugefuegte Kameras wieder einmischen (die Suche hat die Liste
+        # geleert); per IP entdeckte Duplikate ueberspringen.
+        discovered_ips = {get_first_ip(c) for c in self.cameras}
+        for cam in self._manual_cameras:
+            if get_first_ip(cam) in discovered_ips:
+                continue
+            self.cameras.append(cam)
+            values = [cam.get(c, "") for c in COLUMNS] + [""]
+            self.tree.insert("", tk.END, values=values)
+
         self._autosize_columns()  # Breiten an die neuen Inhalte anpassen
 
         if self.cameras:
@@ -1136,6 +1189,94 @@ class AxisDiscoveryGUI(tk.Tk):
             self.status_var.set(self._("status_no_axis_cameras"))
 
         self._schedule_refresh()  # naechsten Auto-Refresh planen (falls aktiviert)
+
+    def _add_manual_camera(self):
+        """Dialog: Kamera manuell ueber ihre IP-Adresse hinzufuegen (Unterpunkt
+        des Suchen-Buttons). Der Eintrag ueberlebt eine erneute Suche."""
+        palette = DARK_COLORS if self.dark_mode_var.get() else LIGHT_COLORS
+        dlg = tk.Toplevel(self)
+        dlg.title(self._("manual_add_title"))
+        dlg.transient(self)
+        dlg.resizable(False, False)
+        dlg.configure(bg=palette["bg"])
+
+        frm = ttk.Frame(dlg, padding=12)
+        frm.pack(fill=tk.BOTH, expand=True)
+        ttk.Label(frm, text=self._("manual_add_hint"), wraplength=360).grid(
+            row=0, column=0, columnspan=2, sticky="w", pady=(0, 10)
+        )
+
+        name_var = tk.StringVar()
+        ip_var = tk.StringVar()
+        port_var = tk.StringVar(value="80")
+        host_var = tk.StringVar()
+        fields = (
+            ("manual_add_name", name_var),
+            ("manual_add_ip", ip_var),
+            ("manual_add_port", port_var),
+            ("manual_add_hostname", host_var),
+        )
+        entries = {}
+        for i, (key, var) in enumerate(fields, start=1):
+            ttk.Label(frm, text=self._(key)).grid(
+                row=i, column=0, sticky="w", padx=(0, 8), pady=2
+            )
+            ent = ttk.Entry(frm, textvariable=var, width=30)
+            ent.grid(row=i, column=1, sticky="ew", pady=2)
+            entries[key] = ent
+        frm.columnconfigure(1, weight=1)
+        entries["manual_add_ip"].focus_set()
+
+        def _submit(*_):
+            ip = ip_var.get().strip()
+            if not ip:
+                messagebox.showwarning(self._("manual_add_title"),
+                                       self._("manual_add_ip_required"), parent=dlg)
+                return
+            try:
+                addr = ipaddress.ip_address(ip)
+            except ValueError:
+                messagebox.showwarning(self._("manual_add_title"),
+                                       self._("manual_add_ip_invalid", ip=ip), parent=dlg)
+                return
+            if any(get_first_ip(c) == ip for c in self.cameras):
+                messagebox.showinfo(self._("manual_add_title"),
+                                    self._("manual_add_duplicate", ip=ip), parent=dlg)
+                return
+            cam = {
+                "Name": name_var.get().strip() or self._("manual_add_default_name"),
+                "IP Adresse: Zeroconfig": "",
+                "IP Adresse: Konfiguriert": ip,
+                "IPv6 Adresse": ip if addr.version == 6 else "",
+                "Port": port_var.get().strip(),
+                "Hostname": host_var.get().strip(),
+                "MAC-Adresse/Seriennummer": "",
+            }
+            self._manual_cameras.append(cam)
+            self.cameras.append(cam)
+            values = [cam.get(c, "") for c in COLUMNS] + [""]
+            iid = self.tree.insert("", tk.END, values=values)
+            self.tree.selection_set(iid)
+            self.tree.see(iid)
+            self._autosize_columns()
+            self.export_btn.config(state=tk.NORMAL)
+            self.status_var.set(self._("status_found", count=len(self.cameras)))
+            dlg.destroy()
+
+        btns = ttk.Frame(frm)
+        btns.grid(row=len(fields) + 1, column=0, columnspan=2, sticky="e", pady=(12, 0))
+        ttk.Button(btns, text=self._("manual_add_cancel"),
+                   command=dlg.destroy).pack(side=tk.RIGHT)
+        ttk.Button(btns, text=self._("manual_add_add"),
+                   command=_submit).pack(side=tk.RIGHT, padx=(0, 8))
+
+        dlg.bind("<Return>", _submit)
+        dlg.bind("<Escape>", lambda e: dlg.destroy())
+        dlg.update_idletasks()
+        x = self.winfo_rootx() + (self.winfo_width() - dlg.winfo_reqwidth()) // 2
+        y = self.winfo_rooty() + (self.winfo_height() - dlg.winfo_reqheight()) // 3
+        dlg.geometry(f"+{max(x, 0)}+{max(y, 0)}")
+        dlg.grab_set()
 
     def _persist_toolbar_settings(self, *_):
         """Speichert Dauer, Auto-Refresh und Intervall dauerhaft."""
