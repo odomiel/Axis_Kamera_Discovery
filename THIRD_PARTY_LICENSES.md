@@ -15,10 +15,10 @@ betroffen.
 | Tk | 9.0.4 | Tcl/Tk License (BSD-artig) |
 | libffi | 3.8.0 | libffi License (MIT-artig) |
 | OpenSSL | 3.5.8 | Apache License 2.0 |
-| zeroconf | 0.150.0 | **LGPL-2.1-or-later** |
+| zeroconf | 0.151.3 | **LGPL-2.1-or-later** |
 | ifaddr | 0.2.0 | MIT |
 | prettytable | 3.18.0 | BSD-3-Clause |
-| wcwidth | 0.8.2 | MIT |
+| wcwidth | 0.8.3 | MIT |
 | sv-ttk (Sun Valley) | 2.6.1 | MIT |
 
 > **Hinweis zu zeroconf (LGPL-2.1-or-later):** Alle übrigen Komponenten sind
@@ -114,7 +114,7 @@ für HTTPS-Verbindungen zu den Kameras (VAPIX-API) genutzt.
 
 ---
 
-## zeroconf 0.150.0
+## zeroconf 0.151.3
 
 Copyright © 2003 Paul Scott-Murphy, 2014 William McBrine, Jakub Stasiak und
 weitere Mitwirkende.
@@ -165,7 +165,7 @@ Quellcode: https://github.com/prettytable/prettytable
 
 ---
 
-## wcwidth 0.8.2
+## wcwidth 0.8.3
 
 Copyright © Jeff Quast.
 
