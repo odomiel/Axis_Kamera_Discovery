@@ -7,7 +7,9 @@
 #   2. annotierten Tag  vX  anlegen (falls noch nicht vorhanden) und pushen
 #   3. Release-Objekt ueber die Forgejo-HTTP-API anlegen (HTTPS, ggf.
 #      selbst-signiert -> curl -k), Release-Notes aus dem README-Changelog
-#   4. das gebaute AppImage als Asset anhaengen
+#   4. das gebaute AppImage als Asset anhaengen - und, falls in dist/ eine
+#      Windows-.exe zur aktuellen Version liegt (Axis_Kamera_Discovery[_cli]_<ver>.exe),
+#      diese gleich mit
 #   5. optional dasselbe Release auf GitHub anlegen (nur wenn dort ein
 #      Push-Mirror + Token eingerichtet ist) - ein Mirror uebertraegt nur Refs,
 #      keine Releases/Anhaenge, daher separat hochladen.
@@ -75,6 +77,19 @@ info "AppImage: ${APPIMAGE}"
 
 [ -f "$APPIMAGE" ] || die "AppImage '${APPIMAGE}' fehlt - erst bauen (./build_appimage.sh)."
 
+# Hochzuladende Assets: AppImage + passende Windows-Exes aus dist/ (nur solche,
+# deren Dateiname mit _<VERSION>.exe endet - also zur aktuellen Version gehoert;
+# die PyInstaller-Spec haengt __version__ an: Axis_Kamera_Discovery[_cli]_<ver>.exe).
+ASSETS=("$APPIMAGE")
+shopt -s nullglob
+for exe in dist/*_"${VERSION}".exe; do ASSETS+=("$exe"); done
+shopt -u nullglob
+if [ "${#ASSETS[@]}" -gt 1 ]; then
+    info "Windows-Exes (dist/, Version ${VERSION}): ${ASSETS[*]:1}"
+else
+    info "Windows-Exe: keine passende in dist/ (nur AppImage wird veroeffentlicht)."
+fi
+
 # ---------------------------------------------------------------------------
 # Vorbedingungen: sauberer Baum + HEAD gepusht
 # ---------------------------------------------------------------------------
@@ -128,8 +143,31 @@ API_BASE="${FORGEJO_API:-https://${hostport}}"
 api() { curl -ksS -H "Authorization: token ${TOKEN}" "$@"; }
 REL_URL="${API_BASE}/api/v1/repos/${OWNER}/${REPO}/releases"
 
+# Ein Asset an das Forgejo-Release haengen (gleichnamiges vorher entfernen).
+forgejo_put_asset() {  # <datei>
+    local f="$1" base ex
+    base="$(basename "$f")"
+    ex="$(api "${REL_URL}/${REL_ID}/assets" | NAME="$base" python3 -c '
+import json, sys, os
+name = os.environ["NAME"]
+try: data = json.load(sys.stdin)
+except Exception: data = []
+out = ""
+for a in (data if isinstance(data, list) else []):
+    if a.get("name") == name:
+        out = str(a["id"]); break
+print(out)')"
+    if [ -n "$ex" ]; then
+        api -X DELETE "${REL_URL}/${REL_ID}/assets/${ex}" >/dev/null
+        info "Forgejo: altes Asset ${base} entfernt (${ex})."
+    fi
+    api -X POST -F "attachment=@${f};type=application/octet-stream" \
+        "${REL_URL}/${REL_ID}/assets?name=${base}" >/dev/null
+    info "Forgejo: Asset ${base} hochgeladen."
+}
+
 if [ "$DRY_RUN" = 1 ]; then
-    info "[dry-run] Tag ${TAG} anlegen+pushen, Release anlegen, Asset ${APPIMAGE} hochladen."
+    info "[dry-run] Tag ${TAG} anlegen+pushen, Release anlegen, Assets hochladen: ${ASSETS[*]}"
     info "[dry-run] Release-Notes:"
     echo "----"; echo "$NOTES"; echo "----"
     exit 0
@@ -172,31 +210,9 @@ fi
 info "Release-ID: ${REL_ID}"
 
 # ---------------------------------------------------------------------------
-# 3) AppImage als Asset anhaengen (gleichnamiges vorher entfernen -> re-upload)
+# 3) Assets anhaengen: AppImage + evtl. passende Windows-Exes aus dist/
 # ---------------------------------------------------------------------------
-EXIST_ID="$(api "${REL_URL}/${REL_ID}/assets" | APPIMAGE="$APPIMAGE" python3 -c '
-import json, sys, os
-name = os.path.basename(os.environ["APPIMAGE"])
-try:
-    data = json.load(sys.stdin)
-except Exception:
-    data = []
-out = ""
-for a in data:
-    if a.get("name") == name:
-        out = str(a["id"])
-        break
-print(out)')"
-
-if [ -n "$EXIST_ID" ]; then
-    api -X DELETE "${REL_URL}/${REL_ID}/assets/${EXIST_ID}" >/dev/null
-    info "Vorhandenes gleichnamiges Asset entfernt (${EXIST_ID})."
-fi
-
-api -X POST \
-    -F "attachment=@${APPIMAGE};type=application/octet-stream" \
-    "${REL_URL}/${REL_ID}/assets?name=${APPIMAGE}" >/dev/null
-info "Asset ${APPIMAGE} hochgeladen."
+for a in "${ASSETS[@]}"; do forgejo_put_asset "$a"; done
 
 info "Fertig: Release ${TAG} steht auf Forgejo bereit."
 
@@ -261,12 +277,16 @@ print(json.dumps({"tag_name": os.environ["TAG"], "name": os.environ["VER"],
     [ -n "$gid" ] || die "GitHub-Release nicht anlegbar/gefunden. Antwort: ${resp}"
     info "GitHub-Release-ID: ${gid}"
 
-    # d) Asset hochladen (gleichnamiges vorher entfernen -> re-upload)
-    local ex
-    ex="$(gh_api "https://api.github.com/repos/${slug}/releases/${gid}/assets" \
-        | APPIMAGE="$APPIMAGE" python3 -c '
+    # d) Assets hochladen (AppImage + evtl. Windows-Exes); gleichnamiges vorher
+    #    entfernen, danach per SHA-256 gegenpruefen (curl >=7.76 entfernt den
+    #    Authorization-Kopf beim Redirect auf S3 selbst).
+    gh_put_asset() {  # <datei>
+        local f="$1" base ex up aid want got tmp
+        base="$(basename "$f")"
+        ex="$(gh_api "https://api.github.com/repos/${slug}/releases/${gid}/assets" \
+            | NAME="$base" python3 -c '
 import json, sys, os
-name = os.path.basename(os.environ["APPIMAGE"])
+name = os.environ["NAME"]
 try: data = json.load(sys.stdin)
 except Exception: data = []
 out = ""
@@ -274,30 +294,26 @@ for a in (data if isinstance(data, list) else []):
     if a.get("name") == name:
         out = str(a["id"]); break
 print(out)')"
-    if [ -n "$ex" ]; then
-        gh_api -X DELETE "https://api.github.com/repos/${slug}/releases/assets/${ex}" >/dev/null
-        info "Vorhandenes GitHub-Asset entfernt (${ex})."
-    fi
-    local up aid
-    up="$(curl -sS --config <(printf 'header = "Authorization: Bearer %s"\n' "$token") \
-        -H "Accept: application/vnd.github+json" -H "Content-Type: application/octet-stream" \
-        --data-binary "@${APPIMAGE}" \
-        "https://uploads.github.com/repos/${slug}/releases/${gid}/assets?name=${APPIMAGE}")"
-    aid="$(printf '%s' "$up" | gh_id)"
-    [ -n "$aid" ] || die "GitHub-Asset-Upload fehlgeschlagen. Antwort: ${up}"
-    info "GitHub-Asset hochgeladen (id ${aid})."
-
-    # e) Gegenprobe: zurueckladen und SHA-256 vergleichen (curl >=7.76 entfernt den
-    #    Authorization-Kopf beim Redirect auf S3 selbst).
-    local want got tmp
-    want="$(sha256sum "$APPIMAGE" | cut -d' ' -f1)"
-    tmp="$(mktemp)"
-    curl -sSL --config <(printf 'header = "Authorization: Bearer %s"\n' "$token") \
-        -H "Accept: application/octet-stream" \
-        "https://api.github.com/repos/${slug}/releases/assets/${aid}" -o "$tmp"
-    got="$(sha256sum "$tmp" | cut -d' ' -f1)"; rm -f "$tmp"
-    [ "$want" = "$got" ] || die "SHA-256 des GitHub-Assets weicht ab (lokal ${want} != remote ${got})."
-    info "GitHub-Asset verifiziert (sha256 ${got})."
+        if [ -n "$ex" ]; then
+            gh_api -X DELETE "https://api.github.com/repos/${slug}/releases/assets/${ex}" >/dev/null
+            info "GitHub: altes Asset ${base} entfernt (${ex})."
+        fi
+        up="$(curl -sS --config <(printf 'header = "Authorization: Bearer %s"\n' "$token") \
+            -H "Accept: application/vnd.github+json" -H "Content-Type: application/octet-stream" \
+            --data-binary "@${f}" \
+            "https://uploads.github.com/repos/${slug}/releases/${gid}/assets?name=${base}")"
+        aid="$(printf '%s' "$up" | gh_id)"
+        [ -n "$aid" ] || die "GitHub-Asset-Upload ${base} fehlgeschlagen. Antwort: ${up}"
+        want="$(sha256sum "$f" | cut -d' ' -f1)"
+        tmp="$(mktemp)"
+        curl -sSL --config <(printf 'header = "Authorization: Bearer %s"\n' "$token") \
+            -H "Accept: application/octet-stream" \
+            "https://api.github.com/repos/${slug}/releases/assets/${aid}" -o "$tmp"
+        got="$(sha256sum "$tmp" | cut -d' ' -f1)"; rm -f "$tmp"
+        [ "$want" = "$got" ] || die "SHA-256 von ${base} weicht ab (lokal ${want} != remote ${got})."
+        info "GitHub: Asset ${base} hochgeladen + verifiziert (sha256 ${got})."
+    }
+    for a in "${ASSETS[@]}"; do gh_put_asset "$a"; done
     info "Fertig: Release ${TAG} steht auch auf GitHub (${slug}) bereit."
 }
 
