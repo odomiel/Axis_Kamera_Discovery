@@ -142,6 +142,7 @@ TRANSLATIONS = {
         "info_title": "Info",
         "info_body": "Axis_Kamera_Discovery\nVersion {version}\n\n"
         "Findet Axis-Kameras im lokalen Netzwerk per Zeroconf/mDNS.\n\n"
+        "Projektseite: https://github.com/odomiel/Axis_Kamera_Discovery\n\n"
         "Komponenten:\n{components}\n\n"
         "Lizenz: GPL-3.0-or-later\n"
         "Copyright (C) 2026 Mirik\n"
@@ -475,6 +476,7 @@ TRANSLATIONS = {
         "info_title": "Info",
         "info_body": "Axis_Kamera_Discovery\nVersion {version}\n\n"
         "Finds Axis cameras on the local network via Zeroconf/mDNS.\n\n"
+        "Project page: https://github.com/odomiel/Axis_Kamera_Discovery\n\n"
         "Components:\n{components}\n\n"
         "License: GPL-3.0-or-later\n"
         "Copyright (C) 2026 Mirik\n"

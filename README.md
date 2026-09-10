@@ -412,6 +412,7 @@ axis_IP_Utility/
 
 | Version | Änderungen |
 |---|---|
+| 26.09.10b4 | Der **Info-Dialog** zeigt jetzt die **Projektseite** (`https://github.com/odomiel/Axis_Kamera_Discovery`) |
 | 26.09.10b3 | `release.sh` hängt jetzt auch **Windows-`.exe`s aus `dist/`** an das Release (Forgejo *und* GitHub), sofern deren Dateiname zur aktuellen Version passt (`Axis_Kamera_Discovery[_cli]_<ver>.exe`) – so landen GUI- und CLI-Exe automatisch beim Release, jeweils mit SHA-256-Gegenprobe. Ohne passende Exe wird nur das AppImage veröffentlicht |
 | 26.09.10b2 | Windows-CI-Workflow von `.github/workflows/` nach **`.forgejo/workflows/`** verschoben: GitHub lehnt einen Push-Mirror ab, wenn er eine `.github/workflows/`-Datei enthält und das Token keinen `workflow`-Scope hat. Unter `.forgejo/` ignoriert GitHub die Datei (Mirror-Push geht durch, Token bleibt minimal), während Forgejo/Gitea Actions sie weiterhin liest |
 | 26.09.10b1 | `release.sh` kann ein Release optional auch auf **GitHub** anlegen (für einen Push-Mirror – der spiegelt nur Refs, keine Releases/Anhänge): stößt den Mirror-Abgleich an, wartet bis der Tag drüben ist, legt das Release an und lädt das AppImage nach `uploads.github.com` (mit SHA-256-Gegenprobe). Token/Slug kommen aus `$GITHUB_TOKEN`/`$GITHUB_SLUG` bzw. der github.com-Zeile in `~/.git-credentials`; ohne Konfiguration wird der Schritt übersprungen, `--no-github` schaltet ihn aus |
