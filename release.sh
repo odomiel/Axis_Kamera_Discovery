@@ -24,8 +24,9 @@
 #   ./release.sh --no-github     # GitHub-Schritt ueberspringen
 #
 # GitHub-Ziel (Schritt 5) per Umgebung/Zugangsdaten:
-#   * Token: $GITHUB_TOKEN, sonst ~/.git-credentials-Zeile fuer github.com,
-#            sonst "gh auth token" (GitHub-CLI)
+#   * Token: $GITHUB_TOKEN, sonst Token-Datei ($GITHUB_TOKEN_FILE bzw.
+#            ~/.config/axis_kamera_discovery/github_token), sonst
+#            ~/.git-credentials-Zeile fuer github.com, sonst "gh auth token"
 #   * Slug:  $GITHUB_SLUG, sonst das github.com-Ziel des Forgejo-Push-Mirrors,
 #            sonst <github-user>/<repo-name>
 #
@@ -224,10 +225,22 @@ info "Fertig: Release ${TAG} steht auf Forgejo bereit."
 #    Slug auffindbar sind; sonst wird der Schritt uebersprungen.
 # ---------------------------------------------------------------------------
 github_release() {
-    local token ghuser slug cred
-    # Token, in dieser Reihenfolge: $GITHUB_TOKEN, github.com-Zeile in
-    # ~/.git-credentials, dann die GitHub-CLI ("gh auth token").
+    local token ghuser slug cred tf
+    # Token, in dieser Reihenfolge:
+    #   1. $GITHUB_TOKEN
+    #   2. Token-Datei: $GITHUB_TOKEN_FILE, sonst
+    #      ~/.config/axis_kamera_discovery/github_token  (repo-eigenes Token,
+    #      liegt ausserhalb des Repos -> nie mitveroeffentlicht)
+    #   3. github.com-Zeile in ~/.git-credentials
+    #   4. GitHub-CLI ("gh auth token")
     token="${GITHUB_TOKEN:-}"; ghuser=""
+    if [ -z "$token" ]; then
+        for tf in "${GITHUB_TOKEN_FILE:-}" "${XDG_CONFIG_HOME:-$HOME/.config}/axis_kamera_discovery/github_token"; do
+            [ -n "$tf" ] && [ -f "$tf" ] || continue
+            token="$(tr -d ' \t\r\n' < "$tf")"
+            [ -n "$token" ] && break
+        done
+    fi
     if [ -z "$token" ] && [ -f "$CRED_FILE" ]; then
         cred="$(grep -aE '^https?://[^@]+@github\.com' "$CRED_FILE" | head -n1)"
         if [ -n "$cred" ]; then
