@@ -1,6 +1,8 @@
 # Baut die Windows-.exe von Axis_Kamera_Discovery mit PyInstaller.
-# Kompatibel mit GitHub Actions und Forgejo/Gitea Actions (.github/workflows wird
-# von beiden gelesen). Forgejo benoetigt dafuer einen registrierten Windows-Runner.
+# Liegt unter .forgejo/workflows/, damit ein oeffentlicher GitHub-Push-Mirror den
+# Push nicht ablehnt (GitHub blockiert .github/workflows/ ohne workflow-Scope);
+# Forgejo/Gitea Actions liest .forgejo/workflows/ und benoetigt einen
+# registrierten Windows-Runner.
 name: Windows Build
 
 on:

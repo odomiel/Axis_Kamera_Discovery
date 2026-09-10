@@ -412,6 +412,7 @@ axis_IP_Utility/
 
 | Version | Änderungen |
 |---|---|
+| 26.09.10b2 | Windows-CI-Workflow von `.github/workflows/` nach **`.forgejo/workflows/`** verschoben: GitHub lehnt einen Push-Mirror ab, wenn er eine `.github/workflows/`-Datei enthält und das Token keinen `workflow`-Scope hat. Unter `.forgejo/` ignoriert GitHub die Datei (Mirror-Push geht durch, Token bleibt minimal), während Forgejo/Gitea Actions sie weiterhin liest |
 | 26.09.10b1 | `release.sh` kann ein Release optional auch auf **GitHub** anlegen (für einen Push-Mirror – der spiegelt nur Refs, keine Releases/Anhänge): stößt den Mirror-Abgleich an, wartet bis der Tag drüben ist, legt das Release an und lädt das AppImage nach `uploads.github.com` (mit SHA-256-Gegenprobe). Token/Slug kommen aus `$GITHUB_TOKEN`/`$GITHUB_SLUG` bzw. der github.com-Zeile in `~/.git-credentials`; ohne Konfiguration wird der Schritt übersprungen, `--no-github` schaltet ihn aus |
 | 26.09.10 | Aufräumen für eine öffentliche Spiegelung: `release.sh` leitet Ziel-Host, Owner/Repo und Token jetzt zur Laufzeit aus der Git-Remote bzw. `~/.git-credentials` ab (überschreibbar via `FORGEJO_*`-Umgebungsvariablen), statt sie im Skript zu hinterlegen; interne Sitzungsnotiz `SESSION.md` wird nicht mehr versioniert |
 | 26.09.08 | Abhängigkeiten aktualisiert: gebündeltes **zeroconf 0.151.3** und **wcwidth 0.8.3** (Wartungsreleases, werden beim AppImage-Build als aktuelle PyPI-Wheels gezogen). Übrige gebündelte Komponenten unverändert und aktuell (CPython 3.14.7, Tcl/Tk 9.0.4, OpenSSL 3.5.8, libffi 3.8.0) |

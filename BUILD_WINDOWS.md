@@ -68,8 +68,10 @@ python axis_kamera_discovery_gui.py
 
 ## Automatisch bauen (CI)
 
-`.github/workflows/windows-build.yml` baut die Exes auf einem **Windows-Runner**
-(GitHub Actions *oder* Forgejo/Gitea Actions – beide lesen `.github/workflows`).
+`.forgejo/workflows/windows-build.yml` baut die Exes auf einem **Windows-Runner**
+(Forgejo/Gitea Actions liest `.forgejo/workflows/`). Der Workflow liegt bewusst
+dort statt unter `.github/workflows/`, damit ein öffentlicher GitHub-Push-Mirror
+den Push nicht ablehnt.
 Auslösen: manuell („Run workflow") oder durch einen Versions-Tag `v*`. Das
 Ergebnis liegt als Artefakt `Axis_Kamera_Discovery-windows` (die `.exe`-Dateien).
 
