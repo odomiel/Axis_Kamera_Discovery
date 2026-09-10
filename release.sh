@@ -24,8 +24,10 @@
 #   ./release.sh --no-github     # GitHub-Schritt ueberspringen
 #
 # GitHub-Ziel (Schritt 5) per Umgebung/Zugangsdaten:
-#   * Token: $GITHUB_TOKEN oder ~/.git-credentials-Zeile fuer github.com
-#   * Slug:  $GITHUB_SLUG (Konto/Repo), sonst <github-user>/<repo-name>
+#   * Token: $GITHUB_TOKEN, sonst ~/.git-credentials-Zeile fuer github.com,
+#            sonst "gh auth token" (GitHub-CLI)
+#   * Slug:  $GITHUB_SLUG, sonst das github.com-Ziel des Forgejo-Push-Mirrors,
+#            sonst <github-user>/<repo-name>
 #
 # Copyright (C) 2026 Mirik - GPL-3.0-or-later
 set -euo pipefail
@@ -223,6 +225,8 @@ info "Fertig: Release ${TAG} steht auf Forgejo bereit."
 # ---------------------------------------------------------------------------
 github_release() {
     local token ghuser slug cred
+    # Token, in dieser Reihenfolge: $GITHUB_TOKEN, github.com-Zeile in
+    # ~/.git-credentials, dann die GitHub-CLI ("gh auth token").
     token="${GITHUB_TOKEN:-}"; ghuser=""
     if [ -z "$token" ] && [ -f "$CRED_FILE" ]; then
         cred="$(grep -aE '^https?://[^@]+@github\.com' "$CRED_FILE" | head -n1)"
@@ -231,7 +235,25 @@ github_release() {
             token="$(printf '%s\n' "$cred" | sed -E 's#^https?://[^:]+:([^@]+)@.*#\1#')"
         fi
     fi
-    slug="${GITHUB_SLUG:-${ghuser:+${ghuser}/${REPO}}}"
+    [ -n "$token" ] || token="$(gh auth token 2>/dev/null || true)"
+
+    # Slug: $GITHUB_SLUG, sonst das github.com-Ziel des Forgejo-Push-Mirrors,
+    # sonst <github-user>/<repo>.
+    slug="${GITHUB_SLUG:-}"
+    if [ -z "$slug" ]; then
+        slug="$(api "${API_BASE}/api/v1/repos/${OWNER}/${REPO}/push_mirrors" | python3 -c '
+import json, sys
+try: data = json.load(sys.stdin)
+except Exception: data = []
+for m in (data if isinstance(data, list) else []):
+    a = m.get("remote_address", "") if isinstance(m, dict) else ""
+    if "github.com/" in a:
+        s = a.split("github.com/", 1)[1]
+        if s.endswith(".git"): s = s[:-4]
+        print(s); break')"
+    fi
+    [ -n "$slug" ] || slug="${ghuser:+${ghuser}/${REPO}}"
+
     if [ -z "$token" ] || [ -z "$slug" ]; then
         info "GitHub nicht konfiguriert (kein Token/Slug) - ueberspringe GitHub-Release."
         return 0
