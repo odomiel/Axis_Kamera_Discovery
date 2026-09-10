@@ -8,6 +8,9 @@
 #   3. Release-Objekt ueber die Forgejo-HTTP-API anlegen (HTTPS, ggf.
 #      selbst-signiert -> curl -k), Release-Notes aus dem README-Changelog
 #   4. das gebaute AppImage als Asset anhaengen
+#   5. optional dasselbe Release auf GitHub anlegen (nur wenn dort ein
+#      Push-Mirror + Token eingerichtet ist) - ein Mirror uebertraegt nur Refs,
+#      keine Releases/Anhaenge, daher separat hochladen.
 #
 # Der Schreib-Token wird aus ~/.git-credentials gelesen und NIE ausgegeben.
 #
@@ -16,6 +19,11 @@
 #   ./release.sh --version 26.08.10b1
 #   ./release.sh --dry-run       # nur pruefen/anzeigen, nichts veraendern
 #   ./release.sh --notes-file X  # Release-Text aus Datei statt aus dem README
+#   ./release.sh --no-github     # GitHub-Schritt ueberspringen
+#
+# GitHub-Ziel (Schritt 5) per Umgebung/Zugangsdaten:
+#   * Token: $GITHUB_TOKEN oder ~/.git-credentials-Zeile fuer github.com
+#   * Slug:  $GITHUB_SLUG (Konto/Repo), sonst <github-user>/<repo-name>
 #
 # Copyright (C) 2026 Mirik - GPL-3.0-or-later
 set -euo pipefail
@@ -38,11 +46,13 @@ cd "$(dirname "$(readlink -f "$0")")"
 VERSION=""
 NOTES_FILE=""
 DRY_RUN=0
+NO_GITHUB=0
 while [ $# -gt 0 ]; do
     case "$1" in
         --version)    VERSION="${2:?--version braucht einen Wert}"; shift 2 ;;
         --notes-file) NOTES_FILE="${2:?--notes-file braucht einen Wert}"; shift 2 ;;
         --dry-run)    DRY_RUN=1; shift ;;
+        --no-github)  NO_GITHUB=1; shift ;;
         -h|--help)    grep -E '^#( |$)' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
         *) echo "Unbekannte Option: $1" >&2; exit 2 ;;
     esac
@@ -189,3 +199,106 @@ api -X POST \
 info "Asset ${APPIMAGE} hochgeladen."
 
 info "Fertig: Release ${TAG} steht auf Forgejo bereit."
+
+# ---------------------------------------------------------------------------
+# 5) GitHub-Release (optional). Ein Push-Mirror uebertraegt nur Refs - Releases
+#    und Anhaenge muessen separat hoch. Laeuft nur, wenn ein GitHub-Token +
+#    Slug auffindbar sind; sonst wird der Schritt uebersprungen.
+# ---------------------------------------------------------------------------
+github_release() {
+    local token ghuser slug cred
+    token="${GITHUB_TOKEN:-}"; ghuser=""
+    if [ -z "$token" ] && [ -f "$CRED_FILE" ]; then
+        cred="$(grep -aE '^https?://[^@]+@github\.com' "$CRED_FILE" | head -n1)"
+        if [ -n "$cred" ]; then
+            ghuser="$(printf '%s\n' "$cred" | sed -E 's#^https?://([^:]+):.*#\1#')"
+            token="$(printf '%s\n' "$cred" | sed -E 's#^https?://[^:]+:([^@]+)@.*#\1#')"
+        fi
+    fi
+    slug="${GITHUB_SLUG:-${ghuser:+${ghuser}/${REPO}}}"
+    if [ -z "$token" ] || [ -z "$slug" ]; then
+        info "GitHub nicht konfiguriert (kein Token/Slug) - ueberspringe GitHub-Release."
+        return 0
+    fi
+    info "GitHub-Ziel: ${slug}"
+
+    # Token nur ueber --config (aus einem Builtin-printf) - nie als Argument (ps).
+    gh_api() { curl -sS --config <(printf 'header = "Authorization: Bearer %s"\n' "$token") \
+        -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" "$@"; }
+    gh_id() { python3 -c 'import json,sys
+try: d=json.load(sys.stdin); print(d.get("id","") if isinstance(d,dict) else "")
+except Exception: print("")'; }
+
+    # a) Mirror-Sync anstossen (Forgejo -> GitHub)
+    if api -X POST "${API_BASE}/api/v1/repos/${OWNER}/${REPO}/push_mirrors-sync" >/dev/null 2>&1; then
+        info "Mirror-Sync angestossen."
+    else
+        info "Mirror-Sync-Aufruf ohne Erfolg (Mirror evtl. nicht eingerichtet) - versuche trotzdem."
+    fi
+
+    # b) Warten, bis der Tag drueben ist (max ~120 s)
+    local i code="000"
+    for i in $(seq 1 20); do
+        code="$(gh_api -o /dev/null -w '%{http_code}' \
+            "https://api.github.com/repos/${slug}/git/ref/tags/${TAG}")"
+        [ "$code" = "200" ] && break
+        sleep 6
+    done
+    [ "$code" = "200" ] || die "Tag ${TAG} ist nach ~120s nicht auf GitHub (${slug}) - Mirror/Token pruefen."
+    info "Tag ${TAG} ist auf GitHub sichtbar."
+
+    # c) Release anlegen (prerelease bei bN-Suffix); falls vorhanden -> id holen
+    local pre="false"; case "$VERSION" in *b[0-9]*) pre="true" ;; esac
+    local body resp gid
+    body="$(TAG="$TAG" VER="$VERSION" NOTES="$NOTES" PRE="$pre" python3 -c '
+import json, os
+print(json.dumps({"tag_name": os.environ["TAG"], "name": os.environ["VER"],
+                  "body": os.environ["NOTES"], "prerelease": os.environ["PRE"]=="true",
+                  "draft": False}))')"
+    resp="$(gh_api -X POST -d "$body" "https://api.github.com/repos/${slug}/releases")"
+    gid="$(printf '%s' "$resp" | gh_id)"
+    [ -n "$gid" ] || gid="$(gh_api "https://api.github.com/repos/${slug}/releases/tags/${TAG}" | gh_id)"
+    [ -n "$gid" ] || die "GitHub-Release nicht anlegbar/gefunden. Antwort: ${resp}"
+    info "GitHub-Release-ID: ${gid}"
+
+    # d) Asset hochladen (gleichnamiges vorher entfernen -> re-upload)
+    local ex
+    ex="$(gh_api "https://api.github.com/repos/${slug}/releases/${gid}/assets" \
+        | APPIMAGE="$APPIMAGE" python3 -c '
+import json, sys, os
+name = os.path.basename(os.environ["APPIMAGE"])
+try: data = json.load(sys.stdin)
+except Exception: data = []
+out = ""
+for a in (data if isinstance(data, list) else []):
+    if a.get("name") == name:
+        out = str(a["id"]); break
+print(out)')"
+    if [ -n "$ex" ]; then
+        gh_api -X DELETE "https://api.github.com/repos/${slug}/releases/assets/${ex}" >/dev/null
+        info "Vorhandenes GitHub-Asset entfernt (${ex})."
+    fi
+    local up aid
+    up="$(curl -sS --config <(printf 'header = "Authorization: Bearer %s"\n' "$token") \
+        -H "Accept: application/vnd.github+json" -H "Content-Type: application/octet-stream" \
+        --data-binary "@${APPIMAGE}" \
+        "https://uploads.github.com/repos/${slug}/releases/${gid}/assets?name=${APPIMAGE}")"
+    aid="$(printf '%s' "$up" | gh_id)"
+    [ -n "$aid" ] || die "GitHub-Asset-Upload fehlgeschlagen. Antwort: ${up}"
+    info "GitHub-Asset hochgeladen (id ${aid})."
+
+    # e) Gegenprobe: zurueckladen und SHA-256 vergleichen (curl >=7.76 entfernt den
+    #    Authorization-Kopf beim Redirect auf S3 selbst).
+    local want got tmp
+    want="$(sha256sum "$APPIMAGE" | cut -d' ' -f1)"
+    tmp="$(mktemp)"
+    curl -sSL --config <(printf 'header = "Authorization: Bearer %s"\n' "$token") \
+        -H "Accept: application/octet-stream" \
+        "https://api.github.com/repos/${slug}/releases/assets/${aid}" -o "$tmp"
+    got="$(sha256sum "$tmp" | cut -d' ' -f1)"; rm -f "$tmp"
+    [ "$want" = "$got" ] || die "SHA-256 des GitHub-Assets weicht ab (lokal ${want} != remote ${got})."
+    info "GitHub-Asset verifiziert (sha256 ${got})."
+    info "Fertig: Release ${TAG} steht auch auf GitHub (${slug}) bereit."
+}
+
+[ "$NO_GITHUB" = 1 ] || github_release
