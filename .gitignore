@@ -9,6 +9,8 @@ base.AppImage
 appimagetool*.AppImage
 .tk9build_log.txt
 CLAUDE.md
+# Interne Sitzungsnotizen (nicht veroeffentlichen)
+SESSION.md
 # PyInstaller (Windows-Build)
 build/
 dist/

@@ -5,7 +5,7 @@
 # Skript erledigt die komplette Kette:
 #   1. Vorbedingungen pruefen (sauberer Baum, HEAD gepusht, AppImage vorhanden)
 #   2. annotierten Tag  vX  anlegen (falls noch nicht vorhanden) und pushen
-#   3. Release-Objekt ueber die Forgejo-HTTP-API anlegen (HTTPS,
+#   3. Release-Objekt ueber die Forgejo-HTTP-API anlegen (HTTPS, ggf.
 #      selbst-signiert -> curl -k), Release-Notes aus dem README-Changelog
 #   4. das gebaute AppImage als Asset anhaengen
 #
@@ -21,15 +21,14 @@
 set -euo pipefail
 
 # ---------------------------------------------------------------------------
-# Konfiguration (siehe CLAUDE.md, Abschnitt "Releasing")
+# Konfiguration. Host, Owner und Token werden NICHT im Skript hinterlegt,
+# sondern zur Laufzeit abgeleitet (siehe unten). Alles ueberschreibbar per
+# Umgebung: FORGEJO_REMOTE / FORGEJO_BRANCH / FORGEJO_API / FORGEJO_OWNER /
+# FORGEJO_REPO.
 # ---------------------------------------------------------------------------
-API_BASE="https://forgejo.invalid"
-API_OWNER="owner"
-API_REPO="Axis_Kamera_Discovery"
 CRED_FILE="${HOME}/.git-credentials"
-CRED_HOST="forgejo.invalid"     # so steht der Host in git-credentials
-GIT_REMOTE="forgejo"
-GIT_BRANCH="main"
+GIT_REMOTE="${FORGEJO_REMOTE:-forgejo}"
+GIT_BRANCH="${FORGEJO_BRANCH:-main}"
 
 cd "$(dirname "$(readlink -f "$0")")"
 
@@ -92,16 +91,32 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# Token aus ~/.git-credentials lesen (NIE ausgeben)
+# Forgejo-Ziel aus der Umgebung ableiten (keine Host-/Owner-Literale im Skript):
+#   * Owner/Repo aus der Git-Remote-URL
+#   * Host:Port + Token aus ~/.git-credentials (wird nicht mitveroeffentlicht)
 # ---------------------------------------------------------------------------
-[ -f "$CRED_FILE" ] || die "Kein ${CRED_FILE} - kein Forgejo-Token verfuegbar."
-# git speichert das Schema als http:// (nicht https://) - Schema locker matchen.
-TOKEN="$(sed -n "s#^https\\?://${API_OWNER}:\\([^@]*\\)@${CRED_HOST}.*#\\1#p" "$CRED_FILE" | head -n1)"
-[ -n "$TOKEN" ] || die "Token fuer ${API_OWNER}@${CRED_HOST} nicht in ${CRED_FILE} gefunden."
+remote_url="$(git remote get-url "$GIT_REMOTE" 2>/dev/null || true)"
+rest="${remote_url#*://}"; rest="${rest#*@}"           # Schema + Benutzer weg
+rhost="${rest%%[:/]*}"; rpath="${rest#"$rhost"}"
+rpath="${rpath#:}"                                     # Doppelpunkt (Port/scp-Form)
+case "$rpath" in [0-9]*/*) rpath="${rpath#*/}" ;; esac # numerischen Port weg
+rpath="${rpath#/}"; rpath="${rpath%.git}"
+OWNER="${FORGEJO_OWNER:-${rpath%%/*}}"
+REPO="${FORGEJO_REPO:-${rpath##*/}}"
+[ -n "$OWNER" ] && [ -n "$REPO" ] || die "Owner/Repo nicht aus Remote '${GIT_REMOTE}' ableitbar."
 
-# gemeinsamer curl-Aufruf gegen die selbst-signierte API
+# Token + Host:Port aus der passenden ~/.git-credentials-Zeile (NIE ausgeben).
+[ -f "$CRED_FILE" ] || die "Kein ${CRED_FILE} - kein Forgejo-Token verfuegbar."
+cred_line="$(grep -aE "^https?://${OWNER}:[^@]+@" "$CRED_FILE" | head -n1)"
+[ -n "$cred_line" ] || die "Keine Zugangsdaten fuer '${OWNER}' in ${CRED_FILE}."
+TOKEN="$(printf '%s\n' "$cred_line" | sed -E 's#^https?://[^:]+:([^@]+)@.*#\1#')"
+hostport="$(printf '%s\n' "$cred_line" | sed -E 's#^https?://[^@]+@(.*)$#\1#; s/%3[aA]/:/')"
+[ -n "$TOKEN" ] && [ -n "$hostport" ] || die "Token/Host nicht aus ${CRED_FILE} lesbar."
+API_BASE="${FORGEJO_API:-https://${hostport}}"
+
+# gemeinsamer curl-Aufruf gegen die (ggf. selbst-signierte) API
 api() { curl -ksS -H "Authorization: token ${TOKEN}" "$@"; }
-REL_URL="${API_BASE}/api/v1/repos/${API_OWNER}/${API_REPO}/releases"
+REL_URL="${API_BASE}/api/v1/repos/${OWNER}/${REPO}/releases"
 
 if [ "$DRY_RUN" = 1 ]; then
     info "[dry-run] Tag ${TAG} anlegen+pushen, Release anlegen, Asset ${APPIMAGE} hochladen."
