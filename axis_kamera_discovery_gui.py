@@ -81,7 +81,46 @@ DEFAULT_SETTINGS = {
     "refresh_interval": 30,  # "alle (s)"
     "hidden_columns": [],    # ausgeblendete Tabellenspalten
     "language": "de",         # Sprache: "de" oder "en"
+    "update_check": True,     # beim Start auf neue GitHub-Version pruefen
 }
+
+# GitHub-Projekt: Quelle fuer die Update-Pruefung und "Projektseite" im Info-Dialog.
+GITHUB_REPO_SLUG = "odomiel/Axis_Kamera_Discovery"
+GITHUB_RELEASES_URL = f"https://github.com/{GITHUB_REPO_SLUG}/releases"
+_GITHUB_API_RELEASES = f"https://api.github.com/repos/{GITHUB_REPO_SLUG}/releases?per_page=10"
+_VERSION_RE = re.compile(r"^(\d{2})\.(\d{2})\.(\d{2})(?:b(\d+))?$")
+
+def _parse_version(v):
+    """'26.09.10b4' -> (26, 9, 10, 4). Ohne bN-Suffix -> b=0 (erstes Release des
+    Tages, also aelter als b1). Nicht parsbar -> None."""
+    m = _VERSION_RE.match((v or "").strip().lstrip("v"))
+    if not m:
+        return None
+    return (int(m.group(1)), int(m.group(2)), int(m.group(3)),
+            int(m.group(4)) if m.group(4) else 0)
+
+
+def _verified_ssl_context():
+    """SSL-Kontext MIT Zertifikatspruefung fuer die GitHub-Abfrage. Der im AppImage
+    gebuendelte OpenSSL bringt oft kein CA-Bundle mit (Kamera-Verbindungen laufen
+    bewusst unverifiziert) -> bei Bedarf bekannte System-/Bundle-Pfade nachladen."""
+    import ssl
+    ctx = ssl.create_default_context()
+    try:
+        has_ca = ctx.cert_store_stats().get("x509", 0) > 0
+    except Exception:
+        has_ca = False
+    if not has_ca:
+        for path in (os.path.join(sys.prefix, "ssl", "cert.pem"),   # AppImage-Bundle
+                     "/etc/ssl/certs/ca-certificates.crt",          # Debian/Ubuntu
+                     "/etc/pki/tls/certs/ca-bundle.crt",            # Fedora/RHEL
+                     "/etc/ssl/cert.pem"):                          # Alpine/BSD/macOS
+            try:
+                ctx.load_verify_locations(path)
+                break
+            except (OSError, ssl.SSLError):
+                continue
+    return ctx
 
 # ===================================================================
 # Uebersetzungen / Internationalisierung (i18n)
@@ -122,6 +161,8 @@ TRANSLATIONS = {
         
         # Einstellungen-Menü
         "menu_dark_mode": "Dark Mode",
+        "menu_update_check": "Beim Start auf Updates pruefen",
+        "menu_check_updates": "Nach Updates suchen",
         "menu_columns": "Spalten...",
         "menu_language": "Sprache",
         "menu_language_de": "Deutsch",
@@ -129,6 +170,12 @@ TRANSLATIONS = {
         "menu_info": "Info",
         "menu_help": "Hilfe",
         "menu_licenses": "Lizenzen",
+        "update_title": "Update-Pruefung",
+        "update_available": "Eine neue Version ist verfuegbar:\n\n"
+            "    Aktuell:  {current}\n    Neu:      {new}\n\n"
+            "Moechten Sie die Downloadseite auf GitHub oeffnen?",
+        "update_none": "Sie verwenden bereits die neueste Version ({current}).",
+        "update_error": "Die Update-Pruefung ist fehlgeschlagen:\n{error}",
         
         # Disclaimer
         "disclaimer": "Nutzung des Programms auf eigene Gefahr",
@@ -456,6 +503,8 @@ TRANSLATIONS = {
         
         # Einstellungen-Menü
         "menu_dark_mode": "Dark Mode",
+        "menu_update_check": "Check for updates on start",
+        "menu_check_updates": "Check for updates",
         "menu_columns": "Columns...",
         "menu_language": "Language",
         "menu_language_de": "German",
@@ -463,6 +512,12 @@ TRANSLATIONS = {
         "menu_info": "Info",
         "menu_help": "Help",
         "menu_licenses": "Licenses",
+        "update_title": "Update check",
+        "update_available": "A new version is available:\n\n"
+            "    Current:  {current}\n    New:      {new}\n\n"
+            "Open the download page on GitHub?",
+        "update_none": "You are already on the latest version ({current}).",
+        "update_error": "The update check failed:\n{error}",
         
         # Disclaimer
         "disclaimer": "Use at your own risk",
@@ -819,7 +874,9 @@ class AxisDiscoveryGUI(tk.Tk):
             pass
         self.dark_mode_var = tk.BooleanVar(value=bool(self.get_setting("dark_mode")))
         self.language_var = tk.StringVar(value=self.get_setting("language") or "de")
-        
+        self.update_check_var = tk.BooleanVar(value=bool(self.get_setting("update_check")))
+        self._update_q = queue.Queue()  # Ergebnis der Update-Pruefung (Hintergrund-Thread)
+
         # Sprachwechsel-Callback
         self.language_var.trace_add("write", self._on_language_change)
 
@@ -842,6 +899,10 @@ class AxisDiscoveryGUI(tk.Tk):
         # War Auto-Refresh gespeichert aktiv, Schleife nach dem Start aufnehmen
         if self.autorefresh_var.get():
             self.after(400, self.start_search)
+
+        # Beim Start still auf eine neue GitHub-Version pruefen (abschaltbar).
+        if self.update_check_var.get():
+            self.after(1500, lambda: self._check_for_updates(silent=True))
 
     # ------------------------------------------------------- i18n / Uebersetzungen
     def _(self, key, **kwargs):
@@ -1347,6 +1408,13 @@ class AxisDiscoveryGUI(tk.Tk):
             variable=self.dark_mode_var,
             command=self._toggle_dark_mode,
         ).pack(fill=tk.X, padx=4, pady=2)
+        # Automatische Update-Pruefung beim Start (abschaltbar).
+        ttk.Checkbutton(
+            frame,
+            text=self._("menu_update_check"),
+            variable=self.update_check_var,
+            command=self._toggle_update_check,
+        ).pack(fill=tk.X, padx=4, pady=2)
         ttk.Separator(frame, orient="horizontal").pack(fill=tk.X)
 
         # Sprachauswahl mit Untermenü
@@ -1372,6 +1440,7 @@ class AxisDiscoveryGUI(tk.Tk):
         ttk.Separator(frame, orient="horizontal").pack(fill=tk.X)
 
         for label_key, command in (
+            ("menu_check_updates", lambda: self._check_for_updates(silent=False)),
             ("menu_columns", self._show_columns_dialog),
             ("menu_info", self._show_info),
             ("menu_help", self._show_help),
@@ -1424,6 +1493,68 @@ class AxisDiscoveryGUI(tk.Tk):
     def _toggle_dark_mode(self):
         self._apply_theme(self.dark_mode_var.get())
         self.set_setting("dark_mode", self.dark_mode_var.get())
+
+    # -------------------------------------------------------- Update-Pruefung
+    def _toggle_update_check(self):
+        self.set_setting("update_check", self.update_check_var.get())
+
+    def _check_for_updates(self, silent=True):
+        """Prueft im Hintergrund die neueste GitHub-Version. silent=True: nur bei
+        einer neueren Version melden (Start); False: immer eine Rueckmeldung
+        (manueller Aufruf ueber das Menue)."""
+        threading.Thread(target=self._worker_update_check, args=(silent,),
+                         daemon=True).start()
+        self.after(200, self._poll_update_check)
+
+    def _worker_update_check(self, silent):
+        # Laeuft im Thread: KEIN Tk-Zugriff, nur Netz + Queue.
+        import urllib.request
+        try:
+            req = urllib.request.Request(
+                _GITHUB_API_RELEASES,
+                headers={"Accept": "application/vnd.github+json",
+                         "User-Agent": "Axis_Kamera_Discovery"})
+            with urllib.request.urlopen(req, timeout=8,
+                                        context=_verified_ssl_context()) as resp:
+                data = json.load(resp)
+            newest = None
+            newest_t = None
+            url = GITHUB_RELEASES_URL
+            for rel in (data if isinstance(data, list) else []):
+                if rel.get("draft"):
+                    continue
+                t = _parse_version(rel.get("tag_name", ""))
+                if t and (newest_t is None or t > newest_t):
+                    newest_t, newest = t, rel.get("tag_name", "").lstrip("v")
+                    url = rel.get("html_url") or url
+            self._update_q.put(("ok", silent, newest, newest_t, url))
+        except Exception as exc:  # Netzfehler etc. an die GUI weiterreichen
+            self._update_q.put(("error", silent, str(exc)))
+
+    def _poll_update_check(self):
+        try:
+            item = self._update_q.get_nowait()
+        except queue.Empty:
+            self.after(200, self._poll_update_check)
+            return
+
+        if item[0] == "error":
+            _, silent, msg = item
+            if not silent:
+                messagebox.showwarning(self._("update_title"),
+                                       self._("update_error", error=msg))
+            return
+
+        _, silent, newest, newest_t, url = item
+        current_t = _parse_version(__version__)
+        if newest_t and current_t and newest_t > current_t:
+            if messagebox.askyesno(self._("update_title"),
+                                   self._("update_available",
+                                          current=__version__, new=newest)):
+                webbrowser.open(url)
+        elif not silent:
+            messagebox.showinfo(self._("update_title"),
+                                self._("update_none", current=__version__))
 
     # ----------------------------------------------------- Einstellungen-Datei
     @staticmethod

@@ -77,6 +77,15 @@ cd "$SRC/openssl-$SSL_VER"
 make -j"$JOBS" >/dev/null
 make install_sw >/dev/null
 
+# CA-Bundle mitliefern: install_sw legt kein cert.pem an, der gebuendelte OpenSSL
+# haette sonst keine Wurzelzertifikate -> verifizierte HTTPS-Abfragen (z. B. die
+# GitHub-Update-Pruefung) scheiterten. Das System-CA-Bundle an den Default-Pfad
+# ($PREFIX/ssl/cert.pem) kopieren.
+mkdir -p "$PREFIX/ssl"
+for ca in /etc/ssl/certs/ca-certificates.crt /etc/pki/tls/certs/ca-bundle.crt /etc/ssl/cert.pem; do
+    [ -f "$ca" ] && cp "$ca" "$PREFIX/ssl/cert.pem" && echo ">> CA-Bundle: $ca -> usr/ssl/cert.pem" && break
+done
+
 # --------------------------------------------------------------- 3. Tcl 9
 echo "==== Tcl $TCL_VER ===="
 cd "$SRC/tcl$TCL_VER/unix"
