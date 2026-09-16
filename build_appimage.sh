@@ -213,18 +213,29 @@ rm -rf "$PREFIX/include" 2>/dev/null || true
 rm -rf "$PREFIX/share/man" "$PREFIX/share/doc" 2>/dev/null || true
 
 # (c) Ungenutzte Stdlib-Teile: IDLE-IDE, pip-Bootstrap, pydoc-Daten, turtle-Demo,
-#     tkinter-Tests und alle Testsuiten.
+#     tkinter-Tests und alle Testsuiten. Zusaetzlich: pydoc/unittest (kein Test-
+#     Framework/Hilfe-System zur Laufzeit), _pyrepl (interaktive REPL), Build-
+#     Konfiguration (nur zum Kompilieren von Erweiterungen).
 rm -rf "$PYLIB/idlelib" "$PYLIB/ensurepip" "$PYLIB/pydoc_data" \
-       "$PYLIB/turtledemo" "$PYLIB/tkinter/test" 2>/dev/null || true
+       "$PYLIB/turtledemo" "$PYLIB/tkinter/test" "$PYLIB/unittest" \
+       "$PYLIB/_pyrepl" "$PYLIB/config-$PY_XY"* 2>/dev/null || true
+rm -f  "$PYLIB/pydoc.py" 2>/dev/null || true
 rm -rf "$PYLIB/test" "$PYLIB/"*/test "$PYLIB/"*/tests 2>/dev/null || true
 
-# (d) Test-/Beispiel-C-Extensions in lib-dynload.
+# (d) Test-/Beispiel-C-Extensions und ungenutzte C-Module in lib-dynload:
+#     _decimal (faellt auf _pydecimal zurueck), CJK-Codecs (jp/hk/cn/kr/tw/iso2022 -
+#     nur de/en + ASCII/UTF-8 im Einsatz), _remote_debugging.
 find "$PYLIB/lib-dynload" \( -name '_test*' -o -name '_xxtest*' \
-       -o -name 'xxlimited*' -o -name '_ctypes_test*' \) -delete 2>/dev/null || true
+       -o -name 'xxlimited*' -o -name '_ctypes_test*' -o -name '_decimal.*' \
+       -o -name '_codecs_jp.*' -o -name '_codecs_hk.*' -o -name '_codecs_cn.*' \
+       -o -name '_codecs_kr.*' -o -name '_codecs_tw.*' -o -name '_codecs_iso2022.*' \
+       -o -name '_remote_debugging.*' \) -delete 2>/dev/null || true
 
-# (e) Tcl-Erweiterungen ohne Tk-Bezug (DB-Connectivity, incrTcl, Thread-Paket).
+# (e) Tcl-Erweiterungen ohne Tk-Bezug (DB-Connectivity, incrTcl, Thread-Paket)
+#     und die Tk-Demos.
 rm -rf "$PREFIX"/lib/itcl* "$PREFIX"/lib/tdbc* \
-       "$PREFIX"/lib/sqlite* "$PREFIX"/lib/thread* 2>/dev/null || true
+       "$PREFIX"/lib/sqlite* "$PREFIX"/lib/thread* \
+       "$PREFIX"/lib/tk*/demos 2>/dev/null || true
 
 # (f) Debug-Symbole aus allen ELF-Objekten strippen (--strip-unneeded behaelt die
 #     dynamischen Symbole -> Laufzeit unveraendert). AUSNAHME: libtcl*/libtk* --

@@ -50,7 +50,9 @@ def _exe(entry, name, console):
         hiddenimports=hiddenimports,
         hookspath=[],
         runtime_hooks=[],
-        excludes=[],
+        # Zur Laufzeit ungenutzte Test-/Entwickler-/Hilfe-Module ausschliessen
+        # (verkleinert die EXE). Bewusst konservativ; die CI verifiziert den Build.
+        excludes=["unittest", "pydoc", "pdb", "doctest", "lib2to3", "ensurepip"],
         cipher=block_cipher,
         noarchive=False,
     )
