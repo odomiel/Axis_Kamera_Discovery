@@ -32,12 +32,21 @@ Programmpaketen ausgeliefert.
 | sv-ttk (Sun Valley) | 2.6.1 | MIT |
 
 > **Hinweis zu zeroconf (LGPL-2.1-or-later):** Alle übrigen Komponenten sind
-> permissiv lizenziert. `zeroconf` steht unter der LGPL (schwaches Copyleft).
-> Beim Verteilen des AppImage muss der LGPL-Lizenztext beiliegen und es muss
-> möglich sein, `zeroconf` durch eine eigene Version zu ersetzen – beim AppImage
-> ist das über `./Axis_Kamera_Discovery-x86_64.AppImage --appimage-extract`, Austausch
-> der Dateien und erneutes Packen gegeben. Der Quellcode ist erhältlich unter
-> https://github.com/python-zeroconf/python-zeroconf .
+> permissiv lizenziert. `zeroconf` steht unter der LGPL (schwaches Copyleft) und
+> enthält kompilierte Erweiterungen (`.so`/`.pyd`). Die LGPL verlangt, (1) dass der
+> LGPL-Lizenztext beiliegt – er steht **am Ende dieser Datei** und wird mit beiden
+> Programmpaketen ausgeliefert – und (2) dass sich `zeroconf` durch eine eigene
+> Version **ersetzen** lässt:
+>
+> - **AppImage:** `./Axis_Kamera_Discovery-x86_64.AppImage --appimage-extract`,
+>   `zeroconf` unter `squashfs-root/usr/lib/python3.14/site-packages/` austauschen,
+>   mit `appimagetool` neu packen.
+> - **Windows-`.exe`:** Der **vollständige Quellcode ist öffentlich** (GPL-3.0) und die
+>   `.exe` lässt sich mit einer geänderten `zeroconf`-Version aus dem Quellcode neu
+>   bauen (`Axis_Kamera_Discovery.spec`, siehe `BUILD_WINDOWS.md`). Damit ist die
+>   Neubindung nach LGPL-2.1 §6 (Begleitung mit dem vollständigen Quellcode) gegeben.
+>
+> zeroconf-Quellcode: https://github.com/python-zeroconf/python-zeroconf .
 
 ---
 
