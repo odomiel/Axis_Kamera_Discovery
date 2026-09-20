@@ -41,7 +41,7 @@ Python 3.14 inklusive **Tcl/Tk 9** sowie alle Abhängigkeiten mitbringt und dami
 | IPv6 einstellen (auto/fest/aus) & auslesen | „Kamera Einstellungen" | `set-ipv6` / `ipv6-show` |
 | Zeitzone setzen & auslesen (Time API, IANA; AXIS OS 13) | „Kamera Einstellungen" | `set-timezone` / `timezone-show` |
 | Benutzer/ONVIF-Benutzer anlegen oder Passwort ändern | „Kamera Einstellungen" | `user-add`/`user-passwd`/`onvif-add`/`onvif-passwd` |
-| Benutzer/ONVIF-Benutzer aus Textdatei importieren (Stapel) | „Kamera Einstellungen" | `user-import`/`onvif-import` |
+| Benutzer/ONVIF-Benutzer aus Text- oder verschlüsselter AES-ZIP-Datei importieren (Stapel) | „Kamera Einstellungen" | `user-import`/`onvif-import` |
 | Firmware-Update (Mehrfachauswahl) | „Kamera Einstellungen" | `firmware` |
 | ADM-Konfigurationsdatei anwenden | „Kamera Einstellungen" | `config` |
 | Konfiguration auslesen & als ADM-`.cfg` speichern | „Kamera Einstellungen" | `config-export` |
@@ -170,6 +170,15 @@ Bedienung:
     *Auslieferungszustand* gilt auch für den Import (legt dann als Administrator
     an). Jeder Benutzer wird auf allen markierten Kameras angelegt; das Ergebnis
     wird je Kamera/Benutzer protokolliert.
+    Damit die Passwörter **nicht im Klartext** auf der Platte liegen müssen, kann
+    statt der `.txt`/`.csv` auch ein **passwortgeschütztes ZIP** (AES-256) gewählt
+    werden; das Archiv-Passwort wird dann abgefragt. Ein solches ZIP legt man
+    bequem von Hand an – Windows: **7-Zip** (Rechtsklick → *Hinzufügen…*, Format
+    *zip*, Verschlüsselung *AES-256*, Passwort setzen); Linux: `7z a -tzip -mem=AES256
+    -p benutzer.zip benutzer.txt` (Paket *p7zip*) oder ein Archivmanager mit
+    AES-ZIP. (Hinweis: die Kamera benötigt das Passwort zum Anlegen im Klartext –
+    das ist beim Anlegen technisch unvermeidbar; das ZIP verhindert lediglich die
+    dauerhafte Klartextdatei.)
   - **ONVIF-Benutzer** – ONVIF-Benutzer *anlegen* (Stufe
     Administrator/Operator/User) oder *Passwort ändern*. Auch hier ist über
     *Benutzerliste wählen und anlegen…* ein **Stapel-Import aus einer Textdatei**
@@ -319,7 +328,7 @@ wird interaktiv gefragt), `--scheme {auto,https,http}`, `--port`, `--conn-timeou
 | `timezone-show` | aktuelle Zeitzone auslesen | – |
 | `user-add` | Benutzer anlegen | `--name`, `--new-password`, `--role`, `--factory` |
 | `user-passwd` | Benutzer-Passwort ändern | `--name`, `--new-password` |
-| `user-import` | Benutzer aus Textdatei anlegen | `--file` (Name,Passwort[,Rolle]), `--factory` |
+| `user-import` | Benutzer aus Textdatei anlegen | `--file` (Name,Passwort[,Rolle]; auch verschlüsseltes AES-ZIP → Passwortabfrage), `--factory` |
 | `onvif-add` | ONVIF-Benutzer anlegen | `--name`, `--new-password`, `--level` |
 | `onvif-passwd` | ONVIF-Passwort ändern | `--name`, `--new-password`, `--level` |
 | `onvif-import` | ONVIF-Benutzer aus Textdatei anlegen | `--file` (Name,Passwort[,Stufe]) |
@@ -412,6 +421,7 @@ axis_IP_Utility/
 
 | Version | Änderungen |
 |---|---|
+| 26.09.20 | Benutzer-Import kann jetzt eine **verschlüsselte Datei** einlesen: statt einer Klartext-`.txt`/`.csv` lässt sich ein **passwortgeschütztes AES-256-ZIP** wählen (bequem mit 7-Zip/WinZip bzw. `7z … -mem=AES256` erstellt) – das Archiv-Passwort wird abgefragt (GUI: maskierter Dialog; CLI: `getpass`), der Klartext existiert nur im Arbeitsspeicher. Gilt für Benutzer- **und** ONVIF-Import. Neu gebündelt: `pyzipper` (MIT) + `pycryptodomex` (BSD/Public-Domain, auf AES/SHA/KDF reduziert). *Hinweis:* die Kamera braucht das Passwort zum Anlegen technisch im Klartext – das ZIP verhindert nur die dauerhafte Klartextdatei |
 | 26.09.16b1 | **Kleinere Pakete**: Der „Verschlanken"-Schritt entfernt zusätzlich ungenutzte Teile – Tk-Demos, Python-Build-Konfiguration, `unittest`, `_pyrepl`, `pydoc`, das C-Modul `_decimal` (fällt auf reines Python zurück), die CJK-Codecs (`_codecs_jp/hk/cn/kr/tw/iso2022`) und `_remote_debugging`. Das **AppImage schrumpft um ~7 % (~1,1 MB)** auf ~14 MB, ohne Funktionsverlust (per Smoke-Test geprüft). Die Windows-Spec schließt zusätzlich `unittest`/`pydoc`/`pdb`/`doctest`/`lib2to3`/`ensurepip` aus |
 | 26.09.16 | **Lizenz-Compliance vervollständigt**: Die vollständigen Lizenztexte der **Apache License 2.0** (OpenSSL) und der **GNU LGPL 2.1** (zeroconf) liegen `THIRD_PARTY_LICENSES.md` jetzt vollständig bei – LGPL und Apache verlangen die Beilage des Lizenztextes, nicht nur einen Link. Die Datei (mit `LICENSE`/`README`) wird sowohl mit dem **AppImage** als auch mit den **Windows-`.exe`s** ausgeliefert; die Einleitung deckt jetzt beide Programmpakete ab. Alle gebündelten Lizenzen sind GPL-3-kompatibel (OpenSSL 3.x = Apache 2.0 → keine „OpenSSL-Ausnahme" nötig) |
 | 26.09.10b4 | Neue **Update-Prüfung** (abschaltbar): beim Start – und jederzeit manuell über „Einstellungen → Nach Updates suchen" – wird die neueste **GitHub**-Release-Version abgefragt; ist eine neuere verfügbar, führt ein Klick direkt zur GitHub-Downloadseite. Ein-/ausschaltbar per Häkchen „Beim Start auf Updates prüfen" (gespeichert). Der **Info-Dialog** nennt zudem die **Projektseite** `https://github.com/odomiel/Axis_Kamera_Discovery`. (Das AppImage bündelt dafür jetzt ein CA-Bundle, damit die verifizierte HTTPS-Abfrage an GitHub gelingt.) |

@@ -36,7 +36,7 @@ from importlib import metadata
 
 import tkinter as tk
 import tkinter.font as tkfont
-from tkinter import filedialog, messagebox, scrolledtext, ttk
+from tkinter import filedialog, messagebox, scrolledtext, simpledialog, ttk
 
 from axis_kamera_discovery_cli import (
     AxisDiscovery,
@@ -273,7 +273,9 @@ TRANSLATIONS = {
         "(Standard: viewer), gueltig: administrator/operator/viewer. Passwoerter "
         "mit Komma in \"...\" setzen; Zeilen mit '#' sind Kommentare. Der oben "
         "gewaehlte 'Auslieferungszustand' gilt auch fuer den Import (legt als "
-        "Administrator an).",
+        "Administrator an). Statt einer Klartext-.txt/.csv kann auch ein "
+        "passwortgeschuetztes ZIP (AES-256, z. B. mit 7-Zip/WinZip erstellt) "
+        "gewaehlt werden - das Archiv-Passwort wird dann abgefragt.",
         # ONVIF-Reiter
         "cs_onvif_add": "ONVIF-Benutzer anlegen",
         "cs_onvif_setpw": "Passwort aendern",
@@ -388,7 +390,10 @@ TRANSLATIONS = {
         "cs_choose_user_list": "Benutzerliste waehlen",
         "cs_ft_txt": "Textdatei",
         "cs_ft_csv": "CSV-Datei",
+        "cs_ft_zip": "Verschluesseltes ZIP",
         "cs_ft_all": "Alle Dateien",
+        "cs_zip_pw_title": "ZIP-Passwort",
+        "cs_zip_pw_prompt": "Passwort des verschluesselten ZIP-Archivs:",
         "cs_file_error": "Datei-Fehler",
         "cs_more_users": "\n  ... ({count} weitere)",
         "cs_import_confirm": "{count} {kind} aus der Datei auf {cams} Kamera(s) anlegen?\n\n{preview}",
@@ -615,7 +620,9 @@ TRANSLATIONS = {
         "(default: viewer), valid: administrator/operator/viewer. Enclose passwords "
         "containing a comma in \"...\"; lines starting with '#' are comments. The "
         "'Factory state' selected above also applies to the import (creates as "
-        "administrator).",
+        "administrator). Instead of a plaintext .txt/.csv you may also pick a "
+        "password-protected ZIP (AES-256, e.g. created with 7-Zip/WinZip) - the "
+        "archive password is then requested.",
         # ONVIF tab
         "cs_onvif_add": "Create ONVIF user",
         "cs_onvif_setpw": "Change password",
@@ -727,7 +734,10 @@ TRANSLATIONS = {
         "cs_choose_user_list": "Choose user list",
         "cs_ft_txt": "Text file",
         "cs_ft_csv": "CSV file",
+        "cs_ft_zip": "Encrypted ZIP",
         "cs_ft_all": "All files",
+        "cs_zip_pw_title": "ZIP password",
+        "cs_zip_pw_prompt": "Password of the encrypted ZIP archive:",
         "cs_file_error": "File error",
         "cs_more_users": "\n  ... ({count} more)",
         "cs_import_confirm": "Create {count} {kind} from the file on {cams} camera(s)?\n\n{preview}",
@@ -2804,12 +2814,20 @@ class CameraSettingsDialog(tk.Toplevel):
         path = filedialog.askopenfilename(
             title=self._("cs_choose_user_list"), parent=self,
             filetypes=[(self._("cs_ft_txt"), "*.txt"), (self._("cs_ft_csv"), "*.csv"),
-                       (self._("cs_ft_all"), "*.*")],
+                       (self._("cs_ft_zip"), "*.zip"), (self._("cs_ft_all"), "*.*")],
         )
         if not path:
             return
+        # Verschluesseltes ZIP -> Archiv-Passwort maskiert abfragen (Haupt-Thread).
+        zip_password = None
+        if vapix.looks_like_zip(path):
+            zip_password = simpledialog.askstring(
+                self._("cs_zip_pw_title"), self._("cs_zip_pw_prompt"),
+                show="*", parent=self)
+            if zip_password is None:      # Abbruch
+                return
         try:
-            users = vapix.parse_user_list(path, onvif=onvif)
+            users = vapix.parse_user_list(path, onvif=onvif, zip_password=zip_password)
         except vapix.VapixError as exc:
             messagebox.showerror(self._("cs_file_error"), str(exc), parent=self)
             return

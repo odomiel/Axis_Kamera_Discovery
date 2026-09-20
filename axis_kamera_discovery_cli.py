@@ -28,7 +28,7 @@ import axis_kamera_discovery_vapix as vapix
 
 # Versionsschema: JJ.MM.TT, bei mehreren Releases am selben Tag b1, b2, ...
 # (wird von bump_version.py gepflegt)
-__version__ = "26.09.16b1"
+__version__ = "26.09.20"
 
 FIELD_NAMES = [
     "Name",
@@ -266,8 +266,12 @@ def _run_user_import(args, onvif):
     if not os.path.isfile(args.file):
         print(f"[FEHLER] Datei nicht gefunden: {args.file}")
         return 1
+    # Verschluesseltes ZIP -> Archiv-Passwort maskiert abfragen (nicht als Argument).
+    zip_password = None
+    if vapix.looks_like_zip(args.file):
+        zip_password = getpass.getpass("Passwort des verschluesselten ZIP-Archivs: ")
     try:
-        users = vapix.parse_user_list(args.file, onvif=onvif)
+        users = vapix.parse_user_list(args.file, onvif=onvif, zip_password=zip_password)
     except vapix.VapixError as exc:
         print(f"[FEHLER] {exc}")
         return 1

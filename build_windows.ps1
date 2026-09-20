@@ -169,7 +169,7 @@ if ($Clean) {
 # Laufzeit ab ("Tcl data directory ... _tcl_data not found"). pip waehlt mit
 # --upgrade automatisch das neueste PyInstaller, das Python 3.14 unterstuetzt.
 Write-Info "Installiere/aktualisiere Abhaengigkeiten..."
-$dependencies = @("pyinstaller>=6.11", "zeroconf", "prettytable", "ifaddr", "sv-ttk")
+$dependencies = @("pyinstaller>=6.11", "zeroconf", "prettytable", "ifaddr", "sv-ttk", "pyzipper")
 
 if ($ForceReinstall) {
     & $pythonExe -m pip install --upgrade --force-reinstall $dependencies

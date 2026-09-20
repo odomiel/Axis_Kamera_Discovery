@@ -23,6 +23,7 @@ Authentifizierung per HTTP-Digest (mit Basic als Rueckfall).
 """
 
 import csv
+import io
 import json
 import os
 import re
@@ -575,11 +576,71 @@ def set_onvif_user_password(ip, username, password, target_user, new_password,
     return f"ONVIF-Passwort von '{target_user}' geaendert"
 
 
-def parse_user_list(path, onvif=False):
-    """Liest eine Benutzerliste fuer den Stapel-Import aus einer Textdatei.
+def looks_like_zip(path):
+    """True, wenn die Datei mit der ZIP-Signatur (PK\\x03\\x04) beginnt."""
+    try:
+        with open(path, "rb") as f:
+            return f.read(4) == b"PK\x03\x04"
+    except OSError:
+        return False
 
-    Format: eine Zeile je Benutzer, kommagetrennt (CSV -- Passwoerter mit Komma
-    in Anfuehrungszeichen setzen):
+
+def _read_userlist_zip(path, password):
+    """Liest die (erste) Textdatei aus einem passwortgeschuetzten ZIP-Archiv.
+    Unterstuetzt WinZip-AES-256 (wie von 7-Zip/WinZip erzeugt) via pyzipper;
+    ein herkoemmlich (ZipCrypto) oder gar nicht verschluesseltes ZIP geht auch."""
+    try:
+        import pyzipper
+    except ImportError:
+        raise VapixError(
+            "Verschluesselte ZIP-Dateien benoetigen das Modul 'pyzipper' (im "
+            "AppImage/der EXE enthalten). Sonst eine unverschluesselte .txt/.csv "
+            "verwenden.")
+    if not password:
+        raise VapixError("Fuer die verschluesselte ZIP-Datei wird ein Passwort benoetigt.")
+    try:
+        with pyzipper.AESZipFile(path) as zf:
+            zf.setpassword(password.encode("utf-8"))
+            names = [n for n in zf.namelist() if not n.endswith("/")]
+            if not names:
+                raise VapixError("Das ZIP-Archiv enthaelt keine Datei.")
+            entry = next((n for n in names if n.lower().endswith((".txt", ".csv"))),
+                         names[0])
+            data = zf.read(entry)
+    except VapixError:
+        raise
+    except Exception:  # falsches Passwort / beschaedigt / bad CRC
+        raise VapixError(
+            "ZIP-Archiv nicht lesbar - falsches Passwort oder beschaedigte Datei.")
+    for enc in ("utf-8-sig", "utf-8", "latin-1"):
+        try:
+            return data.decode(enc)
+        except UnicodeDecodeError:
+            continue
+    raise VapixError("Textkodierung der Datei im ZIP-Archiv nicht erkannt.")
+
+
+def _read_userlist_text(path, zip_password=None):
+    """Rohtext der Benutzerliste: aus einer .txt/.csv oder - bei ZIP-Signatur -
+    aus einem passwortgeschuetzten ZIP (mit zip_password entschluesselt)."""
+    if looks_like_zip(path):
+        return _read_userlist_zip(path, zip_password)
+    try:
+        with open(path, encoding="utf-8-sig") as f:
+            return f.read()
+    except OSError as exc:
+        raise VapixError(f"Datei nicht lesbar: {exc}")
+
+
+def parse_user_list(path, onvif=False, zip_password=None):
+    """Liest eine Benutzerliste fuer den Stapel-Import.
+
+    Quelle ist entweder eine **Klartext**-Datei (.txt/.csv) oder ein
+    **passwortgeschuetztes ZIP** (WinZip-AES-256, z. B. mit 7-Zip/WinZip erstellt);
+    ein ZIP wird an seiner Signatur erkannt und mit `zip_password` entschluesselt.
+
+    Format (eine Zeile je Benutzer, kommagetrennt; Passwoerter mit Komma in
+    Anfuehrungszeichen):
 
         Name,Passwort[,Rolle]
 
@@ -587,14 +648,11 @@ def parse_user_list(path, onvif=False):
     Rolle/Stufe, gilt der niedrigste Rang (regulaer 'viewer', ONVIF 'User').
     Gueltige Rollen (regulaer): administrator/operator/viewer; Stufen (ONVIF):
     Administrator/Operator/User -- Gross-/Kleinschreibung egal. Liefert eine
-    Liste von Dicts {name, password, role}. Wirft VapixError bei Datei- oder
-    Formatfehlern (mit Zeilennummern), damit nichts Halbfertiges angelegt wird.
+    Liste von Dicts {name, password, role}. Wirft VapixError bei Datei-, ZIP-
+    oder Formatfehlern (mit Zeilennummern), damit nichts Halbfertiges angelegt wird.
     """
-    try:
-        with open(path, newline="", encoding="utf-8-sig") as f:
-            rows = list(csv.reader(f))
-    except OSError as exc:
-        raise VapixError(f"Datei nicht lesbar: {exc}")
+    text = _read_userlist_text(path, zip_password)
+    rows = list(csv.reader(io.StringIO(text)))
     if onvif:
         valid = {lvl.lower(): lvl for lvl in ONVIF_LEVELS}
         default = "User"

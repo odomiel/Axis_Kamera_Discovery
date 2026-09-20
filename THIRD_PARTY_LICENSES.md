@@ -30,6 +30,8 @@ Programmpaketen ausgeliefert.
 | prettytable | 3.18.0 | BSD-3-Clause |
 | wcwidth | 0.8.3 | MIT |
 | sv-ttk (Sun Valley) | 2.6.1 | MIT |
+| pyzipper | 0.4.0 | MIT |
+| pycryptodomex | 3.23.0 | BSD-2-Clause + Public Domain |
 
 > **Hinweis zu zeroconf (LGPL-2.1-or-later):** Alle übrigen Komponenten sind
 > permissiv lizenziert. `zeroconf` steht unter der LGPL (schwaches Copyleft) und
@@ -203,6 +205,33 @@ Lizenziert unter der **MIT-Lizenz** (Wortlaut wie bei *ifaddr* oben). Quellcode:
 https://github.com/rdbende/Sun-Valley-ttk-theme bzw.
 https://github.com/rdbende/sv-ttk . Liefert das moderne Hell/Dunkel-Design der
 Oberfläche (reines Tcl-Theme, als Paketdaten gebündelt).
+
+---
+
+## pyzipper 0.4.0
+
+Copyright © 2018 Daniel Hillier und weitere Mitwirkende.
+
+Lizenziert unter der **MIT-Lizenz** (Wortlaut wie bei *ifaddr* oben). Quellcode:
+https://github.com/danifus/pyzipper . Liest passwortgeschützte **AES-256-ZIP**-
+Archive (WinZip/7-Zip-Format) für den verschlüsselten Benutzerlisten-Import.
+
+---
+
+## pycryptodomex 3.23.0
+
+Copyright © The pycryptodome authors (Legrandin und Mitwirkende); enthält
+Public-Domain-Code des ursprünglichen PyCrypto.
+
+Doppelt lizenziert: **BSD-2-Clause** (Verbesserungen von PyCryptodome) sowie
+**Public Domain** (die von PyCrypto übernommenen Teile). Beide sind permissiv und
+GPL-kompatibel. Die BSD-2-Clause verlangt, dass Copyright-Hinweis und
+Bedingungsliste in Quell- und Binärform erhalten bleiben; die Software wird „AS IS"
+ohne Gewährleistung bereitgestellt. Voller Lizenztext:
+https://github.com/Legrandin/pycryptodome/blob/master/LICENSE.rst
+Quellcode: https://github.com/Legrandin/pycryptodome . Wird von `pyzipper` für die
+AES-Entschlüsselung genutzt (im ausgelieferten Paket auf die benötigten Teile –
+AES/SHA/KDF/Util – reduziert).
 
 ---
 

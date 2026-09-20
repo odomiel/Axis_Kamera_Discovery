@@ -156,6 +156,10 @@ wheel prettytable "n.endswith('.whl')"
 wheel wcwidth     "n.endswith('.whl')"
 # Modernes Sun-Valley-Theme (reines py3-none-any-Wheel inkl. Tcl-Dateien)
 wheel sv-ttk      "n.endswith('.whl')"
+# Verschluesselte Benutzerlisten: pyzipper liest AES-256-ZIPs (WinZip/7-Zip),
+# braucht pycryptodomex (abi3-Wheel -> laeuft auf 3.14) fuer die AES-Krypto.
+wheel pyzipper      "n.endswith('.whl')"
+wheel pycryptodomex "'abi3' in n and 'manylinux' in n and 'x86_64' in n"
 
 # --------------------------------------------------------------- 7. App + AppDir
 echo "==== AppDir zusammenstellen ===="
@@ -236,6 +240,13 @@ find "$PYLIB/lib-dynload" \( -name '_test*' -o -name '_xxtest*' \
 rm -rf "$PREFIX"/lib/itcl* "$PREFIX"/lib/tdbc* \
        "$PREFIX"/lib/sqlite* "$PREFIX"/lib/thread* \
        "$PREFIX"/lib/tk*/demos 2>/dev/null || true
+
+# (e2) pycryptodomex: nur AES/SHA1/KDF/Util wird gebraucht (fuer die AES-ZIP-
+#      Benutzerlisten via pyzipper). Asymmetrik/Signaturen/Testsuite/Big-Int-Math
+#      entfernen (spart ~4 MB).
+rm -rf "$SITE"/Cryptodome/PublicKey "$SITE"/Cryptodome/SelfTest \
+       "$SITE"/Cryptodome/Signature "$SITE"/Cryptodome/Math \
+       "$SITE"/Cryptodome/IO 2>/dev/null || true
 
 # (f) Debug-Symbole aus allen ELF-Objekten strippen (--strip-unneeded behaelt die
 #     dynamischen Symbole -> Laufzeit unveraendert). AUSNAHME: libtcl*/libtk* --

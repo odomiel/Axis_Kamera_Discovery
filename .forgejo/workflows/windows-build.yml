@@ -25,7 +25,7 @@ jobs:
         # --upgrade + Mindestversion: Python 3.14 bringt Tcl/Tk 9 mit; nur ein
         # aktuelles PyInstaller buendelt das Tcl-Datenverzeichnis (_tcl_data)
         # korrekt (aeltere brechen mit "Tcl data directory ... not found" ab).
-        run: pip install --upgrade "pyinstaller>=6.11" zeroconf prettytable ifaddr sv-ttk
+        run: pip install --upgrade "pyinstaller>=6.11" zeroconf prettytable ifaddr sv-ttk pyzipper
 
       - name: .exe bauen
         run: pyinstaller --noconfirm Axis_Kamera_Discovery.spec

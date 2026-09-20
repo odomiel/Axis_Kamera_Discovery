@@ -32,9 +32,12 @@ datas = [
 datas += collect_data_files("sv_ttk")
 
 # zeroconf/ifaddr laden Teile dynamisch -> Submodule explizit einsammeln.
+# pyzipper (+ Cryptodomex) fuer verschluesselte AES-ZIP-Benutzerlisten.
 hiddenimports = (collect_submodules("zeroconf")
                  + collect_submodules("ifaddr")
-                 + collect_submodules("sv_ttk"))
+                 + collect_submodules("sv_ttk")
+                 + collect_submodules("pyzipper")
+                 + collect_submodules("Cryptodome"))
 
 ICON = "appimage/Axis_Kamera_Discovery/Axis_Kamera_Discovery.ico"
 
