@@ -28,7 +28,7 @@ Deshalb den Interpreter über den Python-Launcher `py` explizit wählen:
 py -0p                 # zeigt alle installierten Versionen und ihre Pfade
 py -3.14 -V            # muss "Python 3.14.x" ausgeben
 
-py -3.14 -m pip install --upgrade "pyinstaller>=6.11" zeroconf prettytable ifaddr sv-ttk
+py -3.14 -m pip install --upgrade "pyinstaller>=6.11" zeroconf prettytable ifaddr sv-ttk pyzipper
 py -3.14 -m PyInstaller --noconfirm Axis_Kamera_Discovery.spec
 ```
 
