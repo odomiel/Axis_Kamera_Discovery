@@ -105,6 +105,7 @@ def _verified_ssl_context():
     gebuendelte OpenSSL bringt oft kein CA-Bundle mit (Kamera-Verbindungen laufen
     bewusst unverifiziert) -> bei Bedarf bekannte System-/Bundle-Pfade nachladen."""
     import ssl
+    global _ca_bundle_missing
     ctx = ssl.create_default_context()
     try:
         has_ca = ctx.cert_store_stats().get("x509", 0) > 0
@@ -120,7 +121,22 @@ def _verified_ssl_context():
                 break
             except (OSError, ssl.SSLError):
                 continue
+        else:
+            # Kein Bundle gefunden -- evtl. greift noch ein CA-Verzeichnis (capath);
+            # schlaegt die Pruefung fehl, nennt die GUI dies als Ursache.
+            _ca_bundle_missing = True
     return ctx
+
+
+# True, wenn _verified_ssl_context kein CA-Bundle laden konnte.
+_ca_bundle_missing = False
+
+
+def _is_cert_verify_error(exc):
+    """True bei Zertifikats-Pruffehler (direkt oder in URLError verpackt)."""
+    import ssl
+    return isinstance(exc, ssl.SSLCertVerificationError) or \
+        isinstance(getattr(exc, "reason", None), ssl.SSLCertVerificationError)
 
 # ===================================================================
 # Uebersetzungen / Internationalisierung (i18n)
@@ -176,6 +192,7 @@ TRANSLATIONS = {
             "Moechten Sie die Downloadseite auf GitHub oeffnen?",
         "update_none": "Sie verwenden bereits die neueste Version ({current}).",
         "update_error": "Die Update-Pruefung ist fehlgeschlagen:\n{error}",
+        "update_error_no_ca": "Die Update-Pruefung ist fehlgeschlagen: das Server-Zertifikat konnte nicht geprueft werden, weil kein CA-Zertifikatsbundle gefunden wurde (z. B. Paket 'ca-certificates' installieren).\n\n{error}",
         
         # Disclaimer
         "disclaimer": "Nutzung des Programms auf eigene Gefahr",
@@ -361,6 +378,14 @@ TRANSLATIONS = {
         "cs_need_start_ip": "Bitte eine Start-IP angeben.",
         "cs_invalid_start_ip": "Ungueltige Start-IP: {start}",
         "cs_need_ip_for": "Bitte fuer '{name}' eine IP angeben.",
+        "cs_ipv4_mask": "Ungueltige Subnetzmaske: {mask}",
+        "cs_ipv4_ip": "Ungueltige IPv4-Adresse: {ip}",
+        "cs_ipv4_ip_special": "{ip} ist keine gueltige Geraeteadresse (Loopback/Multicast/reserviert/0.0.0.0).",
+        "cs_ipv4_ip_net_bcast": "{ip} ist die Netz- oder Broadcast-Adresse von {net}.",
+        "cs_ipv4_gateway": "Ungueltiges Gateway: {gateway}",
+        "cs_ipv4_gateway_subnet": "Das Gateway {gateway} liegt nicht im Subnetz {net} von {ip}.",
+        "cs_ipv4_gateway_is_ip": "Das Gateway {gateway} ist identisch mit einer Geraeteadresse.",
+        "cs_ipv4_duplicate": "Die IP-Adresse {ip} ist mehrfach vergeben.",
         "cs_need_ipv6": "Bitte eine IPv6-Adresse mit Praefix angeben (z. B. 2001:db8::10/64).",
         "cs_ipv6_sum_off": "IPv6 deaktivieren",
         "cs_ipv6_sum_auto": "IPv6 auf automatisch (SLAAC / Router Advertisement) stellen",
@@ -523,6 +548,7 @@ TRANSLATIONS = {
             "Open the download page on GitHub?",
         "update_none": "You are already on the latest version ({current}).",
         "update_error": "The update check failed:\n{error}",
+        "update_error_no_ca": "The update check failed: the server certificate could not be verified because no CA certificate bundle was found (e.g. install the 'ca-certificates' package).\n\n{error}",
         
         # Disclaimer
         "disclaimer": "Use at your own risk",
@@ -705,6 +731,14 @@ TRANSLATIONS = {
         "cs_need_start_ip": "Please provide a start IP.",
         "cs_invalid_start_ip": "Invalid start IP: {start}",
         "cs_need_ip_for": "Please provide an IP for '{name}'.",
+        "cs_ipv4_mask": "Invalid subnet mask: {mask}",
+        "cs_ipv4_ip": "Invalid IPv4 address: {ip}",
+        "cs_ipv4_ip_special": "{ip} is not a valid device address (loopback/multicast/reserved/0.0.0.0).",
+        "cs_ipv4_ip_net_bcast": "{ip} is the network or broadcast address of {net}.",
+        "cs_ipv4_gateway": "Invalid gateway: {gateway}",
+        "cs_ipv4_gateway_subnet": "The gateway {gateway} is not in subnet {net} of {ip}.",
+        "cs_ipv4_gateway_is_ip": "The gateway {gateway} is identical to a device address.",
+        "cs_ipv4_duplicate": "The IP address {ip} is assigned more than once.",
         "cs_need_ipv6": "Please provide an IPv6 address with prefix (e.g. 2001:db8::10/64).",
         "cs_ipv6_sum_off": "disable IPv6",
         "cs_ipv6_sum_auto": "set IPv6 to automatic (SLAAC / Router Advertisement)",
@@ -1219,9 +1253,11 @@ class AxisDiscoveryGUI(tk.Tk):
     def _run_discovery(self, timeout):
         try:
             discovery = AxisDiscovery()
-            discovery.start()
-            discovery.search(timeout)
-            discovery.stop()
+            try:
+                discovery.start()
+                discovery.search(timeout)
+            finally:
+                discovery.stop()
             self._result_queue.put(("ok", discovery.services))
         except Exception as exc:  # an die GUI weiterreichen
             self._result_queue.put(("error", str(exc)))
@@ -1539,7 +1575,8 @@ class AxisDiscoveryGUI(tk.Tk):
                     url = rel.get("html_url") or url
             self._update_q.put(("ok", silent, newest, newest_t, url))
         except Exception as exc:  # Netzfehler etc. an die GUI weiterreichen
-            self._update_q.put(("error", silent, str(exc)))
+            no_ca = _ca_bundle_missing and _is_cert_verify_error(exc)
+            self._update_q.put(("error", silent, str(exc), no_ca))
 
     def _poll_update_check(self):
         try:
@@ -1549,10 +1586,11 @@ class AxisDiscoveryGUI(tk.Tk):
             return
 
         if item[0] == "error":
-            _, silent, msg = item
+            _, silent, msg, no_ca = item
             if not silent:
+                key = "update_error_no_ca" if no_ca else "update_error"
                 messagebox.showwarning(self._("update_title"),
-                                       self._("update_error", error=msg))
+                                       self._(key, error=msg))
             return
 
         _, silent, newest, newest_t, url = item
@@ -2547,7 +2585,7 @@ class CameraSettingsDialog(tk.Toplevel):
         mode = self._mode_var.get()
         # Plausibilitaet pruefen und Zieladressen vorberechnen
         try:
-            targets = self._compute_targets(mode)
+            targets, mask, gateway = self._compute_targets(mode)
         except ValueError as exc:
             messagebox.showerror(self._("cs_input_error"), str(exc), parent=self)
             return
@@ -2566,10 +2604,8 @@ class CameraSettingsDialog(tk.Toplevel):
         self._set_busy(True)
         self._log(self._("cs_applying", count=len(self.cameras)))
         kwargs = self._conn_kwargs()
-        # Tk-Variablen NUR im Haupt-Thread lesen und an den Worker uebergeben
-        # (Tkinter ist nicht thread-safe).
-        mask = self.mask_var.get().strip()
-        gateway = self.gw_var.get().strip()
+        # mask/gateway stammen (geprueft) aus _compute_targets -- im Haupt-Thread
+        # gelesen, da Tkinter nicht thread-safe ist.
         threading.Thread(
             target=self._worker_apply, args=(mode, targets, mask, gateway, kwargs),
             daemon=True,
@@ -2577,9 +2613,13 @@ class CameraSettingsDialog(tk.Toplevel):
         self.after(150, self._poll)
 
     def _compute_targets(self, mode):
-        """Berechnet die Ziel-IP je Kamera-Index (leer bei DHCP). Wirft ValueError."""
+        """Berechnet und prueft die Ziel-IP je Kamera-Index.
+
+        Liefert (targets, mask, gateway) -- normalisiert; bei DHCP ({}, "", "").
+        Wirft ValueError mit uebersetzter Meldung.
+        """
         if mode == "dhcp":
-            return {}
+            return {}, "", ""
         mask = self.mask_var.get().strip()
         if not mask:
             raise ValueError(self._("cs_need_subnet"))
@@ -2601,7 +2641,13 @@ class CameraSettingsDialog(tk.Toplevel):
                         self._("cs_need_ip_for", name=self.cameras[idx].get('Name', '?'))
                     )
                 targets[idx] = value
-        return targets
+        order = sorted(targets)
+        try:
+            ips, mask, gateway = vapix.validate_ipv4_settings(
+                [targets[i] for i in order], mask, self.gw_var.get())
+        except vapix.InvalidIPv4Settings as exc:
+            raise ValueError(self._("cs_ipv4_" + exc.code, **exc.params))
+        return dict(zip(order, ips)), mask, gateway
 
     def _worker_apply(self, mode, targets, mask, gateway, kwargs):
         for idx, cam in enumerate(self.cameras):

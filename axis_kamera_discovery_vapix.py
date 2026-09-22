@@ -24,6 +24,7 @@ Authentifizierung per HTTP-Digest (mit Basic als Rueckfall).
 
 import csv
 import io
+import ipaddress
 import json
 import os
 import re
@@ -299,14 +300,91 @@ def set_dhcp(ip, username, password, scheme="auto", port=None, timeout=10):
 
 def next_ip(ip_str, step=1):
     """Liefert die um 'step' erhoehte IPv4-Adresse als String (fuer Start-IP-Modus)."""
-    parts = [int(p) for p in ip_str.split(".")]
-    if len(parts) != 4:
+    try:
+        addr = ipaddress.IPv4Address(ip_str.strip())
+    except ValueError:
         raise ValueError(f"Ungueltige IPv4-Adresse: {ip_str}")
-    value = (parts[0] << 24) | (parts[1] << 16) | (parts[2] << 8) | parts[3]
-    value += step
-    if not 0 <= value <= 0xFFFFFFFF:
+    try:
+        return str(addr + step)
+    except ipaddress.AddressValueError:
         raise ValueError(f"IP-Adresse ausserhalb des gueltigen Bereichs: {ip_str}+{step}")
-    return ".".join(str((value >> shift) & 0xFF) for shift in (24, 16, 8, 0))
+
+
+class InvalidIPv4Settings(ValueError):
+    """Ungueltige IPv4-Zieleinstellungen (Adresse/Maske/Gateway).
+
+    'code' + 'params' erlauben der GUI eine eigene Uebersetzung; str() liefert
+    den deutschen Text fuer die CLI.
+    """
+
+    MESSAGES = {
+        "mask": "Ungueltige Subnetzmaske: {mask}",
+        "ip": "Ungueltige IPv4-Adresse: {ip}",
+        "ip_special": "{ip} ist keine gueltige Geraeteadresse "
+                      "(Loopback/Multicast/reserviert/0.0.0.0)",
+        "ip_net_bcast": "{ip} ist Netz- oder Broadcast-Adresse von {net}",
+        "gateway": "Ungueltiges Gateway: {gateway}",
+        "gateway_subnet": "Gateway {gateway} liegt nicht im Subnetz {net} von {ip}",
+        "gateway_is_ip": "Gateway {gateway} ist identisch mit der Geraeteadresse",
+        "duplicate": "IP-Adresse {ip} ist mehrfach vergeben",
+    }
+
+    def __init__(self, code, **params):
+        self.code = code
+        self.params = params
+        super().__init__(self.MESSAGES[code].format(**params))
+
+
+def validate_ipv4_settings(new_ips, subnet_mask, gateway=""):
+    """Prueft feste IPv4-Zieleinstellungen, bevor sie an Kameras gehen.
+
+    new_ips: Liste der Zieladressen (eine je Kamera). Prueft Format, Maske
+    (zusammenhaengend, /1../31), Netz-/Broadcast-Adresse, Gateway im selben
+    Subnetz und doppelte Adressen. Wirft InvalidIPv4Settings; liefert sonst
+    (normalisierte IPs, normalisierte Maske, normalisiertes Gateway oder "").
+    """
+    mask = subnet_mask.strip()
+    try:
+        prefix = ipaddress.IPv4Network(f"0.0.0.0/{mask}").prefixlen
+        # IPv4Network akzeptiert auch Hostmasken (0.0.0.255) -> gegenpruefen
+        if str(ipaddress.IPv4Network(f"0.0.0.0/{prefix}").netmask) != \
+                str(ipaddress.IPv4Address(mask)) or not 1 <= prefix <= 31:
+            raise ValueError
+    except ValueError:
+        raise InvalidIPv4Settings("mask", mask=subnet_mask)
+    mask = str(ipaddress.IPv4Network(f"0.0.0.0/{prefix}").netmask)
+
+    gw = gateway.strip()
+    gw_addr = None
+    if gw:
+        try:
+            gw_addr = ipaddress.IPv4Address(gw)
+        except ValueError:
+            raise InvalidIPv4Settings("gateway", gateway=gateway)
+
+    result, seen = [], set()
+    for raw in new_ips:
+        try:
+            addr = ipaddress.IPv4Address(raw.strip())
+        except ValueError:
+            raise InvalidIPv4Settings("ip", ip=raw)
+        if (addr.is_unspecified or addr.is_loopback or addr.is_multicast
+                or addr.is_reserved):
+            raise InvalidIPv4Settings("ip_special", ip=str(addr))
+        net = ipaddress.IPv4Network(f"{addr}/{prefix}", strict=False)
+        if prefix <= 30 and addr in (net.network_address, net.broadcast_address):
+            raise InvalidIPv4Settings("ip_net_bcast", ip=str(addr), net=str(net))
+        if addr in seen:
+            raise InvalidIPv4Settings("duplicate", ip=str(addr))
+        seen.add(addr)
+        if gw_addr is not None:
+            if gw_addr == addr:
+                raise InvalidIPv4Settings("gateway_is_ip", gateway=str(gw_addr))
+            if gw_addr not in net:
+                raise InvalidIPv4Settings("gateway_subnet", gateway=str(gw_addr),
+                                          net=str(net), ip=str(addr))
+        result.append(str(addr))
+    return result, mask, (str(gw_addr) if gw_addr is not None else "")
 
 
 # =====================================================================

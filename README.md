@@ -129,7 +129,11 @@ Bedienung:
   die einzelnen Aktionen:
   - **IP-Adresse** ändern in drei Varianten: *Auf DHCP umstellen*,
     *Feste IP ab Start-IP fortlaufend* (vergibt fortlaufende Adressen) oder
-    *Pro Kamera einzeln* (je Kamera ein eigenes IP-Feld).
+    *Pro Kamera einzeln* (je Kamera ein eigenes IP-Feld). Vor dem Senden
+    werden Adressen, Subnetzmaske und Gateway geprüft (gültige IPv4, keine
+    Netz-/Broadcast-Adresse, zusammenhängende Maske, Gateway im selben Subnetz,
+    keine doppelt vergebene IP) – so landet keine Kamera durch einen Tippfehler
+    unerreichbar im Netz.
   - **IPv6-Adresse** einstellen in drei Varianten: *Automatisch* (per
     SLAAC/Router-Advertisement vergebene Adressen), *Feste IPv6-Adresse*
     (manuelle Adresse mit Präfix, z. B. `2001:db8::10/64`, optional Gateway) oder
@@ -320,7 +324,7 @@ wird interaktiv gefragt), `--scheme {auto,https,http}`, `--port`, `--conn-timeou
 
 | Unterbefehl | Zweck | Wichtige Optionen |
 |---|---|---|
-| `set-ip` | feste IP setzen | `--new-ip` (Pflicht), `--mask`, `--gateway` |
+| `set-ip` | feste IP setzen (genau **eine** Kamera-IP; Adresse/Maske/Gateway werden vorab geprüft) | `--new-ip` (Pflicht), `--mask`, `--gateway` |
 | `set-dhcp` | auf DHCP umstellen | – |
 | `set-ipv6` | IPv6 einstellen | `--mode auto\|manual\|off` (Pflicht), `--address` (mit Präfix, nur `manual`), `--router` |
 | `ipv6-show` | aktuelle IPv6-Konfiguration auslesen | – |
@@ -421,6 +425,7 @@ axis_IP_Utility/
 
 | Version | Änderungen |
 |---|---|
+| 26.09.22 | **Prüfung der IPv4-Einstellungen vor dem Senden** (GUI-Reiter „IP-Adresse" und CLI `set-ip`): Zieladresse(n), Subnetzmaske und Gateway werden validiert – gültige IPv4 (keine Loopback-/Multicast-/reservierte Adresse), nicht Netz- oder Broadcast-Adresse des Subnetzes, zusammenhängende Maske (/1–/31), Gateway im selben Subnetz und ungleich der Geräteadresse, keine doppelt vergebenen IPs. Bisher gingen Eingaben ungeprüft an `param.cgi`; im Modus „Pro Kamera einzeln" wurden Tippfehler nicht erkannt und eine Start-IP wie `1.300.1.1` wurde stillschweigend zu `2.44.1.1`. CLI `set-ip` lehnt mehrere Kamera-IPs ab (sonst bekämen alle dieselbe Adresse). Außerdem: die mDNS-Suche schließt Zeroconf jetzt auch im Fehlerfall (`try/finally`), toter Code (`on_service_state_change`) entfernt, und schlägt die Update-Prüfung mangels CA-Zertifikatsbundle fehl, nennt die Meldung diese Ursache |
 | 26.09.20 | Benutzer-Import kann jetzt eine **verschlüsselte Datei** einlesen: statt einer Klartext-`.txt`/`.csv` lässt sich ein **passwortgeschütztes AES-256-ZIP** wählen (bequem mit 7-Zip/WinZip bzw. `7z … -mem=AES256` erstellt) – das Archiv-Passwort wird abgefragt (GUI: maskierter Dialog; CLI: `getpass`), der Klartext existiert nur im Arbeitsspeicher. Gilt für Benutzer- **und** ONVIF-Import. Neu gebündelt: `pyzipper` (MIT) + `pycryptodomex` (BSD/Public-Domain, auf AES/SHA/KDF reduziert). *Hinweis:* die Kamera braucht das Passwort zum Anlegen technisch im Klartext – das ZIP verhindert nur die dauerhafte Klartextdatei |
 | 26.09.16b1 | **Kleinere Pakete**: Der „Verschlanken"-Schritt entfernt zusätzlich ungenutzte Teile – Tk-Demos, Python-Build-Konfiguration, `unittest`, `_pyrepl`, `pydoc`, das C-Modul `_decimal` (fällt auf reines Python zurück), die CJK-Codecs (`_codecs_jp/hk/cn/kr/tw/iso2022`) und `_remote_debugging`. Das **AppImage schrumpft um ~7 % (~1,1 MB)** auf ~14 MB, ohne Funktionsverlust (per Smoke-Test geprüft). Die Windows-Spec schließt zusätzlich `unittest`/`pydoc`/`pdb`/`doctest`/`lib2to3`/`ensurepip` aus |
 | 26.09.16 | **Lizenz-Compliance vervollständigt**: Die vollständigen Lizenztexte der **Apache License 2.0** (OpenSSL) und der **GNU LGPL 2.1** (zeroconf) liegen `THIRD_PARTY_LICENSES.md` jetzt vollständig bei – LGPL und Apache verlangen die Beilage des Lizenztextes, nicht nur einen Link. Die Datei (mit `LICENSE`/`README`) wird sowohl mit dem **AppImage** als auch mit den **Windows-`.exe`s** ausgeliefert; die Einleitung deckt jetzt beide Programmpakete ab. Alle gebündelten Lizenzen sind GPL-3-kompatibel (OpenSSL 3.x = Apache 2.0 → keine „OpenSSL-Ausnahme" nötig) |

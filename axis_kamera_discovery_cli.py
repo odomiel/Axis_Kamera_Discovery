@@ -28,7 +28,7 @@ import axis_kamera_discovery_vapix as vapix
 
 # Versionsschema: JJ.MM.TT, bei mehreren Releases am selben Tag b1, b2, ...
 # (wird von bump_version.py gepflegt)
-__version__ = "26.09.20"
+__version__ = "26.09.22"
 
 FIELD_NAMES = [
     "Name",
@@ -45,10 +45,6 @@ class AxisDiscovery:
         self.zeroconf = Zeroconf()
         self.services = []
         self._seen = set()  # bereits erfasste mDNS-Namen (gegen Doppel-Eintraege)
-
-    def on_service_state_change(self, zeroconf, service_type, name, state_change):
-        if state_change is Zeroconf.StateChange.Added:
-            self.add_service(zeroconf, service_type, name)
 
     def add_service(self, zeroconf, service_type, name):
         # Doppelte Ankuendigungen desselben Dienstes ignorieren
@@ -104,9 +100,11 @@ class AxisDiscovery:
 
 def discover_axis_cameras(show_in_console=True, timeout=10):
     discovery = AxisDiscovery()
-    discovery.start()
-    discovery.search(timeout)
-    discovery.stop()
+    try:
+        discovery.start()
+        discovery.search(timeout)
+    finally:
+        discovery.stop()
 
     if show_in_console:
         if discovery.services:
@@ -219,9 +217,19 @@ def _run_over_ips(ips, op):
     return 1 if failed else 0
 
 def cmd_set_ip(args):
+    # Eine feste Ziel-IP fuer mehrere Kameras wuerde einen Adresskonflikt erzeugen.
+    if len(args.ips) > 1:
+        print("[FEHLER] set-ip setzt genau eine Adresse -> nur eine Kamera-IP angeben.")
+        return 2
+    try:
+        (new_ip,), mask, gateway = vapix.validate_ipv4_settings(
+            [args.new_ip], args.mask, args.gateway)
+    except vapix.InvalidIPv4Settings as exc:
+        print(f"[FEHLER] {exc}")
+        return 2
     k = _conn_kwargs(args)
     return _run_over_ips(args.ips, lambda ip: vapix.set_static_ip(
-        ip, new_ip=args.new_ip, subnet_mask=args.mask, gateway=args.gateway, **k))
+        ip, new_ip=new_ip, subnet_mask=mask, gateway=gateway, **k))
 
 def cmd_set_dhcp(args):
     k = _conn_kwargs(args)
