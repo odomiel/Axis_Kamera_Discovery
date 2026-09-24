@@ -153,7 +153,10 @@ wheel zeroconf    "'cp314-cp314-' in n and 'manylinux' in n and 'x86_64' in n"
 wheel ifaddr      "n.endswith('.whl')"
 wheel prettytable "n.endswith('.whl')"
 # wcwidth (Abhaengigkeit von prettytable)
-wheel wcwidth     "n.endswith('.whl')"
+# wcwidth: ab 0.9 gibt es plattform-spezifische Wheels (C-Ext) -> ausdruecklich
+# das reine py3-none-any-Wheel nehmen (sonst zieht der lose Filter z. B. ein
+# macOS-Wheel; die Geschwindigkeit ist hier irrelevant).
+wheel wcwidth     "'py3-none-any' in n"
 # Modernes Sun-Valley-Theme (reines py3-none-any-Wheel inkl. Tcl-Dateien)
 wheel sv-ttk      "n.endswith('.whl')"
 # Verschluesselte Benutzerlisten: pyzipper liest AES-256-ZIPs (WinZip/7-Zip),
