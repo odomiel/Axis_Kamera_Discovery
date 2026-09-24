@@ -28,7 +28,7 @@ Programmpaketen ausgeliefert.
 | zeroconf | 0.151.3 | **LGPL-2.1-or-later** |
 | ifaddr | 0.2.0 | MIT |
 | prettytable | 3.18.0 | BSD-3-Clause |
-| wcwidth | 0.8.4 | MIT |
+| wcwidth | 0.9.1 | MIT |
 | sv-ttk (Sun Valley) | 2.6.1 | MIT |
 | pyzipper | 0.4.0 | MIT |
 | pycryptodomex | 3.23.0 | BSD-2-Clause + Public Domain |
@@ -188,7 +188,7 @@ Quellcode: https://github.com/prettytable/prettytable
 
 ---
 
-## wcwidth 0.8.4
+## wcwidth 0.9.1
 
 Copyright © Jeff Quast.
 
