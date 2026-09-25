@@ -270,7 +270,11 @@ chmod +x "$AIT"
 
 VERSION="$(python3 "$ROOT/bump_version.py" --print)"
 OUT="$ROOT/Axis_Kamera_Discovery-${VERSION}-x86_64.AppImage"
-ARCH=x86_64 "$AIT" --appimage-extract-and-run "$APPDIR" "$OUT" 2>&1 | tail -5
+# Update-Information fuer AppImageUpdate/GearLever: neuestes GitHub-Release +
+# zsync (Delta-Update). Slug = oeffentliches Spiegel-Repo (nennt die App ohnehin).
+# appimagetool bettet die Info ein UND schreibt <OUT>.zsync daneben.
+UPDINFO="gh-releases-zsync|odomiel|Axis_Kamera_Discovery|latest|Axis_Kamera_Discovery-*-x86_64.AppImage.zsync"
+ARCH=x86_64 "$AIT" --appimage-extract-and-run -u "$UPDINFO" "$APPDIR" "$OUT" 2>&1 | tail -5
 ln -sfn "$(basename "$OUT")" "$ROOT/Axis_Kamera_Discovery-x86_64.AppImage"
 
 echo ">> Fertig: $OUT"

@@ -84,13 +84,17 @@ info "AppImage: ${APPIMAGE}"
 # deren Dateiname mit _<VERSION>.exe endet - also zur aktuellen Version gehoert;
 # die PyInstaller-Spec haengt __version__ an: Axis_Kamera_Discovery[_cli]_<ver>.exe).
 ASSETS=("$APPIMAGE")
+# .zsync neben dem AppImage (von appimagetool -u erzeugt) mitliefern - noetig,
+# damit AppImageUpdate/GearLever ueber die eingebettete Update-Information
+# aktualisieren kann.
+[ -f "${APPIMAGE}.zsync" ] && ASSETS+=("${APPIMAGE}.zsync")
 shopt -s nullglob
 for exe in dist/*_"${VERSION}".exe; do ASSETS+=("$exe"); done
 shopt -u nullglob
 if [ "${#ASSETS[@]}" -gt 1 ]; then
-    info "Windows-Exes (dist/, Version ${VERSION}): ${ASSETS[*]:1}"
+    info "Weitere Assets: ${ASSETS[*]:1}"
 else
-    info "Windows-Exe: keine passende in dist/ (nur AppImage wird veroeffentlicht)."
+    info "Nur AppImage (keine .zsync/Windows-Exe gefunden)."
 fi
 
 # ---------------------------------------------------------------------------
