@@ -270,7 +270,12 @@ chmod +x "$AIT"
 
 VERSION="$(python3 "$ROOT/bump_version.py" --print)"
 OUT="$ROOT/Axis_Kamera_Discovery-${VERSION}-x86_64.AppImage"
-# Update-Information fuer AppImageUpdate/GearLever: neuestes GitHub-Release +
+# Version in die .desktop schreiben: GearLever & Co. lesen die installierte
+# Fassung aus X-AppImage-Version. Fehlt sie, zeigt GearLever "Not specified"
+# und kann nicht erkennen, dass ein neueres Release vorliegt.
+grep -q '^X-AppImage-Version=' "$APPDIR/Axis_Kamera_Discovery.desktop" \
+  || echo "X-AppImage-Version=${VERSION}" >> "$APPDIR/Axis_Kamera_Discovery.desktop"
+# Update-Information fuer AppImageUpdate/GitHub-Updater: neuestes GitHub-Release +
 # zsync (Delta-Update). Slug = oeffentliches Spiegel-Repo (nennt die App ohnehin).
 # appimagetool bettet die Info ein UND schreibt <OUT>.zsync daneben.
 UPDINFO="gh-releases-zsync|odomiel|Axis_Kamera_Discovery|latest|Axis_Kamera_Discovery-*-x86_64.AppImage.zsync"
