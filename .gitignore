@@ -5,6 +5,7 @@ __pycache__/
 squashfs-root/
 base.AppImage
 *.AppImage
+*.AppImage.zsync
 .tk9build/
 appimagetool*.AppImage
 .tk9build_log.txt
