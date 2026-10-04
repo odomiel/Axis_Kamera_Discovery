@@ -280,6 +280,19 @@ grep -q '^X-AppImage-Version=' "$APPDIR/Axis_Kamera_Discovery.desktop" \
 # appimagetool bettet die Info ein UND schreibt <OUT>.zsync daneben.
 UPDINFO="gh-releases-zsync|odomiel|Axis_Kamera_Discovery|latest|Axis_Kamera_Discovery-*-x86_64.AppImage.zsync"
 ARCH=x86_64 "$AIT" --appimage-extract-and-run -u "$UPDINFO" "$APPDIR" "$OUT" 2>&1 | tail -5
+# appimagetool ueberspringt die .zsync leise, wenn zsyncmake gerade nicht greift
+# (schon vorgekommen). Ohne .zsync koennen AppImageUpdate/GearLever nicht per
+# Delta aktualisieren -> Fehlen erkennen, einmal erneut versuchen, sonst laut warnen.
+if [ ! -f "$OUT.zsync" ]; then
+    echo ">> .zsync fehlt nach dem Packen - erneuter Versuch ..."
+    ARCH=x86_64 "$AIT" --appimage-extract-and-run -u "$UPDINFO" "$APPDIR" "$OUT" 2>&1 | tail -5
+fi
 ln -sfn "$(basename "$OUT")" "$ROOT/Axis_Kamera_Discovery-x86_64.AppImage"
 
+if [ -f "$OUT.zsync" ]; then
+    echo ">> zsync: $OUT.zsync"
+else
+    echo ">> WARNUNG: .zsync wurde NICHT erzeugt - GearLever/AppImageUpdate-Updates"
+    echo ">>          eingeschraenkt. Vor dem Release manuell erzeugen (Repack mit -u)."
+fi
 echo ">> Fertig: $OUT"
