@@ -20,18 +20,18 @@ Programmpaketen ausgeliefert.
 
 | Komponente | Version | Lizenz |
 |---|---|---|
-| CPython | 3.14.7 | PSF License Agreement |
+| CPython | 3.14.8 | PSF License Agreement |
 | Tcl | 9.0.4 | Tcl/Tk License (BSD-artig) |
 | Tk | 9.0.4 | Tcl/Tk License (BSD-artig) |
 | libffi | 3.8.0 | libffi License (MIT-artig) |
-| OpenSSL | 3.5.8 | Apache License 2.0 |
-| zeroconf | 0.151.3 | **LGPL-2.1-or-later** |
+| OpenSSL | 3.5.9 | Apache License 2.0 |
+| zeroconf | 0.151.5 | **LGPL-2.1-or-later** |
 | ifaddr | 0.2.0 | MIT |
 | prettytable | 3.18.0 | BSD-3-Clause |
 | wcwidth | 0.9.1 | MIT |
 | sv-ttk (Sun Valley) | 2.6.1 | MIT |
 | pyzipper | 0.4.0 | MIT |
-| pycryptodomex | 3.23.0 | BSD-2-Clause + Public Domain |
+| pycryptodomex | 3.24.0 | BSD-2-Clause + Public Domain |
 
 > **Hinweis zu zeroconf (LGPL-2.1-or-later):** Alle übrigen Komponenten sind
 > permissiv lizenziert. `zeroconf` steht unter der LGPL (schwaches Copyleft) und
@@ -52,7 +52,7 @@ Programmpaketen ausgeliefert.
 
 ---
 
-## CPython 3.14.7
+## CPython 3.14.8
 
 Copyright © 2001-2024 Python Software Foundation. Alle Rechte vorbehalten.
 
@@ -121,7 +121,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ---
 
-## OpenSSL 3.5.8
+## OpenSSL 3.5.9
 
 Copyright © 1998-2025 The OpenSSL Project Authors. Alle Rechte vorbehalten.
 
@@ -136,7 +136,7 @@ für HTTPS-Verbindungen zu den Kameras (VAPIX-API) genutzt.
 
 ---
 
-## zeroconf 0.151.3
+## zeroconf 0.151.5
 
 Copyright © 2003 Paul Scott-Murphy, 2014 William McBrine, Jakub Stasiak und
 weitere Mitwirkende.
@@ -218,7 +218,7 @@ Archive (WinZip/7-Zip-Format) für den verschlüsselten Benutzerlisten-Import.
 
 ---
 
-## pycryptodomex 3.23.0
+## pycryptodomex 3.24.0
 
 Copyright © The pycryptodome authors (Legrandin und Mitwirkende); enthält
 Public-Domain-Code des ursprünglichen PyCrypto.

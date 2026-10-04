@@ -28,10 +28,10 @@ done
 
 TCL_VER=9.0.4
 TK_VER=9.0.4
-PY_VER=3.14.7
+PY_VER=3.14.8
 PY_XY=3.14
 FFI_VER=3.8.0
-SSL_VER=3.5.8
+SSL_VER=3.5.9
 
 mkdir -p "$SRC"
 rm -rf "$APPDIR"
