@@ -28,10 +28,10 @@ Programmpaketen ausgeliefert.
 | zeroconf | 0.151.5 | **LGPL-2.1-or-later** |
 | ifaddr | 0.2.0 | MIT |
 | prettytable | 3.18.0 | BSD-3-Clause |
-| wcwidth | 0.9.1 | MIT |
+| wcwidth | 0.9.2 | MIT |
 | sv-ttk (Sun Valley) | 2.6.1 | MIT |
 | pyzipper | 0.4.0 | MIT |
-| pycryptodomex | 3.24.0 | BSD-2-Clause + Public Domain |
+| pycryptodomex | 3.24.1 | BSD-2-Clause + Public Domain |
 
 > **Hinweis zu zeroconf (LGPL-2.1-or-later):** Alle übrigen Komponenten sind
 > permissiv lizenziert. `zeroconf` steht unter der LGPL (schwaches Copyleft) und
@@ -188,7 +188,7 @@ Quellcode: https://github.com/prettytable/prettytable
 
 ---
 
-## wcwidth 0.9.1
+## wcwidth 0.9.2
 
 Copyright © Jeff Quast.
 
@@ -218,7 +218,7 @@ Archive (WinZip/7-Zip-Format) für den verschlüsselten Benutzerlisten-Import.
 
 ---
 
-## pycryptodomex 3.24.0
+## pycryptodomex 3.24.1
 
 Copyright © The pycryptodome authors (Legrandin und Mitwirkende); enthält
 Public-Domain-Code des ursprünglichen PyCrypto.
