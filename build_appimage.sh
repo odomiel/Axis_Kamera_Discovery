@@ -19,9 +19,12 @@ PREFIX="$APPDIR/usr"
 JOBS="$(nproc)"
 
 # --bump: vor dem Build die Version hochzaehlen (schreibt axis_kamera_discovery_cli.py)
+# --ohne-tests: die statischen Bau-/Konsistenz-Tests ueberspringen (Notbremse).
+OHNE_TESTS=0
 for arg in "$@"; do
     case "$arg" in
         --bump) python3 "$ROOT/bump_version.py" >/dev/null ;;
+        --ohne-tests) OHNE_TESTS=1 ;;
         *) echo "Unbekannte Option: $arg" >&2; exit 2 ;;
     esac
 done
@@ -32,6 +35,16 @@ PY_VER=3.14.8
 PY_XY=3.14
 FFI_VER=3.8.0
 SSL_VER=3.5.9
+
+# Statische Bau-/Konsistenz-Tests VOR dem (8-10 min teuren) Kompilieren -- eine
+# gebrochene Invariante (Version, Lizenz-/Dep-Doku, Spiegel-Hygiene, Tcl/Tk nicht
+# strippen, ...) stoppt den Build sofort. Laeuft mit dem System-python3 (~0.1 s).
+# --ohne-tests ueberspringt sie (Notbremse).
+if [ "$OHNE_TESTS" = 0 ]; then
+    echo "==== Tests (statisch) ===="
+    ( cd "$ROOT" && python3 -m unittest discover -s tests -t . )
+    echo
+fi
 
 mkdir -p "$SRC"
 rm -rf "$APPDIR"
