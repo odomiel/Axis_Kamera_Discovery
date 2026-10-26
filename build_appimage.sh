@@ -282,7 +282,11 @@ dl "https://github.com/AppImage/appimagetool/releases/download/continuous/appima
 chmod +x "$AIT"
 
 VERSION="$(python3 "$ROOT/bump_version.py" --print)"
-OUT="$ROOT/Axis_Kamera_Discovery-${VERSION}-x86_64.AppImage"
+# Die AppImage landet ausschliesslich in dist/ - neben den Windows-.exe liegen
+# dort alle Release-Artefakte. release.sh zieht sie von dort.
+DIST="$ROOT/dist"
+mkdir -p "$DIST"
+OUT="$DIST/Axis_Kamera_Discovery-${VERSION}-x86_64.AppImage"
 # Version in die .desktop schreiben: GearLever & Co. lesen die installierte
 # Fassung aus X-AppImage-Version. Fehlt sie, zeigt GearLever "Not specified"
 # und kann nicht erkennen, dass ein neueres Release vorliegt.
@@ -300,7 +304,8 @@ if [ ! -f "$OUT.zsync" ]; then
     echo ">> .zsync fehlt nach dem Packen - erneuter Versuch ..."
     ARCH=x86_64 "$AIT" --appimage-extract-and-run -u "$UPDINFO" "$APPDIR" "$OUT" 2>&1 | tail -5
 fi
-ln -sfn "$(basename "$OUT")" "$ROOT/Axis_Kamera_Discovery-x86_64.AppImage"
+# Convenience-Symlink auf die aktuelle Version - ebenfalls in dist/ (relatives Ziel).
+ln -sfn "$(basename "$OUT")" "$DIST/Axis_Kamera_Discovery-x86_64.AppImage"
 
 if [ -f "$OUT.zsync" ]; then
     echo ">> zsync: $OUT.zsync"
@@ -308,14 +313,5 @@ else
     echo ">> WARNUNG: .zsync wurde NICHT erzeugt - GearLever/AppImageUpdate-Updates"
     echo ">>          eingeschraenkt. Vor dem Release manuell erzeugen (Repack mit -u)."
 fi
-
-# AppImage (+ zsync) zusaetzlich nach dist/ legen, neben die Windows-.exe.
-# release.sh zieht die AppImage weiterhin aus der Projektwurzel; dies ist nur eine
-# Kopie, damit alle Release-Artefakte (Linux + Windows) an einem Ort liegen.
-DIST="$ROOT/dist"
-mkdir -p "$DIST"
-cp -f "$OUT" "$DIST/"
-[ -f "$OUT.zsync" ] && cp -f "$OUT.zsync" "$DIST/"
-echo ">> Kopie: $DIST/$(basename "$OUT")$([ -f "$OUT.zsync" ] && echo " (+ .zsync)")"
 
 echo ">> Fertig: $OUT"

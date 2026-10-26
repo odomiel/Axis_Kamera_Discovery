@@ -72,7 +72,7 @@ info() { echo ">> $*"; }
 [ -n "$VERSION" ] || VERSION="$(python3 bump_version.py --print)"
 [ -n "$VERSION" ] || die "Konnte Version nicht ermitteln."
 TAG="v${VERSION}"
-APPIMAGE="Axis_Kamera_Discovery-${VERSION}-x86_64.AppImage"
+APPIMAGE="dist/Axis_Kamera_Discovery-${VERSION}-x86_64.AppImage"
 
 info "Version:  ${VERSION}"
 info "Tag:      ${TAG}"

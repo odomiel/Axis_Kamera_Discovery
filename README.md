@@ -73,10 +73,13 @@ Python 3.14 inklusive **Tcl/Tk 9** sowie alle Abhängigkeiten mitbringt und dami
 ./Axis_Kamera_Discovery-x86_64.AppImage
 ```
 
-Beim Build entstehen:
+Beim Build entstehen – alle Artefakte liegen im Ordner `dist/`:
 
-- `Axis_Kamera_Discovery-<version>-x86_64.AppImage` – versioniertes Artefakt
-- `Axis_Kamera_Discovery-x86_64.AppImage` – Symlink auf die aktuelle Version
+- `dist/Axis_Kamera_Discovery-<version>-x86_64.AppImage` – versioniertes Artefakt
+- `dist/Axis_Kamera_Discovery-<version>-x86_64.AppImage.zsync` – Delta-Update-Datei (GearLever/AppImageUpdate)
+- `dist/Axis_Kamera_Discovery-x86_64.AppImage` – Symlink auf die aktuelle Version
+
+Starten also z. B. mit `./dist/Axis_Kamera_Discovery-x86_64.AppImage`.
 
 ### Windows (.exe)
 
