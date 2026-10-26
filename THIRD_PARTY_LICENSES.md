@@ -20,7 +20,7 @@ Programmpaketen ausgeliefert.
 
 | Komponente | Version | Lizenz |
 |---|---|---|
-| CPython | 3.14.8 | PSF License Agreement |
+| CPython | 3.14.10 | PSF License Agreement |
 | Tcl | 9.0.4 | Tcl/Tk License (BSD-artig) |
 | Tk | 9.0.4 | Tcl/Tk License (BSD-artig) |
 | libffi | 3.8.0 | libffi License (MIT-artig) |
@@ -28,7 +28,7 @@ Programmpaketen ausgeliefert.
 | zeroconf | 0.151.5 | **LGPL-2.1-or-later** |
 | ifaddr | 0.2.0 | MIT |
 | prettytable | 3.18.0 | BSD-3-Clause |
-| wcwidth | 0.9.2 | MIT |
+| wcwidth | 0.9.4 | MIT |
 | sv-ttk (Sun Valley) | 2.6.1 | MIT |
 | pyzipper | 0.4.0 | MIT |
 | pycryptodomex | 3.24.1 | BSD-2-Clause + Public Domain |
@@ -52,7 +52,7 @@ Programmpaketen ausgeliefert.
 
 ---
 
-## CPython 3.14.8
+## CPython 3.14.10
 
 Copyright © 2001-2024 Python Software Foundation. Alle Rechte vorbehalten.
 
@@ -188,7 +188,7 @@ Quellcode: https://github.com/prettytable/prettytable
 
 ---
 
-## wcwidth 0.9.2
+## wcwidth 0.9.4
 
 Copyright © Jeff Quast.
 
