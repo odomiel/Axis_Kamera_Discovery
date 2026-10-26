@@ -308,4 +308,14 @@ else
     echo ">> WARNUNG: .zsync wurde NICHT erzeugt - GearLever/AppImageUpdate-Updates"
     echo ">>          eingeschraenkt. Vor dem Release manuell erzeugen (Repack mit -u)."
 fi
+
+# AppImage (+ zsync) zusaetzlich nach dist/ legen, neben die Windows-.exe.
+# release.sh zieht die AppImage weiterhin aus der Projektwurzel; dies ist nur eine
+# Kopie, damit alle Release-Artefakte (Linux + Windows) an einem Ort liegen.
+DIST="$ROOT/dist"
+mkdir -p "$DIST"
+cp -f "$OUT" "$DIST/"
+[ -f "$OUT.zsync" ] && cp -f "$OUT.zsync" "$DIST/"
+echo ">> Kopie: $DIST/$(basename "$OUT")$([ -f "$OUT.zsync" ] && echo " (+ .zsync)")"
+
 echo ">> Fertig: $OUT"
