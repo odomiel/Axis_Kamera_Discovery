@@ -294,15 +294,23 @@ grep -q '^X-AppImage-Version=' "$APPDIR/Axis_Kamera_Discovery.desktop" \
   || echo "X-AppImage-Version=${VERSION}" >> "$APPDIR/Axis_Kamera_Discovery.desktop"
 # Update-Information fuer AppImageUpdate/GitHub-Updater: neuestes GitHub-Release +
 # zsync (Delta-Update). Slug = oeffentliches Spiegel-Repo (nennt die App ohnehin).
-# appimagetool bettet die Info ein UND schreibt <OUT>.zsync daneben.
+# appimagetool bettet die Info ein und laesst zsyncmake die .zsync erzeugen. ACHTUNG:
+# zsyncmake schreibt sie ins AKTUELLE Verzeichnis (hier $ROOT) mit dem Basisnamen der
+# AppImage -- NICHT neben $OUT in dist/. Darum nach jedem Lauf einsammeln.
 UPDINFO="gh-releases-zsync|odomiel|Axis_Kamera_Discovery|latest|Axis_Kamera_Discovery-*-x86_64.AppImage.zsync"
+_zsync_einsammeln() {
+    local stray="$ROOT/$(basename "$OUT").zsync"
+    [ -f "$stray" ] && mv -f "$stray" "$OUT.zsync"
+}
 ARCH=x86_64 "$AIT" --appimage-extract-and-run -u "$UPDINFO" "$APPDIR" "$OUT" 2>&1 | tail -5
+_zsync_einsammeln
 # appimagetool ueberspringt die .zsync leise, wenn zsyncmake gerade nicht greift
 # (schon vorgekommen). Ohne .zsync koennen AppImageUpdate/GearLever nicht per
 # Delta aktualisieren -> Fehlen erkennen, einmal erneut versuchen, sonst laut warnen.
 if [ ! -f "$OUT.zsync" ]; then
     echo ">> .zsync fehlt nach dem Packen - erneuter Versuch ..."
     ARCH=x86_64 "$AIT" --appimage-extract-and-run -u "$UPDINFO" "$APPDIR" "$OUT" 2>&1 | tail -5
+    _zsync_einsammeln
 fi
 # Convenience-Symlink auf die aktuelle Version - ebenfalls in dist/ (relatives Ziel).
 ln -sfn "$(basename "$OUT")" "$DIST/Axis_Kamera_Discovery-x86_64.AppImage"
