@@ -112,6 +112,56 @@ class TestDateirechte(unittest.TestCase):
         self.assertEqual(stat.S_IMODE(os.stat(p).st_mode), 0o600)
 
 
+class TestZertifikatPinning(unittest.TestCase):
+    """Befund 3: Trust-on-First-Use-Pinning der Kamerazertifikate."""
+
+    def setUp(self):
+        # Pin-Speicher in ein temporaeres XDG-Verzeichnis umlenken (nicht den echten).
+        self._alt = os.environ.get("XDG_CONFIG_HOME")
+        os.environ["XDG_CONFIG_HOME"] = tempfile.mkdtemp()
+        vapix.set_pinning_enabled(True)
+
+    def tearDown(self):
+        vapix.set_pinning_enabled(True)
+        if self._alt is None:
+            os.environ.pop("XDG_CONFIG_HOME", None)
+        else:
+            os.environ["XDG_CONFIG_HOME"] = self._alt
+
+    def test_lernen_merken_abweichung(self):
+        ip = "192.0.2.7"
+        vapix._pin_verify_or_learn(ip, b"zert-A")       # lernt
+        self.assertIsNotNone(vapix.known_fingerprint(ip))
+        vapix._pin_verify_or_learn(ip, b"zert-A")       # gleich -> ok
+        with self.assertRaises(vapix.CertMismatch):     # anders -> Abbruch
+            vapix._pin_verify_or_learn(ip, b"zert-B")
+        self.assertIsInstance(vapix.CertMismatch("x"), vapix.VapixError)
+
+    def test_downgrade_wird_blockiert(self):
+        ip = "192.0.2.8"
+        self.assertFalse(vapix._pin_blocks_fallback(ip))
+        vapix._pin_verify_or_learn(ip, b"zert-A")
+        self.assertTrue(vapix._pin_blocks_fallback(ip))
+
+    def test_vergessen(self):
+        ip = "192.0.2.9"
+        vapix._pin_verify_or_learn(ip, b"zert-A")
+        self.assertEqual(vapix.forget_pins([ip]), 1)
+        self.assertIsNone(vapix.known_fingerprint(ip))
+
+    def test_abgeschaltet_lernt_nicht(self):
+        ip = "192.0.2.10"
+        vapix.set_pinning_enabled(False)
+        vapix._pin_verify_or_learn(ip, b"zert-A")
+        self.assertIsNone(vapix.known_fingerprint(ip))
+        vapix._pin_verify_or_learn(ip, b"zert-B")       # kein Fehler
+
+    def test_speicher_ist_0600(self):
+        vapix._pin_verify_or_learn("192.0.2.11", b"zert-A")
+        mode = stat.S_IMODE(os.stat(vapix._pin_path()).st_mode)
+        self.assertEqual(mode, 0o600)
+
+
 class TestCsvMaskierung(unittest.TestCase):
     def test_fuehrende_formelzeichen_maskiert(self):
         import axis_kamera_discovery_cli as cli

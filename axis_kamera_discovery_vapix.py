@@ -23,12 +23,16 @@ Authentifizierung per HTTP-Digest (mit Basic als Rueckfall).
 """
 
 import csv
+import hashlib
+import http.client
 import io
 import ipaddress
 import json
 import os
 import re
 import ssl
+import sys
+import threading
 import time
 import urllib.error
 import urllib.parse
@@ -127,6 +131,149 @@ class _BasicAuthHandler(urllib.request.HTTPBasicAuthHandler):
         return super().http_error_401(req, fp, code, msg, headers)
 
 
+# ---------------------------------------------------------------------------
+# Zertifikats-Pinning (Trust-on-First-Use) -- Audit-Befund 3
+# ---------------------------------------------------------------------------
+# Kameras haben selbstsignierte Zertifikate (keine CA-Pruefung moeglich). Stattdessen
+# wird beim ersten HTTPS-Kontakt der SHA-256-Fingerprint pro Ziel-IP gespeichert und
+# bei jedem weiteren Verbindungsaufbau verglichen. Weicht er ab, wird die Verbindung
+# abgebrochen, BEVOR eine Anfrage (und damit ein Passwort) gesendet wird. Zusaetzlich:
+# ist eine IP gepinnt und HTTPS nicht erreichbar, kein Rueckfall auf unverschluesseltes
+# HTTP (Downgrade-Schutz). Speicher: known_certs.json neben settings.json.
+
+_PIN_FILENAME = "known_certs.json"
+_pinning_enabled = True
+_pin_lock = threading.RLock()
+
+
+class CertMismatch(VapixError):
+    """Das TLS-Zertifikat weicht vom gespeicherten ab -- Verbindung vor dem Senden
+    abgebrochen. Ein VapixError (kein OSError/_SchemeUnreachable): so loest die
+    Ablehnung keinen Schema-Rueckfall aus und wird nicht von der Firmware-
+    Erfolgslogik ("Verbindung getrennt = Geraet startet neu") verschluckt."""
+
+
+def _pin_config_dir():
+    """Wie CONFIG_DIR der GUI: Windows portabel neben der EXE/dem Skript, sonst XDG."""
+    if os.name == "nt":
+        base = sys.executable if getattr(sys, "frozen", False) else __file__
+        return os.path.dirname(os.path.abspath(base))
+    return os.path.join(
+        os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config"),
+        "axis_kamera_discovery")
+
+
+def _pin_path():
+    return os.path.join(_pin_config_dir(), _PIN_FILENAME)
+
+
+def pin_short(fp):
+    """Kurzform eines Fingerprints fuer die Anzeige: ab:cd:ef:...:12:34."""
+    if not fp:
+        return "-"
+    pairs = [fp[i:i + 2] for i in range(0, len(fp), 2)]
+    return ":".join(pairs[:4]) + ":...:" + ":".join(pairs[-2:])
+
+
+def _pin_load():
+    try:
+        with open(_pin_path(), encoding="utf-8") as fh:
+            data = json.load(fh)
+        return data if isinstance(data, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def _pin_save(data):
+    path = _pin_path()
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    tmp = path + ".tmp"
+    with _open_private(tmp) as fh:
+        json.dump(data, fh, indent=2, sort_keys=True)
+    os.replace(tmp, path)
+
+
+def set_pinning_enabled(enabled):
+    """Zertifikats-Pinning global an/aus (GUI-Einstellung cert_pinning, CLI --no-pinning)."""
+    global _pinning_enabled
+    _pinning_enabled = bool(enabled)
+
+
+def pinning_enabled():
+    return _pinning_enabled
+
+
+def known_fingerprint(ip):
+    with _pin_lock:
+        entry = _pin_load().get(ip)
+    return entry.get("sha256") if isinstance(entry, dict) else None
+
+
+def list_pins():
+    """{ip: (sha256, seen)} aller gespeicherten Zertifikate."""
+    with _pin_lock:
+        return {k: (v.get("sha256"), v.get("seen"))
+                for k, v in _pin_load().items() if isinstance(v, dict)}
+
+
+def forget_pins(ips):
+    """Entfernt die gespeicherten Zertifikate der angegebenen IPs; liefert die Anzahl."""
+    with _pin_lock:
+        data = _pin_load()
+        n = sum(1 for ip in ips if data.pop(ip, None) is not None)
+        if n:
+            _pin_save(data)
+    return n
+
+
+def _pin_remember(ip, fp):
+    with _pin_lock:
+        data = _pin_load()
+        data[ip] = {"sha256": fp, "seen": time.strftime("%Y-%m-%d")}
+        _pin_save(data)
+
+
+def _pin_verify_or_learn(ip, der):
+    """TOFU: lernt den Fingerprint beim ersten Mal, wirft CertMismatch bei Abweichung."""
+    if not _pinning_enabled or not ip or not der:
+        return
+    fp = hashlib.sha256(der).hexdigest()
+    known = known_fingerprint(ip)
+    if known is None:
+        _pin_remember(ip, fp)
+    elif known != fp:
+        raise CertMismatch(
+            f"Das TLS-Zertifikat von {ip} hat sich geaendert (bekannt "
+            f"{pin_short(known)}, jetzt {pin_short(fp)}) -- Verbindung abgebrochen, "
+            f"es wurden KEINE Zugangsdaten gesendet. Ist die Aenderung erwartet "
+            f"(z. B. nach einem Firmware-Update), das gespeicherte Zertifikat "
+            f"vergessen (GUI: Zertifikate verwalten; CLI: 'pins --forget {ip}').")
+
+
+def _pin_blocks_fallback(ip):
+    """True, wenn fuer *ip* ein Zertifikat gepinnt ist -> kein HTTP-Downgrade."""
+    return _pinning_enabled and known_fingerprint(ip) is not None
+
+
+class _PinnedHTTPSConnection(http.client.HTTPSConnection):
+    """HTTPS-Verbindung, die direkt nach dem Handshake das Zertifikat per TOFU
+    prueft -- noch BEVOR eine Anfrage (und damit ein Passwort) gesendet wird."""
+
+    def connect(self):
+        super().connect()
+        der = self.sock.getpeercert(binary_form=True)
+        try:
+            _pin_verify_or_learn(self.host, der)
+        except CertMismatch:
+            self.close()
+            raise
+
+
+class _PinnedHTTPSHandler(urllib.request.HTTPSHandler):
+    def https_open(self, req):
+        return self.do_open(_PinnedHTTPSConnection, req, context=self._context)
+
+
 def _build_opener(host_port, username, password, auth=True, allow_insecure_basic=False):
     """Opener mit ungepruefter HTTPS-Verbindung.
 
@@ -134,7 +281,7 @@ def _build_opener(host_port, username, password, auth=True, allow_insecure_basic
     Authentifizierung (fuer werksneue Geraete ohne gesetztes Passwort). Basic ueber
     HTTP nur mit ALLOW_BASIC_OVER_HTTP oder *allow_insecure_basic*.
     """
-    handlers = [urllib.request.HTTPSHandler(context=_SSL_CONTEXT)]
+    handlers = [_PinnedHTTPSHandler(context=_SSL_CONTEXT)]
     if auth:
         pwmgr = urllib.request.HTTPPasswordMgrWithDefaultRealm()
         # Realm None -> gilt fuer alle; URL ohne Schema deckt http und https ab.
@@ -178,6 +325,14 @@ def _no_fallback_error():
         "ausdruecklich auf 'http' setzen, wenn das wirklich gewollt ist.")
 
 
+def _downgrade_refused_error():
+    return VapixError(
+        "HTTPS nicht erreichbar, aber fuer dieses Geraet ist ein Zertifikat bekannt "
+        "(gepinnt) -- kein Rueckfall auf unverschluesseltes HTTP (Downgrade-Schutz). "
+        "Schema 'http' waehlen oder das Zertifikat vergessen, falls HTTPS bewusst "
+        "abgeschaltet wurde.")
+
+
 def _request_auto(ip, username, password, path, scheme="auto", port=None, timeout=10, auth=True,
                   allow_http_fallback=True):
     """Wie _request, aber 'auto' probiert erst HTTPS, dann HTTP.
@@ -192,6 +347,8 @@ def _request_auto(ip, username, password, path, scheme="auto", port=None, timeou
     except _SchemeUnreachable:
         if not allow_http_fallback:
             raise _no_fallback_error()
+        if _pin_blocks_fallback(ip):
+            raise _downgrade_refused_error()
         return _request(ip, username, password, path, "http", port, timeout, auth)
 
 
@@ -230,6 +387,8 @@ def _post_form_auto(ip, username, password, path, fields, scheme="auto", port=No
     except _SchemeUnreachable:
         if not allow_http_fallback:
             raise _no_fallback_error()
+        if _pin_blocks_fallback(ip):
+            raise _downgrade_refused_error()
         return _post_form(ip, username, password, path, fields, "http", port, timeout)
 
 
@@ -707,6 +866,8 @@ def _onvif_post_auto(ip, username, password, inner, scheme, port, timeout,
     except _SchemeUnreachable:
         if not allow_http_fallback:
             raise _no_fallback_error()
+        if _pin_blocks_fallback(ip):
+            raise _downgrade_refused_error()
         return _onvif_post(ip, username, password, inner, "http", port, timeout)
 
 
@@ -1017,9 +1178,15 @@ def upgrade_firmware(ip, username, password, firmware_path, scheme="auto",
     if sc is None:
         raise VapixError("Kamera nicht erreichbar.")
     if _has_firmware_api(ip, username, password, sc, port, timeout=15):
-        return _modern_upgrade(ip, username, password, filename, data,
-                               factory_default, sc, port, timeout)
-    return _legacy_upgrade(ip, username, password, filename, data, sc, port, timeout)
+        result = _modern_upgrade(ip, username, password, filename, data,
+                                 factory_default, sc, port, timeout)
+    else:
+        result = _legacy_upgrade(ip, username, password, filename, data, sc, port, timeout)
+    # Nach dem Flashen erzeugt das Geraet beim Neustart oft ein neues TLS-Zertifikat
+    # -> gespeicherten Fingerprint verwerfen, damit die naechste Verbindung ihn neu
+    # lernt (sonst schluege das Pinning nach dem Update faelschlich Alarm).
+    forget_pins([ip])
+    return result
 
 
 # =====================================================================

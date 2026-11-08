@@ -299,8 +299,12 @@ grep -q '^X-AppImage-Version=' "$APPDIR/Axis_Kamera_Discovery.desktop" \
 # AppImage -- NICHT neben $OUT in dist/. Darum nach jedem Lauf einsammeln.
 UPDINFO="gh-releases-zsync|odomiel|Axis_Kamera_Discovery|latest|Axis_Kamera_Discovery-*-x86_64.AppImage.zsync"
 _zsync_einsammeln() {
+    # zsyncmake legt die .zsync im CWD ($ROOT) ab; hierher nach dist/ holen.
+    # Immer Exit 0 zurueckgeben - fehlt die stray-Datei, wuerde das '&&' sonst
+    # unter 'set -e' das Skript abbrechen (vor der Retry-/Warn-Logik unten).
     local stray="$ROOT/$(basename "$OUT").zsync"
     [ -f "$stray" ] && mv -f "$stray" "$OUT.zsync"
+    return 0
 }
 ARCH=x86_64 "$AIT" --appimage-extract-and-run -u "$UPDINFO" "$APPDIR" "$OUT" 2>&1 | tail -5
 _zsync_einsammeln

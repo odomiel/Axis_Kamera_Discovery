@@ -28,7 +28,7 @@ import axis_kamera_discovery_vapix as vapix
 
 # Versionsschema: JJ.MM.TT, bei mehreren Releases am selben Tag b1, b2, ...
 # (wird von bump_version.py gepflegt)
-__version__ = "26.11.08"
+__version__ = "26.11.08b1"
 
 FIELD_NAMES = [
     "Name",
@@ -222,6 +222,7 @@ def _new_password(args):
 def _conn_kwargs(args):
     """Verbindungs-/Auth-Parameter aus den Argumenten; fragt Passwort ab, falls noetig."""
     vapix.set_basic_over_http(getattr(args, "allow_basic", False))
+    vapix.set_pinning_enabled(not getattr(args, "no_pinning", False))
     password = args.password
     if password is None and not getattr(args, "factory", False):
         password = getpass.getpass(f"Passwort fuer {args.user}: ")
@@ -445,6 +446,29 @@ def cmd_timezone_show(args):
         return f"Zeitzone={tz}{extra}, {n} unterstuetzte Zonen"
     return _run_over_ips(args.ips, _show)
 
+
+def cmd_pins(args):
+    """Gespeicherte Kamera-Zertifikate (TOFU-Pinning) anzeigen/vergessen."""
+    if args.forget_all:
+        pins = vapix.list_pins()
+        n = vapix.forget_pins(list(pins))
+        print(f"{n} gespeicherte Zertifikat(e) vergessen.")
+        return 0
+    if args.forget:
+        n = vapix.forget_pins(args.forget)
+        print(f"{n} der {len(args.forget)} angegebenen Zertifikat(e) vergessen.")
+        return 0
+    pins = vapix.list_pins()
+    if not pins:
+        print("Keine gespeicherten Zertifikate.")
+        return 0
+    print(f"Gespeicherte Zertifikate ({vapix._pin_path()}):")
+    for ip in sorted(pins):
+        fp, seen = pins[ip]
+        print(f"  {ip:<20} {vapix.pin_short(fp)}   (seit {seen or '?'})")
+    return 0
+
+
 def main():
     parser = argparse.ArgumentParser(
         description='Axis_Kamera_Discovery - Suche und Konfiguration von Axis-Kameras.')
@@ -467,7 +491,7 @@ def main():
                                      'ipv6-show, user-add, user-passwd, user-import, '
                                      'onvif-add, onvif-passwd, onvif-import, firmware, '
                                      'config, config-export, backup, backup-restore, '
-                                     'set-timezone, timezone-show)')
+                                     'set-timezone, timezone-show, pins)')
     # gemeinsame Verbindungs-/Auth-Optionen
     conn = argparse.ArgumentParser(add_help=False)
     conn.add_argument('ips', nargs='+', help='Ziel-IP(s) der Kamera(s)')
@@ -479,6 +503,8 @@ def main():
     conn.add_argument('--allow-basic', dest='allow_basic', action='store_true',
                       help='Basic-Auth ueber unverschluesseltes HTTP erlauben '
                            '(unsicher, Passwort im Klartext; nur fuer sehr alte Geraete)')
+    conn.add_argument('--no-pinning', dest='no_pinning', action='store_true',
+                      help='Zertifikats-Pinning (TOFU) fuer diese Aktion abschalten')
     conn.add_argument('--conn-timeout', dest='conn_timeout', type=int, default=10,
                       help='Verbindungs-Timeout in Sekunden (Standard: 10)')
 
@@ -597,6 +623,14 @@ def main():
     sp = sub.add_parser('timezone-show', parents=[conn],
                         help='Aktuelle Zeitzone der Kamera anzeigen')
     sp.set_defaults(func=cmd_timezone_show)
+
+    sp = sub.add_parser('pins', help='Gespeicherte Kamera-Zertifikate (TOFU-Pinning) '
+                                     'anzeigen/vergessen')
+    sp.add_argument('--forget', nargs='+', metavar='IP',
+                    help='Zertifikat(e) der angegebenen IP(s) vergessen')
+    sp.add_argument('--forget-all', dest='forget_all', action='store_true',
+                    help='Alle gespeicherten Zertifikate vergessen')
+    sp.set_defaults(func=cmd_pins)
 
     args = parser.parse_args()
 

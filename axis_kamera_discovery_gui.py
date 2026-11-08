@@ -83,6 +83,7 @@ DEFAULT_SETTINGS = {
     "language": "de",         # Sprache: "de" oder "en"
     "update_check": True,     # beim Start auf neue GitHub-Version pruefen
     "allow_basic_http": False,  # Basic-Auth ueber unverschluesseltes HTTP erlauben (unsicher)
+    "cert_pinning": True,     # Kamera-Zertifikate pinnen (TOFU) und bei Abweichung warnen
 }
 
 # GitHub-Projekt: Quelle fuer die Update-Pruefung und "Projektseite" im Info-Dialog.
@@ -181,6 +182,21 @@ TRANSLATIONS = {
         "menu_update_check": "Beim Start auf Updates pruefen",
         "menu_check_updates": "Nach Updates suchen",
         "menu_allow_basic": "Basic-Auth ueber HTTP erlauben (unsicher)",
+        "menu_cert_pinning": "Kamera-Zertifikate pinnen (TOFU)",
+        "menu_manage_certs": "Zertifikate verwalten...",
+        "certs_title": "Gespeicherte Kamera-Zertifikate",
+        "certs_hint": "Beim ersten HTTPS-Kontakt wird der Fingerabdruck des "
+                      "Kamerazertifikats gespeichert und spaeter verglichen. Weicht er "
+                      "ab, wird die Verbindung abgebrochen, bevor Zugangsdaten gesendet "
+                      "werden. Nach einem Firmware-Update erzeugt die Kamera oft ein "
+                      "neues Zertifikat - dann hier vergessen.",
+        "certs_col_ip": "IP-Adresse",
+        "certs_col_fp": "Fingerabdruck (SHA-256)",
+        "certs_col_seen": "Gespeichert",
+        "certs_forget_selected": "Auswahl vergessen",
+        "certs_forget_all": "Alle vergessen",
+        "certs_forget_all_q": "Wirklich alle gespeicherten Zertifikate vergessen?",
+        "certs_close": "Schliessen",
         "menu_columns": "Spalten...",
         "menu_language": "Sprache",
         "menu_language_de": "Deutsch",
@@ -538,6 +554,21 @@ TRANSLATIONS = {
         "menu_update_check": "Check for updates on start",
         "menu_check_updates": "Check for updates",
         "menu_allow_basic": "Allow Basic auth over HTTP (insecure)",
+        "menu_cert_pinning": "Pin camera certificates (TOFU)",
+        "menu_manage_certs": "Manage certificates...",
+        "certs_title": "Stored camera certificates",
+        "certs_hint": "On the first HTTPS contact the camera certificate's fingerprint "
+                      "is stored and compared on later connections. If it differs, the "
+                      "connection is aborted before any credentials are sent. After a "
+                      "firmware update the camera often generates a new certificate - "
+                      "forget it here then.",
+        "certs_col_ip": "IP address",
+        "certs_col_fp": "Fingerprint (SHA-256)",
+        "certs_col_seen": "Stored",
+        "certs_forget_selected": "Forget selected",
+        "certs_forget_all": "Forget all",
+        "certs_forget_all_q": "Really forget all stored certificates?",
+        "certs_close": "Close",
         "menu_columns": "Columns...",
         "menu_language": "Language",
         "menu_language_de": "German",
@@ -924,6 +955,8 @@ class AxisDiscoveryGUI(tk.Tk):
         self.update_check_var = tk.BooleanVar(value=bool(self.get_setting("update_check")))
         self.allow_basic_var = tk.BooleanVar(value=bool(self.get_setting("allow_basic_http")))
         vapix.set_basic_over_http(self.allow_basic_var.get())
+        self.cert_pinning_var = tk.BooleanVar(value=bool(self.get_setting("cert_pinning")))
+        vapix.set_pinning_enabled(self.cert_pinning_var.get())
         self._update_q = queue.Queue()  # Ergebnis der Update-Pruefung (Hintergrund-Thread)
 
         # Sprachwechsel-Callback
@@ -1473,6 +1506,18 @@ class AxisDiscoveryGUI(tk.Tk):
             variable=self.allow_basic_var,
             command=self._toggle_allow_basic,
         ).pack(fill=tk.X, padx=4, pady=2)
+        # Zertifikats-Pinning (TOFU): Kamerazertifikate merken und bei Abweichung warnen.
+        ttk.Checkbutton(
+            frame,
+            text=self._("menu_cert_pinning"),
+            variable=self.cert_pinning_var,
+            command=self._toggle_cert_pinning,
+        ).pack(fill=tk.X, padx=4, pady=2)
+        ttk.Button(
+            frame,
+            text=self._("menu_manage_certs"),
+            command=self._manage_certs,
+        ).pack(fill=tk.X, padx=4, pady=2)
         ttk.Separator(frame, orient="horizontal").pack(fill=tk.X)
 
         # Sprachauswahl mit Untermenü
@@ -1559,6 +1604,71 @@ class AxisDiscoveryGUI(tk.Tk):
     def _toggle_allow_basic(self):
         self.set_setting("allow_basic_http", self.allow_basic_var.get())
         vapix.set_basic_over_http(self.allow_basic_var.get())
+
+    def _toggle_cert_pinning(self):
+        self.set_setting("cert_pinning", self.cert_pinning_var.get())
+        vapix.set_pinning_enabled(self.cert_pinning_var.get())
+
+    def _manage_certs(self):
+        """Dialog: gespeicherte Kamera-Zertifikate (TOFU-Pinning) anzeigen/vergessen."""
+        self._close_settings_menu()
+        palette = DARK_COLORS if self.dark_mode_var.get() else LIGHT_COLORS
+        dlg = tk.Toplevel(self)
+        dlg.title(self._("certs_title"))
+        dlg.transient(self)
+        dlg.configure(bg=palette["bg"])
+        frm = ttk.Frame(dlg, padding=16)
+        frm.pack(fill=tk.BOTH, expand=True)
+        ttk.Label(frm, text=self._("certs_hint"), wraplength=560).pack(
+            anchor="w", pady=(0, 12))
+
+        cols = ("ip", "fp", "seen")
+        tree = ttk.Treeview(frm, columns=cols, show="headings", height=10,
+                            selectmode="extended")
+        tree.heading("ip", text=self._("certs_col_ip"))
+        tree.heading("fp", text=self._("certs_col_fp"))
+        tree.heading("seen", text=self._("certs_col_seen"))
+        tree.column("ip", width=160, anchor="w")
+        tree.column("fp", width=300, anchor="w")
+        tree.column("seen", width=110, anchor="w")
+        tree.pack(fill=tk.BOTH, expand=True)
+
+        def _fill():
+            tree.delete(*tree.get_children())
+            for ip in sorted(vapix.list_pins()):
+                fp, seen = vapix.list_pins()[ip]
+                tree.insert("", tk.END, iid=ip,
+                            values=(ip, vapix.pin_short(fp), seen or "?"))
+
+        def _forget_selected(*_):
+            ips = list(tree.selection())
+            if not ips:
+                return
+            vapix.forget_pins(ips)
+            _fill()
+
+        def _forget_all(*_):
+            if messagebox.askyesno(self._("certs_title"),
+                                   self._("certs_forget_all_q"), parent=dlg):
+                vapix.forget_pins(list(vapix.list_pins()))
+                _fill()
+
+        _fill()
+        btns = ttk.Frame(frm)
+        btns.pack(fill=tk.X, pady=(12, 0))
+        ttk.Button(btns, text=self._("certs_close"),
+                   command=dlg.destroy).pack(side=tk.RIGHT)
+        ttk.Button(btns, text=self._("certs_forget_all"),
+                   command=_forget_all).pack(side=tk.RIGHT, padx=(0, 8))
+        ttk.Button(btns, text=self._("certs_forget_selected"),
+                   command=_forget_selected).pack(side=tk.RIGHT, padx=(0, 8))
+
+        dlg.bind("<Escape>", lambda e: dlg.destroy())
+        dlg.update_idletasks()
+        x = self.winfo_rootx() + (self.winfo_width() - dlg.winfo_reqwidth()) // 2
+        y = self.winfo_rooty() + (self.winfo_height() - dlg.winfo_reqheight()) // 3
+        dlg.geometry(f"+{max(x, 0)}+{max(y, 0)}")
+        dlg.grab_set()
 
     def _check_for_updates(self, silent=True):
         """Prueft im Hintergrund die neueste GitHub-Version. silent=True: nur bei
