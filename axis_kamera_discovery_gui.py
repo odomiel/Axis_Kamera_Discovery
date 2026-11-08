@@ -82,6 +82,7 @@ DEFAULT_SETTINGS = {
     "hidden_columns": [],    # ausgeblendete Tabellenspalten
     "language": "de",         # Sprache: "de" oder "en"
     "update_check": True,     # beim Start auf neue GitHub-Version pruefen
+    "allow_basic_http": False,  # Basic-Auth ueber unverschluesseltes HTTP erlauben (unsicher)
 }
 
 # GitHub-Projekt: Quelle fuer die Update-Pruefung und "Projektseite" im Info-Dialog.
@@ -179,6 +180,7 @@ TRANSLATIONS = {
         "menu_dark_mode": "Dark Mode",
         "menu_update_check": "Beim Start auf Updates pruefen",
         "menu_check_updates": "Nach Updates suchen",
+        "menu_allow_basic": "Basic-Auth ueber HTTP erlauben (unsicher)",
         "menu_columns": "Spalten...",
         "menu_language": "Sprache",
         "menu_language_de": "Deutsch",
@@ -535,6 +537,7 @@ TRANSLATIONS = {
         "menu_dark_mode": "Dark Mode",
         "menu_update_check": "Check for updates on start",
         "menu_check_updates": "Check for updates",
+        "menu_allow_basic": "Allow Basic auth over HTTP (insecure)",
         "menu_columns": "Columns...",
         "menu_language": "Language",
         "menu_language_de": "German",
@@ -919,6 +922,8 @@ class AxisDiscoveryGUI(tk.Tk):
         self.dark_mode_var = tk.BooleanVar(value=bool(self.get_setting("dark_mode")))
         self.language_var = tk.StringVar(value=self.get_setting("language") or "de")
         self.update_check_var = tk.BooleanVar(value=bool(self.get_setting("update_check")))
+        self.allow_basic_var = tk.BooleanVar(value=bool(self.get_setting("allow_basic_http")))
+        vapix.set_basic_over_http(self.allow_basic_var.get())
         self._update_q = queue.Queue()  # Ergebnis der Update-Pruefung (Hintergrund-Thread)
 
         # Sprachwechsel-Callback
@@ -1461,6 +1466,13 @@ class AxisDiscoveryGUI(tk.Tk):
             variable=self.update_check_var,
             command=self._toggle_update_check,
         ).pack(fill=tk.X, padx=4, pady=2)
+        # Basic-Auth ueber unverschluesseltes HTTP erlauben (unsicher; nur Altgeraete).
+        ttk.Checkbutton(
+            frame,
+            text=self._("menu_allow_basic"),
+            variable=self.allow_basic_var,
+            command=self._toggle_allow_basic,
+        ).pack(fill=tk.X, padx=4, pady=2)
         ttk.Separator(frame, orient="horizontal").pack(fill=tk.X)
 
         # Sprachauswahl mit Untermenü
@@ -1543,6 +1555,10 @@ class AxisDiscoveryGUI(tk.Tk):
     # -------------------------------------------------------- Update-Pruefung
     def _toggle_update_check(self):
         self.set_setting("update_check", self.update_check_var.get())
+
+    def _toggle_allow_basic(self):
+        self.set_setting("allow_basic_http", self.allow_basic_var.get())
+        vapix.set_basic_over_http(self.allow_basic_var.get())
 
     def _check_for_updates(self, silent=True):
         """Prueft im Hintergrund die neueste GitHub-Version. silent=True: nur bei

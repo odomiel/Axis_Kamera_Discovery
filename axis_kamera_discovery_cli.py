@@ -28,7 +28,7 @@ import axis_kamera_discovery_vapix as vapix
 
 # Versionsschema: JJ.MM.TT, bei mehreren Releases am selben Tag b1, b2, ...
 # (wird von bump_version.py gepflegt)
-__version__ = "26.10.26"
+__version__ = "26.11.08"
 
 FIELD_NAMES = [
     "Name",
@@ -137,6 +137,16 @@ def export_to_text_file(axis_cameras, output_file, columns=None):
     else:
         print("No Axis Cameras Found.")
 
+def _csv_safe(value):
+    """Schuetzt vor CSV-Formel-Injection: Geraetenamen stammen aus dem frei
+    setzbaren mDNS-Namen. Beginnt ein Wert mit = + - @ oder einem Steuerzeichen,
+    wertet Excel/LibreOffice ihn als Formel -- daher ein ' voranstellen."""
+    s = "" if value is None else str(value)
+    if s[:1] in ("=", "+", "-", "@", "\t", "\r"):
+        return "'" + s
+    return s
+
+
 def export_to_csv(axis_cameras, output_file, columns=None):
     if columns is None:
         columns = FIELD_NAMES
@@ -145,7 +155,7 @@ def export_to_csv(axis_cameras, output_file, columns=None):
             writer = csv.DictWriter(file, fieldnames=columns)
             writer.writeheader()
             for camera in axis_cameras:
-                writer.writerow({field: camera.get(field, "") for field in columns})
+                writer.writerow({field: _csv_safe(camera.get(field, "")) for field in columns})
         print(f"Axis Cameras Found. Exported to {output_file}")
     else:
         print("No Axis Cameras Found.")
@@ -192,8 +202,26 @@ def print_version():
 # Kamera-Konfiguration ueber die Kommandozeile (nutzt axis_kamera_discovery_vapix)
 # ===================================================================
 
+def _new_password(args):
+    """Das zu SETZENDE Passwort, ohne es in die Prozessliste/History zu schreiben:
+    aus --new-password, sonst aus der Umgebungsvariablen AXIS_NEW_PASSWORD, sonst
+    per getpass (zweimal, mit Bestaetigung)."""
+    if getattr(args, "new_password", None) is not None:
+        return args.new_password
+    env = os.environ.get("AXIS_NEW_PASSWORD")
+    if env:
+        return env
+    while True:
+        p1 = getpass.getpass("Neues Passwort: ")
+        p2 = getpass.getpass("Neues Passwort (Wiederholung): ")
+        if p1 and p1 == p2:
+            return p1
+        print("Passwoerter leer oder nicht identisch -- bitte erneut.")
+
+
 def _conn_kwargs(args):
     """Verbindungs-/Auth-Parameter aus den Argumenten; fragt Passwort ab, falls noetig."""
+    vapix.set_basic_over_http(getattr(args, "allow_basic", False))
     password = args.password
     if password is None and not getattr(args, "factory", False):
         password = getpass.getpass(f"Passwort fuer {args.user}: ")
@@ -252,23 +280,23 @@ def cmd_ipv6_show(args):
 def cmd_user_add(args):
     k = _conn_kwargs(args)
     return _run_over_ips(args.ips, lambda ip: vapix.add_or_set_user(
-        ip, new_user=args.name, new_password=args.new_password, role=args.role,
+        ip, new_user=args.name, new_password=_new_password(args), role=args.role,
         factory=args.factory, **k))
 
 def cmd_user_passwd(args):
     k = _conn_kwargs(args)
     return _run_over_ips(args.ips, lambda ip: vapix.set_user_password(
-        ip, target_user=args.name, new_password=args.new_password, **k))
+        ip, target_user=args.name, new_password=_new_password(args), **k))
 
 def cmd_onvif_add(args):
     k = _conn_kwargs(args)
     return _run_over_ips(args.ips, lambda ip: vapix.add_onvif_user(
-        ip, new_user=args.name, new_password=args.new_password, level=args.level, **k))
+        ip, new_user=args.name, new_password=_new_password(args), level=args.level, **k))
 
 def cmd_onvif_passwd(args):
     k = _conn_kwargs(args)
     return _run_over_ips(args.ips, lambda ip: vapix.set_onvif_user_password(
-        ip, target_user=args.name, new_password=args.new_password, level=args.level, **k))
+        ip, target_user=args.name, new_password=_new_password(args), level=args.level, **k))
 
 def _run_user_import(args, onvif):
     if not os.path.isfile(args.file):
@@ -448,6 +476,9 @@ def main():
                       help='Admin-Passwort (ohne Angabe wird danach gefragt)')
     conn.add_argument('--scheme', choices=['auto', 'https', 'http'], default='auto')
     conn.add_argument('--port', type=int, default=None)
+    conn.add_argument('--allow-basic', dest='allow_basic', action='store_true',
+                      help='Basic-Auth ueber unverschluesseltes HTTP erlauben '
+                           '(unsicher, Passwort im Klartext; nur fuer sehr alte Geraete)')
     conn.add_argument('--conn-timeout', dest='conn_timeout', type=int, default=10,
                       help='Verbindungs-Timeout in Sekunden (Standard: 10)')
 
@@ -476,7 +507,9 @@ def main():
 
     sp = sub.add_parser('user-add', parents=[conn], help='Benutzer anlegen')
     sp.add_argument('--name', required=True, help='Name des neuen Benutzers')
-    sp.add_argument('--new-password', dest='new_password', required=True)
+    sp.add_argument('--new-password', dest='new_password', default=None,
+                    help='zu setzendes Passwort (ohne Angabe: Umgebungsvariable '
+                         'AXIS_NEW_PASSWORD oder verdeckte Abfrage)')
     sp.add_argument('--role', choices=list(vapix.USER_ROLES), default='viewer')
     sp.add_argument('--factory', action='store_true',
                     help='Auslieferungszustand: ohne Anmeldung/Standard-Zugangsdaten, als Administrator')
@@ -484,7 +517,9 @@ def main():
 
     sp = sub.add_parser('user-passwd', parents=[conn], help='Benutzer-Passwort aendern')
     sp.add_argument('--name', required=True)
-    sp.add_argument('--new-password', dest='new_password', required=True)
+    sp.add_argument('--new-password', dest='new_password', default=None,
+                    help='zu setzendes Passwort (ohne Angabe: Umgebungsvariable '
+                         'AXIS_NEW_PASSWORD oder verdeckte Abfrage)')
     sp.set_defaults(func=cmd_user_passwd)
 
     sp = sub.add_parser('user-import', parents=[conn],
@@ -496,13 +531,17 @@ def main():
 
     sp = sub.add_parser('onvif-add', parents=[conn], help='ONVIF-Benutzer anlegen')
     sp.add_argument('--name', required=True)
-    sp.add_argument('--new-password', dest='new_password', required=True)
+    sp.add_argument('--new-password', dest='new_password', default=None,
+                    help='zu setzendes Passwort (ohne Angabe: Umgebungsvariable '
+                         'AXIS_NEW_PASSWORD oder verdeckte Abfrage)')
     sp.add_argument('--level', choices=list(vapix.ONVIF_LEVELS), default='Administrator')
     sp.set_defaults(func=cmd_onvif_add)
 
     sp = sub.add_parser('onvif-passwd', parents=[conn], help='ONVIF-Passwort aendern')
     sp.add_argument('--name', required=True)
-    sp.add_argument('--new-password', dest='new_password', required=True)
+    sp.add_argument('--new-password', dest='new_password', default=None,
+                    help='zu setzendes Passwort (ohne Angabe: Umgebungsvariable '
+                         'AXIS_NEW_PASSWORD oder verdeckte Abfrage)')
     sp.add_argument('--level', choices=list(vapix.ONVIF_LEVELS), default='Administrator')
     sp.set_defaults(func=cmd_onvif_passwd)
 

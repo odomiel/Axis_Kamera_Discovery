@@ -38,8 +38,43 @@ import xml.etree.ElementTree as ET
 # Axis-Geraete haben meist selbstsignierte Zertifikate -> Zertifikatspruefung aus.
 _SSL_CONTEXT = ssl._create_unverified_context()
 
+# Basic-Auth ueber unverschluesseltes HTTP schickt Benutzer/Passwort Base64-kodiert,
+# also im Klartext (ein Mithoerer muss nur "Basic" verlangen bzw. Port 443 blockieren).
+# Ab Werk daher nur Digest ueber HTTP; per set_basic_over_http() abschaltbar (CLI:
+# --allow-basic) fuer sehr alte Geraete, die ausschliesslich Basic/HTTP koennen.
+ALLOW_BASIC_OVER_HTTP = False
+
+
+def set_basic_over_http(allowed):
+    """Erlaubt/verbietet Basic-Auth ueber unverschluesseltes HTTP (Vorgabe: verboten)."""
+    global ALLOW_BASIC_OVER_HTTP
+    ALLOW_BASIC_OVER_HTTP = bool(allowed)
+
 # Standard-Ports je Schema
 DEFAULT_PORTS = {"http": 80, "https": 443}
+
+# Obergrenze fuer eine aus dem LAN eingelesene Antwort (Schutz vor Speicher-DoS durch
+# ein boesartiges Geraet). Grosszuegig -- auch ein ganzes Konfigurations-Abbild passt
+# hinein -- aber nicht unbegrenzt.
+_MAX_ANTWORT = 64 * 1024 * 1024
+
+
+def _open_private(path, binary=False):
+    """Oeffnet eine Datei zum Schreiben mit Rechten 0600 (nur Eigentuemer).
+
+    Geraete-Sicherungen (.json) und .cfg-Exporte koennen sensible Konfiguration
+    (Netzwerk, SNMP, Dienste) enthalten -- sie sollen nicht welt-/gruppenlesbar
+    entstehen. Unter Windows sind POSIX-Rechte weitgehend wirkungslos, aber der
+    Aufruf bleibt gefahrlos.
+    """
+    fd = os.open(path, os.O_CREAT | os.O_TRUNC | os.O_WRONLY, 0o600)
+    try:
+        os.chmod(path, 0o600)   # auch bei bereits existierender Datei durchsetzen
+    except OSError:
+        pass
+    if binary:
+        return os.fdopen(fd, "wb")
+    return os.fdopen(fd, "w", encoding="utf-8")
 
 
 class VapixError(Exception):
@@ -57,11 +92,47 @@ class _SchemeUnreachable(VapixError):
     """
 
 
-def _build_opener(host_port, username, password, auth=True):
+class BasicOverHttpRefused(VapixError):
+    """Die Gegenstelle verlangt Basic-Auth ueber HTTP -- Anmeldung verweigert.
+
+    Bewusst ein VapixError, aber KEIN _SchemeUnreachable/URLError/OSError: so loest
+    die Ablehnung weder einen (sinnlosen) Rueckfall auf das andere Schema aus noch
+    wird sie von der Firmware-Upload-Logik als "Geraet startet neu = Erfolg"
+    verschluckt.
+    """
+
+
+class _BasicAuthHandler(urllib.request.HTTPBasicAuthHandler):
+    """HTTPBasicAuthHandler, der ueber ``http://`` keine Zugangsdaten sendet.
+
+    Digest ueber HTTP bleibt erlaubt (schickt kein Klartext-Passwort); nur Basic
+    ueber HTTP wird abgelehnt, sofern nicht ausdruecklich erlaubt.
+    """
+
+    def __init__(self, password_mgr=None, allow_http=False):
+        super().__init__(password_mgr)
+        self.allow_http = allow_http
+
+    def http_error_401(self, req, fp, code, msg, headers):
+        if req.type == "http" and not (ALLOW_BASIC_OVER_HTTP or self.allow_http):
+            schemes = [h.strip().split(" ", 1)[0].lower()
+                       for h in headers.get_all("WWW-Authenticate") or []]
+            if "digest" in schemes:
+                return None   # Digest war schon dran (z. B. falsches Passwort) -> 401
+            if "basic" in schemes:
+                raise BasicOverHttpRefused(
+                    "Die Kamera verlangt eine Basic-Anmeldung ueber unverschluesseltes "
+                    "HTTP (Passwort im Klartext) -- abgelehnt. HTTPS verwenden oder "
+                    "Basic ueber HTTP ausdruecklich erlauben (CLI: --allow-basic).")
+        return super().http_error_401(req, fp, code, msg, headers)
+
+
+def _build_opener(host_port, username, password, auth=True, allow_insecure_basic=False):
     """Opener mit ungepruefter HTTPS-Verbindung.
 
     Mit auth=True zusaetzlich Digest-/Basic-Auth; mit auth=False ganz ohne
-    Authentifizierung (fuer werksneue Geraete ohne gesetztes Passwort).
+    Authentifizierung (fuer werksneue Geraete ohne gesetztes Passwort). Basic ueber
+    HTTP nur mit ALLOW_BASIC_OVER_HTTP oder *allow_insecure_basic*.
     """
     handlers = [urllib.request.HTTPSHandler(context=_SSL_CONTEXT)]
     if auth:
@@ -70,7 +141,7 @@ def _build_opener(host_port, username, password, auth=True):
         pwmgr.add_password(None, host_port, username, password)
         handlers = [
             urllib.request.HTTPDigestAuthHandler(pwmgr),
-            urllib.request.HTTPBasicAuthHandler(pwmgr),
+            _BasicAuthHandler(pwmgr, allow_http=allow_insecure_basic),
         ] + handlers
     return urllib.request.build_opener(*handlers)
 
@@ -88,7 +159,7 @@ def _request(ip, username, password, path, scheme="http", port=None, timeout=10,
     opener = _build_opener(host_port, username, password, auth=auth)
     try:
         with opener.open(url, timeout=timeout) as resp:
-            return resp.read().decode("utf-8", errors="replace")
+            return resp.read(_MAX_ANTWORT).decode("utf-8", errors="replace")
     except urllib.error.HTTPError as exc:
         if exc.code == 401:
             raise VapixError("Authentifizierung fehlgeschlagen (Benutzer/Passwort?).")
@@ -99,13 +170,28 @@ def _request(ip, username, password, path, scheme="http", port=None, timeout=10,
         raise _SchemeUnreachable(f"Verbindungsfehler: {exc}")
 
 
-def _request_auto(ip, username, password, path, scheme="auto", port=None, timeout=10, auth=True):
-    """Wie _request, aber 'auto' probiert erst HTTPS, dann HTTP."""
+def _no_fallback_error():
+    return VapixError(
+        "HTTPS nicht erreichbar -- fuer eine passwortsetzende Aktion wird NICHT auf "
+        "unverschluesseltes HTTP zurueckgefallen (das Passwort ginge im Klartext "
+        "ueber das Netz). Erreichbarkeit von Port 443 pruefen oder das Schema "
+        "ausdruecklich auf 'http' setzen, wenn das wirklich gewollt ist.")
+
+
+def _request_auto(ip, username, password, path, scheme="auto", port=None, timeout=10, auth=True,
+                  allow_http_fallback=True):
+    """Wie _request, aber 'auto' probiert erst HTTPS, dann HTTP.
+
+    allow_http_fallback=False (fuer passwortsetzende Aktionen) verbietet den
+    Rueckfall auf HTTP, wenn HTTPS nicht erreichbar ist.
+    """
     if scheme != "auto":
         return _request(ip, username, password, path, scheme, port, timeout, auth)
     try:
         return _request(ip, username, password, path, "https", port, timeout, auth)
     except _SchemeUnreachable:
+        if not allow_http_fallback:
+            raise _no_fallback_error()
         return _request(ip, username, password, path, "http", port, timeout, auth)
 
 
@@ -123,7 +209,7 @@ def _post_form(ip, username, password, path, fields, scheme, port, timeout):
     )
     try:
         with opener.open(req, timeout=timeout) as resp:
-            return resp.read().decode("utf-8", errors="replace")
+            return resp.read(_MAX_ANTWORT).decode("utf-8", errors="replace")
     except urllib.error.HTTPError as exc:
         if exc.code == 401:
             raise VapixError("Authentifizierung fehlgeschlagen (Benutzer/Passwort?).")
@@ -134,13 +220,16 @@ def _post_form(ip, username, password, path, fields, scheme, port, timeout):
         raise _SchemeUnreachable(f"Verbindungsfehler: {exc}")
 
 
-def _post_form_auto(ip, username, password, path, fields, scheme="auto", port=None, timeout=30):
+def _post_form_auto(ip, username, password, path, fields, scheme="auto", port=None, timeout=30,
+                    allow_http_fallback=True):
     """Wie _post_form, aber 'auto' probiert erst HTTPS, dann HTTP."""
     if scheme != "auto":
         return _post_form(ip, username, password, path, fields, scheme, port, timeout)
     try:
         return _post_form(ip, username, password, path, fields, "https", port, timeout)
     except _SchemeUnreachable:
+        if not allow_http_fallback:
+            raise _no_fallback_error()
         return _post_form(ip, username, password, path, fields, "http", port, timeout)
 
 
@@ -186,7 +275,7 @@ def _post_json(ip, username, password, path, obj, scheme, port, timeout, method=
         method=method)
     try:
         with opener.open(req, timeout=timeout) as resp:
-            text = resp.read().decode("utf-8", errors="replace")
+            text = resp.read(_MAX_ANTWORT).decode("utf-8", errors="replace")
     except urllib.error.HTTPError as exc:
         if exc.code == 401:
             raise VapixError("Authentifizierung fehlgeschlagen (Benutzer/Passwort?).")
@@ -501,7 +590,7 @@ def add_user(ip, username, password, new_user, new_password, role="viewer",
     }
     path = f"/axis-cgi/pwdgrp.cgi?{urllib.parse.urlencode(params)}"
     text = _request_auto(ip, username, password, path, scheme, port, timeout,
-                         auth=authenticate)
+                         auth=authenticate, allow_http_fallback=False)
     if "Error" in text:
         raise VapixError(f"Geraet meldete: {text.strip()}")
     return f"Benutzer '{new_user}' angelegt ({role})"
@@ -513,7 +602,7 @@ def set_user_password(ip, username, password, target_user, new_password,
     params = {"action": "update", "user": target_user, "pwd": new_password}
     path = f"/axis-cgi/pwdgrp.cgi?{urllib.parse.urlencode(params)}"
     text = _request_auto(ip, username, password, path, scheme, port, timeout,
-                         auth=authenticate)
+                         auth=authenticate, allow_http_fallback=False)
     if "Error" in text:
         raise VapixError(f"Geraet meldete: {text.strip()}")
     return f"Passwort von '{target_user}' geaendert"
@@ -595,7 +684,7 @@ def _onvif_post(ip, username, password, inner, scheme, port, timeout):
     req = urllib.request.Request(url, data=body, headers={"Content-Type": "text/xml"})
     try:
         with opener.open(req, timeout=timeout) as resp:
-            return resp.read().decode("utf-8", errors="replace")
+            return resp.read(_MAX_ANTWORT).decode("utf-8", errors="replace")
     except urllib.error.HTTPError as exc:
         if exc.code == 401:
             raise VapixError("Authentifizierung fehlgeschlagen (Benutzer/Passwort?).")
@@ -608,13 +697,16 @@ def _onvif_post(ip, username, password, inner, scheme, port, timeout):
         raise _SchemeUnreachable(f"Verbindungsfehler: {exc}")
 
 
-def _onvif_post_auto(ip, username, password, inner, scheme, port, timeout):
+def _onvif_post_auto(ip, username, password, inner, scheme, port, timeout,
+                     allow_http_fallback=True):
     """Wie _onvif_post, aber 'auto' probiert erst HTTPS, dann HTTP."""
     if scheme != "auto":
         return _onvif_post(ip, username, password, inner, scheme, port, timeout)
     try:
         return _onvif_post(ip, username, password, inner, "https", port, timeout)
     except _SchemeUnreachable:
+        if not allow_http_fallback:
+            raise _no_fallback_error()
         return _onvif_post(ip, username, password, inner, "http", port, timeout)
 
 
@@ -635,7 +727,8 @@ def add_onvif_user(ip, username, password, new_user, new_password,
         "</User></tds:CreateUsers>"
     )
     _check_onvif_response(
-        _onvif_post_auto(ip, username, password, inner, scheme, port, timeout))
+        _onvif_post_auto(ip, username, password, inner, scheme, port, timeout,
+                         allow_http_fallback=False))
     return f"ONVIF-Benutzer '{new_user}' angelegt ({level})"
 
 
@@ -650,7 +743,8 @@ def set_onvif_user_password(ip, username, password, target_user, new_password,
         "</User></tds:SetUser>"
     )
     _check_onvif_response(
-        _onvif_post_auto(ip, username, password, inner, scheme, port, timeout))
+        _onvif_post_auto(ip, username, password, inner, scheme, port, timeout,
+                         allow_http_fallback=False))
     return f"ONVIF-Passwort von '{target_user}' geaendert"
 
 
@@ -1387,7 +1481,8 @@ def write_adm_config(path, config, selected_params=None, with_profiles=True,
     tree = ET.ElementTree(root)
     ET.indent(tree, space="  ")
     try:
-        tree.write(path, encoding="utf-8", xml_declaration=True)
+        with _open_private(path, binary=True) as fh:
+            tree.write(fh, encoding="utf-8", xml_declaration=True)
     except OSError as exc:
         raise VapixError(f"Datei nicht schreibbar: {exc}")
     return len(names)
@@ -1481,7 +1576,7 @@ def save_device_settings(ip, username, password, path, scheme="auto", port=None,
     """
     data = export_device_settings(ip, username, password, scheme, port, timeout)
     try:
-        with open(path, "w", encoding="utf-8") as fh:
+        with _open_private(path) as fh:
             json.dump(data, fh, ensure_ascii=False, indent=2, sort_keys=True)
     except OSError as exc:
         raise VapixError(f"Datei nicht schreibbar: {exc}")
