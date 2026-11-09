@@ -36,6 +36,18 @@ PY_XY=3.14
 FFI_VER=3.8.0
 SSL_VER=3.5.9
 
+# SHA-256 der Toolchain-Tarballs (Audit-Befund 6: Lieferkette). Bei JEDEM Versions-
+# wechsel oben MITZIEHEN -- sonst bricht der Build mit "Pruefsumme stimmt nicht" ab
+# (genau der gewollte Schutz). OpenSSL und Python sind gegen die Upstream-Angaben
+# geprueft (openssl.org bzw. python.org-SPDX); Tcl/Tk/libffi gegen den sauberen
+# HTTPS-Erstbezug. Neuen Hash notfalls aus der Fehlermeldung des Builds uebernehmen,
+# nachdem die Quelle unabhaengig verifiziert wurde.
+SHA_TCL=d0aed49230bc02a65c1e0229e65f34590a4b037ec40d546f32573b467f7551ea
+SHA_TK=d7a146d2917eb8b5cc95276dbf0e3d03c7464d2b19c1675357857c989301dbb4
+SHA_PY=9e4996c19ae5a3df31f10c37723661f71d3455d73bd005f79df7098e5cc13192
+SHA_FFI=7da3e2d9a171eb0a038f592ecad3ff2bb2550f3496d87b3b29ad0cf4430c0db4
+SHA_SSL=603f5602e2eef00d77fbd429d34dcd5822bb301757a1bc9cdb24c670f1eb859a
+
 # Statische Bau-/Konsistenz-Tests VOR dem (8-10 min teuren) Kompilieren -- eine
 # gebrochene Invariante (Version, Lizenz-/Dep-Doku, Spiegel-Hygiene, Tcl/Tk nicht
 # strippen, ...) stoppt den Build sofort. Laeuft mit dem System-python3 (~0.1 s).
@@ -50,19 +62,31 @@ mkdir -p "$SRC"
 rm -rf "$APPDIR"
 mkdir -p "$PREFIX"
 
-dl() {  # dl <url> <zieldatei>
-    local url="$1" out="$2"
+dl() {  # dl <url> <zieldatei> [sha256]
+    local url="$1" out="$2" want="${3:-}"
     [ -f "$out" ] || { echo ">> download $(basename "$out")"; curl -fSL "$url" -o "$out"; }
+    if [ -n "$want" ]; then
+        local got
+        got=$(sha256sum "$out" | cut -d' ' -f1)
+        if [ "$got" != "$want" ]; then
+            echo ">> FEHLER: Pruefsumme stimmt nicht fuer $(basename "$out")" >&2
+            echo ">>   erwartet: $want" >&2
+            echo ">>   erhalten: $got" >&2
+            echo ">> Quelle unabhaengig verifizieren und den Pin oben anpassen." >&2
+            rm -f "$out"   # kaputten Cache nicht weiterverwenden
+            exit 1
+        fi
+    fi
 }
 
 # --------------------------------------------------------------- 1. Quellen
 # Die Dateinamen tragen die Version, sonst wuerde der Cache-Treffer in dl()
 # nach einem Versionswechsel den alten Tarball weiterverwenden.
-dl "https://downloads.sourceforge.net/project/tcl/Tcl/$TCL_VER/tcl$TCL_VER-src.tar.gz" "$SRC/tcl-$TCL_VER.tar.gz"
-dl "https://downloads.sourceforge.net/project/tcl/Tcl/$TK_VER/tk$TK_VER-src.tar.gz"    "$SRC/tk-$TK_VER.tar.gz"
-dl "https://www.python.org/ftp/python/$PY_VER/Python-$PY_VER.tgz"                       "$SRC/python-$PY_VER.tgz"
-dl "https://github.com/libffi/libffi/releases/download/v$FFI_VER/libffi-$FFI_VER.tar.gz" "$SRC/libffi-$FFI_VER.tar.gz"
-dl "https://github.com/openssl/openssl/releases/download/openssl-$SSL_VER/openssl-$SSL_VER.tar.gz" "$SRC/openssl-$SSL_VER.tar.gz"
+dl "https://downloads.sourceforge.net/project/tcl/Tcl/$TCL_VER/tcl$TCL_VER-src.tar.gz" "$SRC/tcl-$TCL_VER.tar.gz" "$SHA_TCL"
+dl "https://downloads.sourceforge.net/project/tcl/Tcl/$TK_VER/tk$TK_VER-src.tar.gz"    "$SRC/tk-$TK_VER.tar.gz" "$SHA_TK"
+dl "https://www.python.org/ftp/python/$PY_VER/Python-$PY_VER.tgz"                       "$SRC/python-$PY_VER.tgz" "$SHA_PY"
+dl "https://github.com/libffi/libffi/releases/download/v$FFI_VER/libffi-$FFI_VER.tar.gz" "$SRC/libffi-$FFI_VER.tar.gz" "$SHA_FFI"
+dl "https://github.com/openssl/openssl/releases/download/openssl-$SSL_VER/openssl-$SSL_VER.tar.gz" "$SRC/openssl-$SSL_VER.tar.gz" "$SHA_SSL"
 
 cd "$SRC"
 rm -rf "tcl$TCL_VER" "tk$TK_VER" "Python-$PY_VER" "libffi-$FFI_VER" "openssl-$SSL_VER"
@@ -146,18 +170,31 @@ echo "==== Laufzeit-Pakete (cp314-Wheels) ===="
 SITE="$PREFIX/lib/python$PY_XY/site-packages"
 mkdir -p "$SITE"
 wheel() {  # wheel <pypi-paket> <filter>
+    # Audit-Befund 6: Das Wheel wird gegen die in der PyPI-JSON hinterlegte SHA-256
+    # geprueft. Das sichert besonders den Bezug ueber files.pythonhosted.org ab, den
+    # dieser Rechner per .curlrc an eine fest verdrahtete Fastly-IP umleitet (DNS-
+    # Sinkhole) -- ohne Hashpruefung waere das die schwaechste Stelle der Lieferkette.
     local pkg="$1" filt="$2"
-    local url
-    url=$(curl -s "https://pypi.org/pypi/$pkg/json" | "$PYBIN" -c "
+    local url want
+    read -r url want < <(curl -s "https://pypi.org/pypi/$pkg/json" | "$PYBIN" -c "
 import json,sys
 d=json.load(sys.stdin); v=d['info']['version']
 for f in d['releases'][v]:
     n=f['filename']
     if $filt:
-        print(f['url']); break
+        print(f['url'], f['digests']['sha256']); break
 ")
     echo ">> $pkg: $(basename "$url")"
     curl -fsSL "$url" -o "$BUILD/$pkg.whl"
+    local got
+    got=$(sha256sum "$BUILD/$pkg.whl" | cut -d' ' -f1)
+    if [ "$got" != "$want" ]; then
+        echo ">> FEHLER: Wheel-Pruefsumme stimmt nicht fuer $pkg" >&2
+        echo ">>   erwartet (PyPI): $want" >&2
+        echo ">>   erhalten:        $got" >&2
+        rm -f "$BUILD/$pkg.whl"
+        exit 1
+    fi
     "$PYBIN" -m zipfile -e "$BUILD/$pkg.whl" "$SITE/"
 }
 # 'cp314-cp314-' statt nur 'cp314': es gibt auch ein cp314t-Wheel (free-threaded

@@ -112,6 +112,71 @@ class TestDateirechte(unittest.TestCase):
         self.assertEqual(stat.S_IMODE(os.stat(p).st_mode), 0o600)
 
 
+class _PwdgrpServer:
+    """Server fuer pwdgrp.cgi. post_ok=True: beantwortet POST (200) und merkt sich
+    Body + Pfade; post_ok=False: lehnt POST mit 501 ab (wie aeltere Firmware)."""
+
+    def __init__(self, post_ok=True):
+        self.bodies = []
+        self.get_paths = []
+        self.post_paths = []
+        outer = self
+
+        class H(http.server.BaseHTTPRequestHandler):
+            def log_message(self, *a):
+                pass
+
+            def do_POST(self):
+                outer.post_paths.append(self.path)
+                if not post_ok:
+                    self.send_error(501, "Unsupported method ('POST')")
+                    return
+                n = int(self.headers.get("Content-Length", 0))
+                outer.bodies.append(self.rfile.read(n).decode())
+                self.send_response(200)
+                self.end_headers()
+                self.wfile.write(b"OK")
+
+            def do_GET(self):
+                outer.get_paths.append(self.path)
+                self.send_response(200)
+                self.end_headers()
+                self.wfile.write(b"OK")
+
+        self.srv = http.server.HTTPServer(("127.0.0.1", 0), H)
+        self.port = self.srv.server_address[1]
+
+    def __enter__(self):
+        threading.Thread(target=self.srv.serve_forever, daemon=True).start()
+        return self
+
+    def __exit__(self, *a):
+        self.srv.shutdown()
+        self.srv.server_close()
+
+
+class TestPasswortImBody(unittest.TestCase):
+    """Befund 2b: das neue Passwort steht im POST-Body, nicht in der URL."""
+
+    def test_post_body_keine_url(self):
+        with _PwdgrpServer(post_ok=True) as s:
+            vapix.set_user_password("127.0.0.1", "root", "pw", "root", "NeuGeheim!",
+                                    scheme="http", port=s.port, timeout=3)
+            self.assertTrue(any("pwd=NeuGeheim" in b for b in s.bodies),
+                            "Passwort muss im POST-Body stehen")
+            self.assertNotIn("pwd=", "".join(s.post_paths),
+                             "Passwort darf NICHT in der URL/Query stehen")
+            self.assertEqual(s.get_paths, [], "kein GET-Rueckfall noetig")
+
+    def test_get_rueckfall_bei_501(self):
+        with _PwdgrpServer(post_ok=False) as s:
+            vapix.set_user_password("127.0.0.1", "root", "pw", "root", "NeuGeheim!",
+                                    scheme="http", port=s.port, timeout=3)
+            # POST abgelehnt -> genau ein GET-Rueckfall (Legacy-Query)
+            self.assertTrue(any("pwd=NeuGeheim" in p for p in s.get_paths),
+                            "Legacy-Rueckfall muss die Query nutzen")
+
+
 class TestZertifikatPinning(unittest.TestCase):
     """Befund 3: Trust-on-First-Use-Pinning der Kamerazertifikate."""
 

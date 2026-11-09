@@ -96,6 +96,16 @@ class _SchemeUnreachable(VapixError):
     """
 
 
+class _MethodNotAllowed(VapixError):
+    """Die Gegenstelle lehnt die HTTP-Methode ab (405/501).
+
+    Wird genutzt, um zu erkennen, dass eine (aeltere) Firmware einen per POST
+    gesendeten pwdgrp.cgi-Aufruf nicht annimmt, und einmalig auf die Legacy-
+    Query-Variante zurueckzufallen -- NICHT bei 401 (falsches Passwort) oder einer
+    inhaltlichen Fehlerantwort.
+    """
+
+
 class BasicOverHttpRefused(VapixError):
     """Die Gegenstelle verlangt Basic-Auth ueber HTTP -- Anmeldung verweigert.
 
@@ -352,14 +362,17 @@ def _request_auto(ip, username, password, path, scheme="auto", port=None, timeou
         return _request(ip, username, password, path, "http", port, timeout, auth)
 
 
-def _post_form(ip, username, password, path, fields, scheme, port, timeout):
-    """POSTet x-www-form-urlencoded und liefert den Antworttext."""
+def _post_form(ip, username, password, path, fields, scheme, port, timeout, auth=True):
+    """POSTet x-www-form-urlencoded und liefert den Antworttext.
+
+    Mit auth=False ohne Anmeldung (werksneue Geraete, Erstbenutzer).
+    """
     if port is None:
         port = DEFAULT_PORTS[scheme]
     host_port = f"{ip}:{port}"
     url = f"{scheme}://{host_port}{path}"
     body = urllib.parse.urlencode(fields).encode("utf-8")
-    opener = _build_opener(host_port, username, password)
+    opener = _build_opener(host_port, username, password, auth=auth)
     req = urllib.request.Request(
         url, data=body,
         headers={"Content-Type": "application/x-www-form-urlencoded"},
@@ -368,8 +381,11 @@ def _post_form(ip, username, password, path, fields, scheme, port, timeout):
         with opener.open(req, timeout=timeout) as resp:
             return resp.read(_MAX_ANTWORT).decode("utf-8", errors="replace")
     except urllib.error.HTTPError as exc:
+        exc.close()   # offene Fehlerantwort schliessen (sonst ResourceWarning)
         if exc.code == 401:
             raise VapixError("Authentifizierung fehlgeschlagen (Benutzer/Passwort?).")
+        if exc.code in (405, 501):
+            raise _MethodNotAllowed(f"POST nicht erlaubt (HTTP {exc.code}).")
         raise VapixError(f"HTTP-Fehler {exc.code}: {exc.reason}")
     except urllib.error.URLError as exc:
         raise _SchemeUnreachable(f"Nicht erreichbar: {exc.reason}")
@@ -378,18 +394,18 @@ def _post_form(ip, username, password, path, fields, scheme, port, timeout):
 
 
 def _post_form_auto(ip, username, password, path, fields, scheme="auto", port=None, timeout=30,
-                    allow_http_fallback=True):
+                    allow_http_fallback=True, auth=True):
     """Wie _post_form, aber 'auto' probiert erst HTTPS, dann HTTP."""
     if scheme != "auto":
-        return _post_form(ip, username, password, path, fields, scheme, port, timeout)
+        return _post_form(ip, username, password, path, fields, scheme, port, timeout, auth)
     try:
-        return _post_form(ip, username, password, path, fields, "https", port, timeout)
+        return _post_form(ip, username, password, path, fields, "https", port, timeout, auth)
     except _SchemeUnreachable:
         if not allow_http_fallback:
             raise _no_fallback_error()
         if _pin_blocks_fallback(ip):
             raise _downgrade_refused_error()
-        return _post_form(ip, username, password, path, fields, "http", port, timeout)
+        return _post_form(ip, username, password, path, fields, "http", port, timeout, auth)
 
 
 def _http_error_detail(exc) -> str:
@@ -730,6 +746,26 @@ DEFAULT_CREDENTIALS = [
 ]
 
 
+def _pwdgrp_request(ip, username, password, params, scheme, port, timeout, auth):
+    """Ruft pwdgrp.cgi auf und schickt das Passwort im POST-Body statt in der URL
+    (Audit-Befund 2b: so landet es nicht in den Zugriffsprotokollen von Proxys/
+    Kameras). Kein HTTP-Rueckfall (allow_http_fallback=False).
+
+    Aeltere Firmware, die pwdgrp.cgi nur per GET beantwortet, antwortet mit
+    405/501 -> einmalig auf die Legacy-Query-Variante zuruckfallen. Bei 401
+    (falsches Passwort) oder einer inhaltlichen Error-Antwort wird NICHT erneut
+    versucht, damit kein zweiter Anmeldeversuch die Brute-Force-Sperre ausloest.
+    """
+    path = "/axis-cgi/pwdgrp.cgi"
+    try:
+        return _post_form_auto(ip, username, password, path, params, scheme, port,
+                               timeout, allow_http_fallback=False, auth=auth)
+    except _MethodNotAllowed:
+        query = f"{path}?{urllib.parse.urlencode(params)}"
+        return _request_auto(ip, username, password, query, scheme, port, timeout,
+                             auth=auth, allow_http_fallback=False)
+
+
 def add_user(ip, username, password, new_user, new_password, role="viewer",
              scheme="auto", port=None, timeout=10, authenticate=True):
     """Legt einen regulaeren Axis-Benutzer mit der gewuenschten Rolle an.
@@ -747,9 +783,8 @@ def add_user(ip, username, password, new_user, new_password, role="viewer",
         "grp": "root" if new_user == "root" else "users",
         "sgrp": USER_ROLES.get(role, "viewer"),
     }
-    path = f"/axis-cgi/pwdgrp.cgi?{urllib.parse.urlencode(params)}"
-    text = _request_auto(ip, username, password, path, scheme, port, timeout,
-                         auth=authenticate, allow_http_fallback=False)
+    text = _pwdgrp_request(ip, username, password, params, scheme, port, timeout,
+                           auth=authenticate)
     if "Error" in text:
         raise VapixError(f"Geraet meldete: {text.strip()}")
     return f"Benutzer '{new_user}' angelegt ({role})"
@@ -759,9 +794,8 @@ def set_user_password(ip, username, password, target_user, new_password,
                       scheme="auto", port=None, timeout=10, authenticate=True):
     """Aendert das Passwort eines bestehenden regulaeren Axis-Benutzers."""
     params = {"action": "update", "user": target_user, "pwd": new_password}
-    path = f"/axis-cgi/pwdgrp.cgi?{urllib.parse.urlencode(params)}"
-    text = _request_auto(ip, username, password, path, scheme, port, timeout,
-                         auth=authenticate, allow_http_fallback=False)
+    text = _pwdgrp_request(ip, username, password, params, scheme, port, timeout,
+                           auth=authenticate)
     if "Error" in text:
         raise VapixError(f"Geraet meldete: {text.strip()}")
     return f"Passwort von '{target_user}' geaendert"
