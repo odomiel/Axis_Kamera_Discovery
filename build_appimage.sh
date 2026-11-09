@@ -343,6 +343,11 @@ _zsync_einsammeln() {
     [ -f "$stray" ] && mv -f "$stray" "$OUT.zsync"
     return 0
 }
+# Altes Image + alte .zsync (auch stray in $ROOT) ZUERST entfernen: sonst taeuscht
+# eine zuruckgebliebene .zsync eines frueheren Laufs unten einen Erfolg vor, obwohl
+# appimagetool in diesem Lauf keine erzeugt hat -- und sie passt nicht zum neuen
+# (nicht byte-identischen) Image. So spiegelt die Existenzpruefung nur DIESEN Lauf.
+rm -f "$OUT" "$OUT.zsync" "$ROOT/$(basename "$OUT").zsync"
 ARCH=x86_64 "$AIT" --appimage-extract-and-run -u "$UPDINFO" "$APPDIR" "$OUT" 2>&1 | tail -5
 _zsync_einsammeln
 # appimagetool ueberspringt die .zsync leise, wenn zsyncmake gerade nicht greift
