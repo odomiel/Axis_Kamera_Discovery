@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from zeroconf import ServiceBrowser, Zeroconf, IPVersion
+from zeroconf import ServiceBrowser, Zeroconf, IPVersion, InterfaceChoice
 import time
 import csv
 import webbrowser
@@ -28,7 +28,7 @@ import axis_kamera_discovery_vapix as vapix
 
 # Versionsschema: JJ.MM.TT, bei mehreren Releases am selben Tag b1, b2, ...
 # (wird von bump_version.py gepflegt)
-__version__ = "26.11.09"
+__version__ = "26.11.17"
 
 FIELD_NAMES = [
     "Name",
@@ -42,7 +42,20 @@ FIELD_NAMES = [
 
 class AxisDiscovery:
     def __init__(self):
-        self.zeroconf = Zeroconf()
+        # interfaces=All: Multicast-Mitgliedschaft EXPLIZIT auf jeder lokalen
+        # Interface-Adresse beitreten, statt dem Kernel (InterfaceChoice.Default →
+        # INADDR_ANY) die Interface-Wahl ueber die Routing-Tabelle zu ueberlassen.
+        # Letzteres schlaegt bei statischer IP OHNE Default-Gateway fehl (typisch beim
+        # Direktanschluss an eine Werks-Kamera), sodass eine nur per Zeroconf/Link-Local
+        # (169.254.x.x) erreichbare Kamera nicht empfangen wird.
+        # ip_version=All: auch AAAA-Records abfragen — ohne das liefert zeroconf keine
+        # IPv6-Adressen und die "IPv6 Adresse"-Spalte (V6Only) bliebe leer.
+        try:
+            self.zeroconf = Zeroconf(ip_version=IPVersion.All,
+                                     interfaces=InterfaceChoice.All)
+        except OSError:
+            # Host ohne (nutzbaren) IPv6-Stack -> nur IPv4.
+            self.zeroconf = Zeroconf(interfaces=InterfaceChoice.All)
         self.services = []
         self._seen = set()  # bereits erfasste mDNS-Namen (gegen Doppel-Eintraege)
 
