@@ -27,7 +27,7 @@ Programmpaketen ausgeliefert.
 | OpenSSL | 3.5.9 | Apache License 2.0 |
 | zeroconf | 0.154.0 | **LGPL-2.1-or-later** |
 | ifaddr | 0.2.0 | MIT |
-| prettytable | 3.18.0 | BSD-3-Clause |
+| prettytable | 3.19.0 | BSD-3-Clause |
 | wcwidth | 0.9.4 | MIT |
 | sv-ttk (Sun Valley) | 2.6.1 | MIT |
 | pyzipper | 0.4.0 | MIT |
@@ -174,7 +174,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ---
 
-## prettytable 3.18.0
+## prettytable 3.19.0
 
 Copyright © 2009 Luke Maurits und weitere Mitwirkende.
 
