@@ -923,6 +923,54 @@ DARK_COLORS = {
 }
 
 
+class CircularSpinner(tk.Canvas):
+    """Runder, sich drehender Aktivitaets-Indikator - Ersatz fuer die indeterminate
+    ``ttk.Progressbar``. Gleiche Schnittstelle (``start()``/``stop()``), damit die
+    Aufrufstellen unveraendert bleiben. Gezeichnet auf einem ``tk.Canvas``: ein
+    schwacher Spur-Vollkreis plus ein rotierender Akzent-Bogen. Farben folgen dem
+    Hell/Dunkel-Thema ueber ``set_colors`` (ttk-Themes erreichen einen Canvas nicht)."""
+
+    def __init__(self, master, size=26, thickness=4, **kw):
+        super().__init__(master, width=size, height=size,
+                         highlightthickness=0, borderwidth=0, takefocus=0, **kw)
+        self._size = size
+        self._thickness = thickness
+        self._angle = 90          # oben starten
+        self._job = None
+        self._track_col = "#d0d0d0"
+        self._arc_col = "#0067c0"
+        self._pad = thickness // 2 + 2
+
+    def set_colors(self, track, arc, bg):
+        self._track_col, self._arc_col = track, arc
+        self.configure(bg=bg)
+        if self._job is not None:
+            self._draw()          # laufende Animation sofort neu einfaerben
+
+    def _draw(self):
+        self.delete("all")
+        p = self._pad
+        box = (p, p, self._size - p, self._size - p)
+        self.create_oval(*box, outline=self._track_col, width=self._thickness)
+        self.create_arc(*box, start=self._angle, extent=100, style=tk.ARC,
+                        outline=self._arc_col, width=self._thickness)
+
+    def _tick(self):
+        self._angle = (self._angle - 12) % 360
+        self._draw()
+        self._job = self.after(40, self._tick)
+
+    def start(self, _interval=None):
+        if self._job is None:
+            self._tick()
+
+    def stop(self):
+        if self._job is not None:
+            self.after_cancel(self._job)
+            self._job = None
+        self.delete("all")        # im Ruhezustand unsichtbar (blendet in die Leiste)
+
+
 class AxisDiscoveryGUI(tk.Tk):
     def __init__(self):
         super().__init__()
@@ -1141,8 +1189,9 @@ class AxisDiscoveryGUI(tk.Tk):
         )
         self.export_btn.pack(side=tk.RIGHT, padx=(0, 8))
 
-        self.progress = ttk.Progressbar(bar, mode="indeterminate", length=160)
+        self.progress = CircularSpinner(bar, size=26, thickness=4)
         self.progress.pack(side=tk.RIGHT, padx=8)
+        self._refresh_spinner_colors()
 
     def _build_table(self):
         frame = ttk.Frame(self)
@@ -1799,6 +1848,7 @@ class AxisDiscoveryGUI(tk.Tk):
         # sv_ttk nutzt eine groessere Schrift als TkDefaultFont -> Messschriften
         # fuer die Spaltenbreite nachziehen und ggf. neu vermessen.
         self._refresh_measure_fonts()
+        self._refresh_spinner_colors(dark)
 
         # Hilfe-/Lizenzfenster sind klassische tk.Text-Widgets ohne ttk-Style
         self._theme_text_windows(c)
@@ -1811,6 +1861,20 @@ class AxisDiscoveryGUI(tk.Tk):
             return True
         except Exception:
             return False  # kein sv_ttk -> Aufrufer nutzt den clam-Rueckfall
+
+    def _refresh_spinner_colors(self, dark=None):
+        """Faerbt den runden Such-Spinner passend zum Thema (Akzent + Spur) und
+        gleicht seinen Hintergrund an die Werkzeugleiste an (TFrame-Background des
+        aktiven Themes, damit es bei sv_ttk wie bei clam blendet)."""
+        if not hasattr(self, "progress"):
+            return
+        if dark is None:
+            dark = bool(self.dark_mode_var.get())
+        arc = "#4cc2ff" if dark else "#0067c0"
+        track = "#3a3a3a" if dark else "#d4d4d4"
+        bg = self._style.lookup("TFrame", "background") \
+            or (DARK_COLORS if dark else LIGHT_COLORS)["bg"]
+        self.progress.set_colors(track, arc, bg)
 
     def _refresh_measure_fonts(self):
         """Uebernimmt die tatsaechliche Treeview-Schrift fuer die Spaltenmessung."""
