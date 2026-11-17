@@ -358,14 +358,33 @@ if [ ! -f "$OUT.zsync" ]; then
     ARCH=x86_64 "$AIT" --appimage-extract-and-run -u "$UPDINFO" "$APPDIR" "$OUT" 2>&1 | tail -5
     _zsync_einsammeln
 fi
+# Letzter Rueckfall: der continuous-Build von appimagetool ueberspringt die .zsync-
+# Erzeugung zeitweise ganz (beobachtet ab Build 295, 2025-12) -- obwohl ein lauffaehiges
+# zsyncmake GEBUENDELT im appimagetool-AppImage liegt. Das dann extrahieren und die
+# .zsync direkt erzeugen. Gleiche Form wie appimagetool: '-u <Basisname>' setzt die
+# URL-/Filename-Zeile auf den AppImage-Basisnamen (so lesen es gh-releases-zsync und die
+# Header frueherer Releases); '-o' schreibt direkt nach dist/, kein stray im CWD.
+if [ ! -f "$OUT.zsync" ]; then
+    echo ">> .zsync weiter fehlend - erzeuge sie mit dem gebuendelten zsyncmake ..."
+    rm -rf "$BUILD/_zsyncmake"
+    ( cd "$BUILD" && mkdir -p _zsyncmake && cd _zsyncmake \
+        && "$AIT" --appimage-extract 'usr/bin/zsyncmake' >/dev/null 2>&1 ) || true
+    ZSM="$BUILD/_zsyncmake/squashfs-root/usr/bin/zsyncmake"
+    if [ -x "$ZSM" ]; then
+        "$ZSM" -u "$(basename "$OUT")" -o "$OUT.zsync" "$OUT" 2>&1 | tail -2 || true
+    else
+        echo ">> gebuendeltes zsyncmake nicht gefunden ($ZSM)."
+    fi
+    rm -rf "$BUILD/_zsyncmake"
+fi
 # Convenience-Symlink auf die aktuelle Version - ebenfalls in dist/ (relatives Ziel).
 ln -sfn "$(basename "$OUT")" "$DIST/Axis_Kamera_Discovery-x86_64.AppImage"
 
 if [ -f "$OUT.zsync" ]; then
     echo ">> zsync: $OUT.zsync"
 else
-    echo ">> WARNUNG: .zsync wurde NICHT erzeugt - GearLever/AppImageUpdate-Updates"
-    echo ">>          eingeschraenkt. Vor dem Release manuell erzeugen (Repack mit -u)."
+    echo ">> WARNUNG: .zsync wurde NICHT erzeugt - auch der zsyncmake-Rueckfall griff"
+    echo ">>          nicht. GearLever/AppImageUpdate-Updates eingeschraenkt."
 fi
 
 echo ">> Fertig: $OUT"
