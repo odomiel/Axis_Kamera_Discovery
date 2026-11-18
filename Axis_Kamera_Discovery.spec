@@ -27,6 +27,10 @@ datas = [
     ("README.md", "."),
     ("THIRD_PARTY_LICENSES.md", "."),
     ("LICENSE", "."),
+    # Programm-Icon zur Laufzeit (Fenster/Taskleiste via iconbitmap/iconphoto) --
+    # getrennt vom .exe-Datei-Icon unten (EXE(..., icon=ICON)).
+    ("appimage/Axis_Kamera_Discovery/Axis_Kamera_Discovery.ico", "."),
+    ("appimage/Axis_Kamera_Discovery/Axis_Kamera_Discovery.png", "."),
 ]
 # sv_ttk liefert seine Tcl-Theme-Dateien als Paketdaten -> mitnehmen.
 datas += collect_data_files("sv_ttk")

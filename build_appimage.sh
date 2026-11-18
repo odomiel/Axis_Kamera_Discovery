@@ -220,6 +220,10 @@ mkdir -p "$APPDIR/app"
 cp "$ROOT/axis_kamera_discovery_gui.py" "$ROOT/axis_kamera_discovery_cli.py" \
    "$ROOT/axis_kamera_discovery_vapix.py" \
    "$ROOT/README.md" "$ROOT/THIRD_PARTY_LICENSES.md" "$ROOT/LICENSE" "$APPDIR/app/"
+# Programm-Icon auch im App-Baum: _set_app_icon() sucht es neben dem Modul (das
+# .desktop-Icon in der AppDir-Wurzel deckt nur die Taskleiste, nicht das Fenster-Icon ab).
+cp "$ROOT/appimage/Axis_Kamera_Discovery/Axis_Kamera_Discovery.png" \
+   "$ROOT/appimage/Axis_Kamera_Discovery/Axis_Kamera_Discovery.ico" "$APPDIR/app/"
 
 # Desktop + Icon (fuer appimagetool im AppDir-Wurzelverzeichnis)
 cp "$ROOT/appimage/Axis_Kamera_Discovery/Axis_Kamera_Discovery.png" "$APPDIR/Axis_Kamera_Discovery.png"

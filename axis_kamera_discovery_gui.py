@@ -975,6 +975,7 @@ class AxisDiscoveryGUI(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title(f"Axis_Kamera_Discovery {__version__}")
+        self._set_app_icon()
         self.geometry("1250x550")
         self.minsize(800, 400)
 
@@ -2033,6 +2034,39 @@ class AxisDiscoveryGUI(tk.Tk):
 
     def _show_licenses(self):
         self._show_text_window("THIRD_PARTY_LICENSES.md", self._("licenses_title"))
+
+    def _set_app_icon(self):
+        """Programm-Icon fuer Titelleiste und Windows-Taskleiste setzen -- sonst zeigt
+        Tk die Default-"Feder". Windows nutzt die mehraufloesende .ico (zieht auch die
+        Taskleiste), andere Plattformen die .png per iconphoto. ``default=``/``True``
+        gelten auch fuer spaeter geoeffnete Dialoge. Fehlende Datei oder nicht
+        unterstuetztes Format wird still ignoriert (App laeuft weiter)."""
+        base = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
+
+        def finde(name):
+            # Bundle-/AppImage-Wurzel zuerst (PyInstaller datas, AppDir/app), dann die
+            # Quellcode-Lage unter appimage/Axis_Kamera_Discovery/.
+            for p in (os.path.join(base, name),
+                      os.path.join(base, "appimage", "Axis_Kamera_Discovery", name)):
+                if os.path.exists(p):
+                    return p
+            return None
+
+        if sys.platform == "win32":
+            ico = finde("Axis_Kamera_Discovery.ico")
+            if ico:
+                try:
+                    self.iconbitmap(default=ico)
+                except tk.TclError:
+                    pass
+            return
+        png = finde("Axis_Kamera_Discovery.png")
+        if png:
+            try:
+                self._app_icon = tk.PhotoImage(file=png)   # Referenz halten!
+                self.iconphoto(True, self._app_icon)
+            except (tk.TclError, OSError):
+                pass
 
     def _show_text_window(self, filename, title):
         # Unter PyInstaller liegen gebundelte Datendateien in sys._MEIPASS,
@@ -3656,7 +3690,22 @@ class ParameterSelectDialog(tk.Toplevel):
         self.destroy()
 
 
+def _set_windows_app_id():
+    """Windows-Taskleiste: eigene AppUserModelID setzen, damit das Fenster unter dem
+    Programm-Icon gruppiert/angeheftet wird statt unter einem generischen Default-Icon.
+    Muss vor dem ersten Fenster laufen; auf Nicht-Windows ein No-op."""
+    if sys.platform != "win32":
+        return
+    try:
+        import ctypes
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(
+            "Mirik.Axis_Kamera_Discovery")
+    except Exception:  # noqa: BLE001 - rein kosmetisch, nie den Start verhindern
+        pass
+
+
 def main():
+    _set_windows_app_id()
     app = AxisDiscoveryGUI()
     app.mainloop()
 
