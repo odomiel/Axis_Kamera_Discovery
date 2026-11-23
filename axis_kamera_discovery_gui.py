@@ -1089,6 +1089,10 @@ class AxisDiscoveryGUI(tk.Tk):
         # Tabellenüberschriften
         self._update_table_headers()
 
+        # Button-Breiten haben sich geaendert -> Leiste neu umbrechen
+        if hasattr(self, "_toolbar"):
+            self.after_idle(lambda: self._reflow_toolbar(force=True))
+
     def _update_status_text(self):
         """Aktualisiert den Status-Text in der Statusleiste."""
         if hasattr(self, "status_var"):
@@ -1117,13 +1121,21 @@ class AxisDiscoveryGUI(tk.Tk):
 
     # ---------------------------------------------------------------- UI
     def _build_toolbar(self):
-        bar = ttk.Frame(self, padding=8)
+        # Responsive Werkzeugleiste: statt side=LEFT/RIGHT (kollidiert und
+        # schneidet bei schmalem Fenster ab) werden logische Gruppen per
+        # _reflow_toolbar in so viele Zeilen umgebrochen, wie die aktuelle
+        # Breite erfordert. Die Aktionsgruppe bleibt dabei rechtsbuendig.
+        bar = ttk.Frame(self)
         bar.pack(side=tk.TOP, fill=tk.X)
+        bar.pack_propagate(False)   # Hoehe legt _reflow_toolbar fest
+        self._toolbar = bar
+        self._tb_pad = 6            # Innenabstand links/oben/rechts/unten
+        self._tb_gap = 8            # waagerechter Abstand zwischen Gruppen
+        self._tb_vgap = 6           # senkrechter Abstand zwischen Zeilen
+        self._tb_last_width = -1
 
-        # "Suchen" als Split-Button: Hauptaktion links, anliegender Pfeil-Teil
-        # rechts fuer die Unterpunkte (beide buendig -> ein Bedienelement).
+        # --- Gruppe: "Suchen" als Split-Button (Hauptaktion + Pfeil-Teil) ---
         search_group = ttk.Frame(bar)
-        search_group.pack(side=tk.LEFT)
         self.search_btn = ttk.Button(
             search_group, text=self._("btn_search"), command=self.start_search,
         )
@@ -1137,62 +1149,138 @@ class AxisDiscoveryGUI(tk.Tk):
         self.search_menu_btn.configure(menu=self._search_menu)
         self.search_menu_btn.pack(side=tk.LEFT)
 
-        self.duration_label = ttk.Label(bar, text=self._("label_duration"))
-        self.duration_label.pack(side=tk.LEFT, padx=(12, 4))
+        # --- Gruppe: Suchdauer ---
+        dur_group = ttk.Frame(bar)
+        self.duration_label = ttk.Label(dur_group, text=self._("label_duration"))
+        self.duration_label.pack(side=tk.LEFT, padx=(0, 4))
         self.timeout_var = tk.IntVar(value=int(self.get_setting("search_duration")))
-        ttk.Spinbox(bar, from_=1, to=60, width=4, textvariable=self.timeout_var).pack(
-            side=tk.LEFT
-        )
+        ttk.Spinbox(dur_group, from_=1, to=60, width=4,
+                    textvariable=self.timeout_var).pack(side=tk.LEFT)
 
+        # --- Gruppe: Auto-Aktualisierung + Intervall ---
+        ar_group = ttk.Frame(bar)
         self.autorefresh_var = tk.BooleanVar(value=bool(self.get_setting("autorefresh")))
         self.autorefresh_cb = ttk.Checkbutton(
-            bar,
+            ar_group,
             text=self._("btn_autorefresh"),
             variable=self.autorefresh_var,
             command=self._on_autorefresh_toggle,
         )
-        self.autorefresh_cb.pack(side=tk.LEFT, padx=(16, 4))
-
-        self.every_label = ttk.Label(bar, text=self._("label_every"))
+        self.autorefresh_cb.pack(side=tk.LEFT, padx=(0, 4))
+        self.every_label = ttk.Label(ar_group, text=self._("label_every"))
         self.every_label.pack(side=tk.LEFT, padx=(0, 4))
         self.interval_var = tk.IntVar(value=int(self.get_setting("refresh_interval")))
-        ttk.Spinbox(bar, from_=5, to=3600, width=5, textvariable=self.interval_var).pack(
-            side=tk.LEFT
-        )
+        ttk.Spinbox(ar_group, from_=5, to=3600, width=5,
+                    textvariable=self.interval_var).pack(side=tk.LEFT)
 
-        # Disclaimer-Hinweis in Rot (wie Button, aber ohne Funktion)
+        # --- Disclaimer-Hinweis in Rot (wie Button, aber ohne Funktion) ---
         self.disclaimer_btn = ttk.Button(
             bar,
             text=self._("disclaimer"),
             style="Disclaimer.TButton",
             state=tk.DISABLED,
         )
-        self.disclaimer_btn.pack(side=tk.LEFT, padx=(16, 4))
 
         # Aenderungen an Dauer/Intervall dauerhaft speichern
         self.timeout_var.trace_add("write", self._persist_toolbar_settings)
         self.interval_var.trace_add("write", self._persist_toolbar_settings)
 
-        # Menue-Button "Einstellungen" rechts neben "Exportieren"
-        self.settings_btn = ttk.Button(
-            bar, text=self._("btn_settings"), command=self._toggle_settings_menu
-        )
-        self.settings_btn.pack(side=tk.RIGHT)
-
-        # "Kamera Einstellungen" direkt links neben "Einstellungen"
-        self.camera_settings_btn = ttk.Button(
-            bar, text=self._("btn_camera_settings"), command=self._open_camera_settings
-        )
-        self.camera_settings_btn.pack(side=tk.RIGHT, padx=(0, 8))
-
+        # --- rechte Aktionsgruppe (Spinner + Export/Kamera/Einstellungen) ---
+        # Als Einheit gehalten und von _reflow_toolbar rechtsbuendig gesetzt.
+        actions = ttk.Frame(bar)
+        self.progress = CircularSpinner(actions, size=26, thickness=4)
+        self.progress.pack(side=tk.LEFT, padx=(0, 8))
         self.export_btn = ttk.Button(
-            bar, text=self._("btn_export"), command=self.export, state=tk.DISABLED
+            actions, text=self._("btn_export"), command=self.export, state=tk.DISABLED
         )
-        self.export_btn.pack(side=tk.RIGHT, padx=(0, 8))
-
-        self.progress = CircularSpinner(bar, size=26, thickness=4)
-        self.progress.pack(side=tk.RIGHT, padx=8)
+        self.export_btn.pack(side=tk.LEFT, padx=(0, 8))
+        self.camera_settings_btn = ttk.Button(
+            actions, text=self._("btn_camera_settings"), command=self._open_camera_settings
+        )
+        self.camera_settings_btn.pack(side=tk.LEFT, padx=(0, 8))
+        self.settings_btn = ttk.Button(
+            actions, text=self._("btn_settings"), command=self._toggle_settings_menu
+        )
+        self.settings_btn.pack(side=tk.LEFT)
         self._refresh_spinner_colors()
+
+        # Reflow-Register: linke Gruppen (flieszen/umbrechen) + rechte Einheit.
+        self._tb_left = [search_group, dur_group, ar_group, self.disclaimer_btn]
+        self._tb_right = actions
+        self._tb_all = self._tb_left + [actions]
+
+        bar.configure(height=40)  # vorlaeufig; erste Messung folgt per after()
+        bar.bind("<Configure>", self._reflow_toolbar)
+        # Nach dem Realisieren einmal exakt vermessen und platzieren.
+        self.after(0, lambda: self._reflow_toolbar(force=True))
+
+    def _reflow_toolbar(self, event=None, force=False):
+        """Ordnet die Werkzeugleisten-Gruppen passend zur aktuellen Breite an.
+
+        Linke Gruppen flieszen von links und brechen bei Platzmangel in neue
+        Zeilen um; die rechte Aktionsgruppe bleibt rechtsbuendig (teilt sich die
+        letzte Zeile mit den linken Gruppen, wenn der Platz reicht, sonst eigene
+        Zeile). So wird nichts mehr abgeschnitten, wenn das Fenster schmal wird.
+        """
+        bar = getattr(self, "_toolbar", None)
+        if bar is None:
+            return
+        width = bar.winfo_width()
+        if width <= 1:
+            return
+        if not force and width == self._tb_last_width:
+            return
+        self._tb_last_width = width
+
+        pad, gap, vgap = self._tb_pad, self._tb_gap, self._tb_vgap
+        avail = max(1, width - 2 * pad)
+
+        def rw(w):
+            return max(w.winfo_reqwidth(), 1)
+
+        def rh(w):
+            return max(w.winfo_reqheight(), 1)
+
+        rowh = max(rh(w) for w in self._tb_all)
+
+        # Linke Gruppen greedy in Zeilen verteilen.
+        rows = [[]]      # je Zeile: Liste von (widget, x-Offset ab pad)
+        x = 0
+        for w in self._tb_left:
+            wi = rw(w)
+            if x > 0 and x + gap + wi > avail:
+                rows.append([])
+                x = 0
+            xoff = x if x == 0 else x + gap
+            rows[-1].append((w, xoff))
+            x = xoff + wi
+        last_used = x
+
+        # Rechte Aktionsgruppe einordnen.
+        aw = rw(self._tb_right)
+        if last_used > 0 and last_used + gap + aw <= avail:
+            right_row = len(rows) - 1
+        elif last_used == 0 and aw <= avail:
+            right_row = len(rows) - 1
+        else:
+            rows.append([])
+            right_row = len(rows) - 1
+        nrows = len(rows)
+
+        # Platzieren (jede Gruppe in ihrer Zeile vertikal zentriert).
+        for r, items in enumerate(rows):
+            ytop = pad + r * (rowh + vgap)
+            for w, xoff in items:
+                w.place(x=pad + xoff, y=ytop + (rowh - rh(w)) // 2)
+        ytop = pad + right_row * (rowh + vgap)
+        self._tb_right.place(
+            x=max(pad, width - pad - aw),
+            y=ytop + (rowh - rh(self._tb_right)) // 2,
+        )
+
+        height = pad * 2 + nrows * rowh + (nrows - 1) * vgap
+        if bar.cget("height") != height:
+            bar.configure(height=height)
 
     def _build_table(self):
         frame = ttk.Frame(self)
@@ -1854,6 +1942,10 @@ class AxisDiscoveryGUI(tk.Tk):
         # Hilfe-/Lizenzfenster sind klassische tk.Text-Widgets ohne ttk-Style
         self._theme_text_windows(c)
 
+        # sv_ttk/clam liefern unterschiedlich breite Buttons -> Leiste neu umbrechen
+        if hasattr(self, "_toolbar"):
+            self.after_idle(lambda: self._reflow_toolbar(force=True))
+
     def _apply_sun_valley(self, dark):
         """Aktiviert das Sun-Valley-Theme; True bei Erfolg, False ohne sv_ttk."""
         try:
@@ -2219,8 +2311,27 @@ class CameraSettingsDialog(tk.Toplevel):
 
     # ------------------------------------------------------------------ UI
     def _build_ui(self):
-        outer = ttk.Frame(self, padding=10)
-        outer.pack(fill=tk.BOTH, expand=True)
+        # Vertikal scrollbarer Rumpf: in niedrigen Fenstern bleibt der gesamte
+        # Inhalt per Scrollbar/Mausrad erreichbar; ist das Fenster hoch genug,
+        # dehnt sich das Ergebnis-Log wie bisher (Fuellhoehe = Canvas-Hoehe).
+        host = ttk.Frame(self)
+        host.pack(fill=tk.BOTH, expand=True)
+        self._vcanvas = tk.Canvas(host, highlightthickness=0, bg=self._palette["bg"])
+        self._vscroll = ttk.Scrollbar(host, orient="vertical",
+                                      command=self._vcanvas.yview)
+        self._vcanvas.configure(yscrollcommand=self._vscroll.set)
+        self._vcanvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        self._vscroll_shown = False
+
+        outer = ttk.Frame(self._vcanvas, padding=10)
+        self._vouter = outer
+        self._vwin = self._vcanvas.create_window((0, 0), window=outer, anchor="nw")
+        outer.bind("<Configure>", lambda e: self._sync_body_size())
+        self._vcanvas.bind("<Configure>", lambda e: self._sync_body_size())
+        # Mausrad scrollt den Rumpf -- auszer ueber Reiter-Leiste/Ergebnis-Log,
+        # die ihr eigenes Scrollverhalten haben.
+        for seq in ("<MouseWheel>", "<Button-4>", "<Button-5>"):
+            self.bind(seq, self._on_body_wheel)
 
         ttk.Label(
             outer,
@@ -2238,21 +2349,24 @@ class CameraSettingsDialog(tk.Toplevel):
         self.timeout_var = tk.IntVar(value=10)
 
         ttk.Label(cred, text=self._("camera_settings_user")).grid(row=0, column=0, sticky=tk.W, padx=4, pady=2)
-        ttk.Entry(cred, textvariable=self.user_var, width=18).grid(row=0, column=1, padx=4, pady=2)
+        ttk.Entry(cred, textvariable=self.user_var, width=18).grid(row=0, column=1, sticky=tk.EW, padx=4, pady=2)
         ttk.Label(cred, text=self._("camera_settings_password")).grid(row=0, column=2, sticky=tk.W, padx=4, pady=2)
-        ttk.Entry(cred, textvariable=self.pass_var, width=18, show="*").grid(row=0, column=3, padx=4, pady=2)
+        ttk.Entry(cred, textvariable=self.pass_var, width=18, show="*").grid(row=0, column=3, sticky=tk.EW, padx=4, pady=2)
 
         ttk.Label(cred, text=self._("camera_settings_connection")).grid(row=1, column=0, sticky=tk.W, padx=4, pady=2)
         ttk.Combobox(
             cred, textvariable=self.scheme_var, width=15, state="readonly",
             values=("auto", "https", "http"),
-        ).grid(row=1, column=1, padx=4, pady=2)
+        ).grid(row=1, column=1, sticky=tk.EW, padx=4, pady=2)
         ttk.Label(cred, text=self._("camera_settings_port")).grid(row=1, column=2, sticky=tk.W, padx=4, pady=2)
-        ttk.Entry(cred, textvariable=self.port_var, width=18).grid(row=1, column=3, padx=4, pady=2)
+        ttk.Entry(cred, textvariable=self.port_var, width=18).grid(row=1, column=3, sticky=tk.EW, padx=4, pady=2)
         ttk.Label(cred, text=self._("camera_settings_timeout")).grid(row=2, column=0, sticky=tk.W, padx=4, pady=2)
         ttk.Spinbox(cred, from_=2, to=120, width=6, textvariable=self.timeout_var).grid(
             row=2, column=1, sticky=tk.W, padx=4, pady=2
         )
+        # Eingabespalten dehnen sich mit der Fensterbreite
+        cred.columnconfigure(1, weight=1)
+        cred.columnconfigure(3, weight=1)
 
         # --- Aktionen in Reitern ---
         # ttk.Notebook kann seine Reiter nicht scrollen -> bei zu schmalem Fenster
@@ -2333,11 +2447,12 @@ class CameraSettingsDialog(tk.Toplevel):
                   text=self._("cs_ipv6_addr_label")).grid(
             row=0, column=0, sticky=tk.W, padx=4, pady=2)
         ttk.Entry(self._ipv6_manual, textvariable=self._ipv6_addr_var, width=40).grid(
-            row=0, column=1, padx=4, pady=2)
+            row=0, column=1, sticky=tk.EW, padx=4, pady=2)
         ttk.Label(self._ipv6_manual, text=self._("cs_gateway_opt")).grid(
             row=1, column=0, sticky=tk.W, padx=4, pady=2)
         ttk.Entry(self._ipv6_manual, textvariable=self._ipv6_router_var, width=40).grid(
-            row=1, column=1, padx=4, pady=2)
+            row=1, column=1, sticky=tk.EW, padx=4, pady=2)
+        self._ipv6_manual.columnconfigure(1, weight=1)
 
         self.ipv6_read_btn = ttk.Button(
             tab_ipv6, text=self._("cs_ipv6_read_btn"),
@@ -2472,9 +2587,11 @@ class CameraSettingsDialog(tk.Toplevel):
         ff = ttk.Frame(tab_fw)
         ff.pack(fill=tk.X)
         ttk.Label(ff, text=self._("cs_fw_file")).grid(row=0, column=0, sticky=tk.W, padx=4, pady=2)
-        ttk.Entry(ff, textvariable=self.fw_path_var, width=46).grid(row=0, column=1, padx=4, pady=2)
+        ttk.Entry(ff, textvariable=self.fw_path_var, width=46).grid(
+            row=0, column=1, sticky=tk.EW, padx=4, pady=2)
         ttk.Button(ff, text=self._("cs_browse"), command=self._choose_firmware).grid(
             row=0, column=2, padx=4, pady=2)
+        ff.columnconfigure(1, weight=1)  # Pfadfeld schrumpft, Button bleibt sichtbar
         self.fw_factory_var = tk.BooleanVar(value=False)
         ttk.Checkbutton(tab_fw, text=self._("cs_fw_factory"),
                         variable=self.fw_factory_var).pack(anchor=tk.W, pady=(6, 0))
@@ -2493,9 +2610,11 @@ class CameraSettingsDialog(tk.Toplevel):
         cf = ttk.Frame(tab_cfg)
         cf.pack(fill=tk.X)
         ttk.Label(cf, text=self._("cs_cfg_file")).grid(row=0, column=0, sticky=tk.W, padx=4, pady=2)
-        ttk.Entry(cf, textvariable=self.cfg_path_var, width=46).grid(row=0, column=1, padx=4, pady=2)
+        ttk.Entry(cf, textvariable=self.cfg_path_var, width=46).grid(
+            row=0, column=1, sticky=tk.EW, padx=4, pady=2)
         ttk.Button(cf, text=self._("cs_browse"), command=self._choose_config).grid(
             row=0, column=2, padx=4, pady=2)
+        cf.columnconfigure(1, weight=1)  # Pfadfeld schrumpft, Button bleibt sichtbar
         self.cfg_info_var = tk.StringVar(value=self._("cs_cfg_none"))
         ttk.Label(tab_cfg, textvariable=self.cfg_info_var, wraplength=560,
                   justify=tk.LEFT).pack(anchor=tk.W, pady=(6, 0))
@@ -2535,9 +2654,11 @@ class CameraSettingsDialog(tk.Toplevel):
         bf = ttk.Frame(tab_bk)
         bf.pack(fill=tk.X, pady=(4, 0))
         ttk.Label(bf, text=self._("cs_bk_file")).grid(row=0, column=0, sticky=tk.W, padx=4, pady=2)
-        ttk.Entry(bf, textvariable=self.backup_path_var, width=46).grid(row=0, column=1, padx=4, pady=2)
+        ttk.Entry(bf, textvariable=self.backup_path_var, width=46).grid(
+            row=0, column=1, sticky=tk.EW, padx=4, pady=2)
         ttk.Button(bf, text=self._("cs_browse"), command=self._choose_backup).grid(
             row=0, column=2, padx=4, pady=2)
+        bf.columnconfigure(1, weight=1)  # Pfadfeld schrumpft, Button bleibt sichtbar
         self.backup_info_var = tk.StringVar(value=self._("cs_bk_none"))
         ttk.Label(tab_bk, textvariable=self.backup_info_var, wraplength=560,
                   justify=tk.LEFT).pack(anchor=tk.W, pady=(6, 0))
@@ -2577,7 +2698,7 @@ class CameraSettingsDialog(tk.Toplevel):
 
         # --- Ergebnisanzeige ---
         ttk.Label(outer, text=self._("cs_result")).pack(anchor=tk.W, pady=(6, 0))
-        self.result = scrolledtext.ScrolledText(outer, height=18, wrap=tk.WORD)
+        self.result = scrolledtext.ScrolledText(outer, height=12, wrap=tk.WORD)
         self.result.configure(
             bg=self._palette["tree_bg"], fg=self._palette["fg"],
             insertbackground=self._palette["fg"],
@@ -2590,6 +2711,55 @@ class CameraSettingsDialog(tk.Toplevel):
         self._sync_active_tab()
         # Reiter-Ueberlauf erst pruefen, wenn die Groessen feststehen.
         self.after(0, self._update_tab_overflow)
+
+    # ---------------------------------------------- vertikal scrollbarer Rumpf
+    def _sync_body_size(self):
+        """Haelt Breite/Hoehe des Canvas-Inhalts und die Scrollbar aktuell.
+
+        Die Inhaltsbreite folgt der Canvas-Breite (damit sich Felder dehnen).
+        Ist das Fenster hoeher als der Inhalt, wird der Inhalt auf Canvas-Hoehe
+        gestreckt (das Ergebnis-Log fuellt dann den Rest); sonst erscheint die
+        Scrollbar und das Mausrad scrollt.
+        """
+        if not hasattr(self, "_vcanvas"):
+            return
+        cw = self._vcanvas.winfo_width()
+        ch = self._vcanvas.winfo_height()
+        if cw <= 1:
+            return
+        req = self._vouter.winfo_reqheight()
+        inner_h = max(req, ch)
+        self._vcanvas.itemconfigure(self._vwin, width=cw, height=inner_h)
+        self._vcanvas.configure(scrollregion=(0, 0, cw, inner_h))
+        need = req > ch + 1
+        if need and not self._vscroll_shown:
+            self._vscroll.pack(side=tk.RIGHT, fill=tk.Y)
+            self._vscroll_shown = True
+        elif not need and self._vscroll_shown:
+            self._vscroll.pack_forget()
+            self._vscroll_shown = False
+            self._vcanvas.yview_moveto(0)
+
+    def _on_body_wheel(self, event):
+        """Scrollt den Rumpf per Mausrad -- nur wenn die Scrollbar aktiv ist und
+        der Zeiger nicht ueber einem Bereich mit eigenem Scrollverhalten steht."""
+        if not getattr(self, "_vscroll_shown", False):
+            return
+        w = self.winfo_containing(event.x_root, event.y_root)
+        while w is not None and w is not self:
+            if w is getattr(self, "result", None) \
+                    or w is getattr(self, "_tabcanvas", None):
+                return  # dort eigenes (Text-/Reiter-)Scrollen
+            w = getattr(w, "master", None)
+        num = getattr(event, "num", None)
+        if num == 4:
+            delta = -1
+        elif num == 5:
+            delta = 1
+        else:
+            delta = -1 if getattr(event, "delta", 0) > 0 else 1
+        self._vcanvas.yview_scroll(delta, "units")
+        return "break"
 
     # ------------------------------------------------- scrollbare Reiter-Leiste
     def _setup_tabless_style(self):
