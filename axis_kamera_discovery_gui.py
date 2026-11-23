@@ -1076,7 +1076,12 @@ class AxisDiscoveryGUI(tk.Tk):
         self.camera_settings_btn.config(text=self._("btn_camera_settings"))
         self.settings_btn.config(text=self._("btn_settings"))
         self.disclaimer_btn.config(text=self._("disclaimer"))
-        
+        # Hamburger-Menue (gleiche Aktionen wie die Aktionsgruppe)
+        if hasattr(self, "_ham_menu"):
+            self._ham_menu.entryconfig(self._ham_export_idx, label=self._("btn_export"))
+            self._ham_menu.entryconfig(self._ham_cam_idx, label=self._("btn_camera_settings"))
+            self._ham_menu.entryconfig(self._ham_settings_idx, label=self._("btn_settings"))
+
         # Sprach-Menübutton (nur wenn das Dropdown gerade offen ist -- der Button
         # lebt im Popup und ist sonst bereits zerstoert)
         btn = getattr(self, "lang_menu_btn", None)
@@ -1121,10 +1126,11 @@ class AxisDiscoveryGUI(tk.Tk):
 
     # ---------------------------------------------------------------- UI
     def _build_toolbar(self):
-        # Responsive Werkzeugleiste: statt side=LEFT/RIGHT (kollidiert und
-        # schneidet bei schmalem Fenster ab) werden logische Gruppen per
-        # _reflow_toolbar in so viele Zeilen umgebrochen, wie die aktuelle
-        # Breite erfordert. Die Aktionsgruppe bleibt dabei rechtsbuendig.
+        # Responsive Werkzeugleiste (_reflow_toolbar):
+        #  * Passt die Aktionsgruppe (Exportieren/Kamera Einstellungen/
+        #    Einstellungen) nicht mehr neben die linken Steuerelemente, wird sie
+        #    zu einem Hamburger-Menue (☰) zusammengefasst -- statt umzubrechen.
+        #  * Der rote Hinweis rutscht bei Platzmangel in die zweite Zeile.
         bar = ttk.Frame(self)
         bar.pack(side=tk.TOP, fill=tk.X)
         bar.pack_propagate(False)   # Hoehe legt _reflow_toolbar fest
@@ -1185,11 +1191,12 @@ class AxisDiscoveryGUI(tk.Tk):
         self.timeout_var.trace_add("write", self._persist_toolbar_settings)
         self.interval_var.trace_add("write", self._persist_toolbar_settings)
 
-        # --- rechte Aktionsgruppe (Spinner + Export/Kamera/Einstellungen) ---
-        # Als Einheit gehalten und von _reflow_toolbar rechtsbuendig gesetzt.
+        # --- Such-Spinner (immer sichtbar, direkt links der Aktionsgruppe) ---
+        self.progress = CircularSpinner(bar, size=26, thickness=4)
+
+        # --- Aktionsgruppe: Export / Kamera Einstellungen / Einstellungen ---
         actions = ttk.Frame(bar)
-        self.progress = CircularSpinner(actions, size=26, thickness=4)
-        self.progress.pack(side=tk.LEFT, padx=(0, 8))
+        self._tb_actions = actions
         self.export_btn = ttk.Button(
             actions, text=self._("btn_export"), command=self.export, state=tk.DISABLED
         )
@@ -1202,12 +1209,30 @@ class AxisDiscoveryGUI(tk.Tk):
             actions, text=self._("btn_settings"), command=self._toggle_settings_menu
         )
         self.settings_btn.pack(side=tk.LEFT)
+
+        # --- Hamburger-Menue: fasst die Aktionsgruppe bei Platzmangel zusammen.
+        self._tb_hamburger = ttk.Menubutton(bar, text="☰")  # ☰
+        self._ham_menu = tk.Menu(self._tb_hamburger, tearoff=0)
+        self._ham_export_idx = 0
+        self._ham_menu.add_command(label=self._("btn_export"),
+                                   command=self.export, state=tk.DISABLED)
+        self._ham_cam_idx = 1
+        self._ham_menu.add_command(label=self._("btn_camera_settings"),
+                                   command=self._open_camera_settings)
+        self._ham_menu.add_separator()
+        self._ham_settings_idx = 3
+        self._ham_menu.add_command(
+            label=self._("btn_settings"),
+            command=lambda: self._toggle_settings_menu(anchor=self._tb_hamburger))
+        self._tb_hamburger.configure(menu=self._ham_menu)
+
         self._refresh_spinner_colors()
 
-        # Reflow-Register: linke Gruppen (flieszen/umbrechen) + rechte Einheit.
-        self._tb_left = [search_group, dur_group, ar_group, self.disclaimer_btn]
-        self._tb_right = actions
-        self._tb_all = self._tb_left + [actions]
+        # Reflow-Register: linke, flieszfaehige Gruppen.
+        self._tb_left = [search_group, dur_group, ar_group]
+        self._tb_all = self._tb_left + [
+            self.disclaimer_btn, self.progress, actions, self._tb_hamburger,
+        ]
 
         bar.configure(height=40)  # vorlaeufig; erste Messung folgt per after()
         bar.bind("<Configure>", self._reflow_toolbar)
@@ -1215,12 +1240,11 @@ class AxisDiscoveryGUI(tk.Tk):
         self.after(0, lambda: self._reflow_toolbar(force=True))
 
     def _reflow_toolbar(self, event=None, force=False):
-        """Ordnet die Werkzeugleisten-Gruppen passend zur aktuellen Breite an.
+        """Ordnet die Werkzeugleiste passend zur aktuellen Breite an.
 
-        Linke Gruppen flieszen von links und brechen bei Platzmangel in neue
-        Zeilen um; die rechte Aktionsgruppe bleibt rechtsbuendig (teilt sich die
-        letzte Zeile mit den linken Gruppen, wenn der Platz reicht, sonst eigene
-        Zeile). So wird nichts mehr abgeschnitten, wenn das Fenster schmal wird.
+        Reicht der Platz nicht fuer die volle Aktionsgruppe neben den linken
+        Steuerelementen, wird sie durch das Hamburger-Menue (☰) ersetzt. Passt
+        zusaetzlich der rote Hinweis nicht in Zeile 0, rutscht er in Zeile 1.
         """
         bar = getattr(self, "_toolbar", None)
         if bar is None:
@@ -1241,42 +1265,48 @@ class AxisDiscoveryGUI(tk.Tk):
         def rh(w):
             return max(w.winfo_reqheight(), 1)
 
-        rowh = max(rh(w) for w in self._tb_all)
+        left = self._tb_left
+        left_w = sum(rw(w) for w in left) + gap * (len(left) - 1)
+        spin_w = rw(self.progress)
+        actions_w = rw(self._tb_actions)
+        ham_w = rw(self._tb_hamburger)
+        disc_w = rw(self.disclaimer_btn)
 
-        # Linke Gruppen greedy in Zeilen verteilen.
-        rows = [[]]      # je Zeile: Liste von (widget, x-Offset ab pad)
-        x = 0
-        for w in self._tb_left:
-            wi = rw(w)
-            if x > 0 and x + gap + wi > avail:
-                rows.append([])
-                x = 0
-            xoff = x if x == 0 else x + gap
-            rows[-1].append((w, xoff))
-            x = xoff + wi
-        last_used = x
+        # Passt die volle Aktionsgruppe rechts neben die linken Steuerelemente?
+        use_ham = (left_w + gap + spin_w + gap + actions_w) > avail
+        right_widget = self._tb_hamburger if use_ham else self._tb_actions
+        right_w = ham_w if use_ham else actions_w
+        cluster_w = spin_w + gap + right_w
+        # Nicht genutzte Aktionsform ausblenden.
+        (self._tb_actions if use_ham else self._tb_hamburger).place_forget()
 
-        # Rechte Aktionsgruppe einordnen.
-        aw = rw(self._tb_right)
-        if last_used > 0 and last_used + gap + aw <= avail:
-            right_row = len(rows) - 1
-        elif last_used == 0 and aw <= avail:
-            right_row = len(rows) - 1
-        else:
-            rows.append([])
-            right_row = len(rows) - 1
-        nrows = len(rows)
+        # Passt der Hinweis in Zeile 0 (zwischen linke Gruppen und Cluster)?
+        room_mid = avail - left_w - cluster_w - 2 * gap
+        disc_row0 = disc_w <= room_mid
 
-        # Platzieren (jede Gruppe in ihrer Zeile vertikal zentriert).
-        for r, items in enumerate(rows):
-            ytop = pad + r * (rowh + vgap)
-            for w, xoff in items:
-                w.place(x=pad + xoff, y=ytop + (rowh - rh(w)) // 2)
-        ytop = pad + right_row * (rowh + vgap)
-        self._tb_right.place(
-            x=max(pad, width - pad - aw),
-            y=ytop + (rowh - rh(self._tb_right)) // 2,
-        )
+        shown = left + [self.progress, right_widget, self.disclaimer_btn]
+        rowh = max(rh(w) for w in shown)
+
+        def place(w, xx, row):
+            ytop = pad + row * (rowh + vgap)
+            w.place(x=xx, y=ytop + (rowh - rh(w)) // 2)
+
+        # Zeile 0: linke Gruppen (ggf. + Hinweis) + rechtsbuendiger Cluster.
+        x = pad
+        for w in left:
+            place(w, x, 0)
+            x += rw(w) + gap
+        if disc_row0:
+            place(self.disclaimer_btn, x, 0)
+            x += disc_w + gap
+        cx = max(x, width - pad - cluster_w)
+        place(self.progress, cx, 0)
+        place(right_widget, cx + spin_w + gap, 0)
+
+        nrows = 1
+        if not disc_row0:
+            place(self.disclaimer_btn, pad, 1)
+            nrows = 2
 
         height = pad * 2 + nrows * rowh + (nrows - 1) * vgap
         if bar.cget("height") != height:
@@ -1413,7 +1443,7 @@ class AxisDiscoveryGUI(tk.Tk):
         self._cancel_refresh()  # anstehenden Auto-Refresh verwerfen, da wir jetzt suchen
         self._searching = True
         self.search_btn.config(state=tk.DISABLED)
-        self.export_btn.config(state=tk.DISABLED)
+        self._update_export_state(False)
         for item in self.tree.get_children():
             self.tree.delete(item)
         self.cameras = []
@@ -1473,7 +1503,7 @@ class AxisDiscoveryGUI(tk.Tk):
         self._autosize_columns()  # Breiten an die neuen Inhalte anpassen
 
         if self.cameras:
-            self.export_btn.config(state=tk.NORMAL)
+            self._update_export_state(True)
             self.status_var.set(self._("status_found", count=len(self.cameras)))
         else:
             self.status_var.set(self._("status_no_axis_cameras"))
@@ -1549,7 +1579,7 @@ class AxisDiscoveryGUI(tk.Tk):
             self.tree.selection_set(iid)
             self.tree.see(iid)
             self._autosize_columns()
-            self.export_btn.config(state=tk.NORMAL)
+            self._update_export_state(True)
             self.status_var.set(self._("status_found", count=len(self.cameras)))
             dlg.destroy()
 
@@ -1608,14 +1638,26 @@ class AxisDiscoveryGUI(tk.Tk):
         self._close_settings_menu()
         self.destroy()
 
+    def _update_export_state(self, enabled):
+        """Haelt Export-Button und den Export-Eintrag im Hamburger-Menue synchron."""
+        state = tk.NORMAL if enabled else tk.DISABLED
+        self.export_btn.config(state=state)
+        if hasattr(self, "_ham_menu"):
+            try:
+                self._ham_menu.entryconfig(self._ham_export_idx, state=state)
+            except tk.TclError:
+                pass
+
     # --------------------------------------------------- Menue: Einstellungen
-    def _toggle_settings_menu(self):
+    def _toggle_settings_menu(self, anchor=None):
         # offenes Dropdown wieder schliessen
         if self._settings_popup is not None and self._settings_popup.winfo_exists():
             self._close_settings_menu()
             return
 
-        btn = self.settings_btn
+        # Anker: der Einstellungen-Button, oder bei zusammengefasster
+        # Aktionsgruppe das Hamburger-Menue (settings_btn ist dann ausgeblendet).
+        btn = anchor if anchor is not None else self.settings_btn
         popup = tk.Toplevel(self)
         popup.overrideredirect(True)        # randloses Fenster (wie ein Menue)
         popup.transient(self)
