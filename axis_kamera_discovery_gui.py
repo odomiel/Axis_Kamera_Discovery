@@ -1211,7 +1211,9 @@ class AxisDiscoveryGUI(tk.Tk):
         self.settings_btn.pack(side=tk.LEFT)
 
         # --- Hamburger-Menue: fasst die Aktionsgruppe bei Platzmangel zusammen.
-        self._tb_hamburger = ttk.Menubutton(bar, text="☰")  # ☰
+        # Icon wird selbst gezeichnet (drei exakt gleich lange/breite Balken),
+        # da der Font-Glyph ☰ je nach Schrift ungleiche Striche zeigt.
+        self._tb_hamburger = ttk.Menubutton(bar)
         self._ham_menu = tk.Menu(self._tb_hamburger, tearoff=0)
         self._ham_export_idx = 0
         self._ham_menu.add_command(label=self._("btn_export"),
@@ -1225,6 +1227,7 @@ class AxisDiscoveryGUI(tk.Tk):
             label=self._("btn_settings"),
             command=lambda: self._toggle_settings_menu(anchor=self._tb_hamburger))
         self._tb_hamburger.configure(menu=self._ham_menu)
+        self._refresh_hamburger_icon()
 
         self._refresh_spinner_colors()
 
@@ -1980,6 +1983,7 @@ class AxisDiscoveryGUI(tk.Tk):
         # fuer die Spaltenbreite nachziehen und ggf. neu vermessen.
         self._refresh_measure_fonts()
         self._refresh_spinner_colors(dark)
+        self._refresh_hamburger_icon(dark)
 
         # Hilfe-/Lizenzfenster sind klassische tk.Text-Widgets ohne ttk-Style
         self._theme_text_windows(c)
@@ -2010,6 +2014,26 @@ class AxisDiscoveryGUI(tk.Tk):
         bg = self._style.lookup("TFrame", "background") \
             or (DARK_COLORS if dark else LIGHT_COLORS)["bg"]
         self.progress.set_colors(track, arc, bg)
+
+    def _refresh_hamburger_icon(self, dark=None):
+        """Zeichnet das Hamburger-Symbol selbst: drei exakt gleich lange und
+        gleich breite Balken (der Font-Glyph ☰ ist je nach Schrift ungleich).
+        Die Balkenfarbe folgt dem Thema (Vordergrundfarbe)."""
+        if not hasattr(self, "_tb_hamburger"):
+            return
+        if dark is None:
+            dark = bool(self.dark_mode_var.get())
+        color = (DARK_COLORS if dark else LIGHT_COLORS)["fg"]
+        # feste Geometrie: drei 2px-Balken gleicher Laenge, gleichmaessig verteilt
+        w, h = 18, 14
+        bar_len, bar_h = 14, 2
+        x0 = (w - bar_len) // 2
+        ys = (3, 7, 11)
+        img = tk.PhotoImage(width=w, height=h)  # Hintergrund transparent
+        for y in ys:
+            img.put(color, to=(x0, y, x0 + bar_len, y + bar_h))
+        self._ham_icon = img  # Referenz halten (sonst Garbage Collection)
+        self._tb_hamburger.configure(image=img)
 
     def _refresh_measure_fonts(self):
         """Uebernimmt die tatsaechliche Treeview-Schrift fuer die Spaltenmessung."""
