@@ -241,7 +241,16 @@ github_release() {
     if [ -z "$token" ]; then
         for tf in "${GITHUB_TOKEN_FILE:-}" "${XDG_CONFIG_HOME:-$HOME/.config}/axis_kamera_discovery/github_token"; do
             [ -n "$tf" ] && [ -f "$tf" ] || continue
-            token="$(tr -d ' \t\r\n' < "$tf")"
+            # Falle: ein zweiter Token in einer zweiten Zeile - urllib/curl wuerde
+            # BEIDE Tokens in der Fehlermeldung zeigen. Datei daher pruefen und bei
+            # internem Leerraum (mehrere Zeilen/Tokens) OHNE Inhalt abbrechen.
+            token="$(python3 -c '
+import sys
+d = open(sys.argv[1], encoding="utf-8").read().strip()
+if any(c.isspace() for c in d):
+    sys.exit(3)
+sys.stdout.write(d)
+' "$tf")" || die "GitHub-Token ungueltig: ${tf} muss genau einen Token in einer Zeile ohne Leerraum enthalten (zweiter Token in der Datei?)."
             [ -n "$token" ] && break
         done
     fi
@@ -283,6 +292,45 @@ for m in (data if isinstance(data, list) else []):
     gh_id() { python3 -c 'import json,sys
 try: d=json.load(sys.stdin); print(d.get("id","") if isinstance(d,dict) else "")
 except Exception: print("")'; }
+
+    # Token VOR dem Release pruefen: Gueltigkeit (401 -> klare Meldung statt
+    # Fehlschlag mitten im Upload) und nahender Ablauf (<30 Tage -> Warnung). So
+    # faellt ein abgelaufener/bald ablaufender Token beim Release-Start auf.
+    gh_check_token() {  # <slug>
+        local dump status exp tage cfg
+        cfg="${XDG_CONFIG_HOME:-$HOME/.config}/axis_kamera_discovery/github_token"
+        dump="$(gh_api -D - -o /dev/null -w 'HTTPSTATUS:%{http_code}' \
+            "https://api.github.com/repos/${1}")"
+        status="${dump##*HTTPSTATUS:}"
+        if [ "$status" = "401" ]; then
+            die "GitHub-Token ungueltig oder abgelaufen (HTTP 401) fuer ${1}. Neuen fine-grained Token (Contents: Read and write) erzeugen und in ${cfg} hinterlegen."
+        fi
+        [ "$status" = "200" ] || die "GitHub-Token-Pruefung fehlgeschlagen (HTTP ${status}) fuer ${1}."
+        exp="$(printf '%s\n' "$dump" | sed -nE 's/^[Gg]ithub-[Aa]uthentication-[Tt]oken-[Ee]xpiration:[[:space:]]*(.*)$/\1/p' | tr -d '\r')"
+        if [ -z "$exp" ]; then
+            info "GitHub meldet kein Token-Ablaufdatum (Classic-Token ohne Ablauf?)."
+            return 0
+        fi
+        # Kopf ist z. B. "2027-10-31 23:00:00 UTC" oder mit Versatz "... +0100".
+        tage="$(EXP="$exp" python3 -c '
+import os, sys, datetime as dt
+w = os.environ["EXP"].strip()
+try:
+    when = dt.datetime.strptime(w.replace(" UTC", " +0000"), "%Y-%m-%d %H:%M:%S %z")
+except ValueError:
+    print("NA"); sys.exit(0)
+print((when - dt.datetime.now(dt.timezone.utc)).days)')"
+        if [ "$tage" = "NA" ]; then
+            info "Token-Ablaufdatum nicht lesbar: ${exp}"
+        elif [ "$tage" -lt 0 ]; then
+            die "GitHub-Token ist am ${exp} abgelaufen. Bitte erneuern."
+        elif [ "$tage" -lt 30 ]; then
+            echo "WARNUNG: GitHub-Token laeuft in ${tage} Tagen ab (${exp}). Bald einen neuen fine-grained Token (Contents: Read and write) hinterlegen." >&2
+        else
+            info "Token gueltig, Ablauf ${exp} (in ${tage} Tagen)."
+        fi
+    }
+    gh_check_token "$slug"
 
     # a) Mirror-Sync anstossen (Forgejo -> GitHub)
     if api -X POST "${API_BASE}/api/v1/repos/${OWNER}/${REPO}/push_mirrors-sync" >/dev/null 2>&1; then
